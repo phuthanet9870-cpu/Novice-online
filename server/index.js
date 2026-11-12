@@ -20,7 +20,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascri
 const server = http.createServer((req, res) => {
   let u = decodeURIComponent((req.url || '/').split('?')[0]);
   if (u === '/') u = '/client/index.html';
-  if (u === '/health') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, online: W.players.size, instances: W.instances.size })); }
+  if (u === '/health') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, online: W.players.size, instances: W.instances.size, entities: [...W.instances.values()].reduce((a, i) => a + i.entities.size, 0), tickMs: +tickAvg.toFixed(2), tickMaxMs: +tickMax.toFixed(1), memMB: Math.round(process.memoryUsage().rss / 1e6) })); }
   if (!/^\/(client|shared|docs)\//.test(u)) { res.writeHead(404); return res.end('not found'); }
   const f = path.normalize(path.join(ROOT, u));
   if (!f.startsWith(ROOT)) { res.writeHead(403); return res.end(); }
@@ -191,7 +191,8 @@ function handle(sess, m) {
 }
 
 // ---------------- loops
-setInterval(() => { try { W.tick(); } catch (e) { console.error('tick error', e); } }, 50);
+let tickAvg = 0, tickMax = 0;
+setInterval(() => { const t0 = process.hrtime.bigint(); try { W.tick(); } catch (e) { console.error('tick error', e); } const ms = Number(process.hrtime.bigint() - t0) / 1e6; tickAvg = tickAvg * 0.95 + ms * 0.05; tickMax = Math.max(tickMax * 0.999, ms); }, 50);
 setInterval(() => {
   const now = Date.now();
   for (const p of [...W.players.values()]) {
