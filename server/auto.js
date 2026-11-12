@@ -5,6 +5,7 @@ const { SKILLS } = require('../shared/skills.js');
 const W = require('./world');
 const C = require('./combat');
 const I = require('./items');
+const M = require('../shared/mapgen.js');
 
 const A = module.exports;
 const COND = ['always', 'opener', 'tag', 'notag', 'targetHpBelow', 'selfHpBelow', 'selfSpAbove', 'mobsAround', 'comboAtLeast', 'isElite'];
@@ -100,6 +101,7 @@ function pickTarget(p, a, t) {
   if (a.mode === 'defensive') return null;
   p.inst.inRadius(cx, cy, a.radius, (o) => {
     if (o.kind !== 'm' || o.dead || o.owner) return;
+    if (a.ignore && a.ignore[o.id] > t) return;
     if (a.avoidBoss && o.rank >= 2) return;
     if (a.whitelist.length && !nameMatch(a.whitelist, o.name)) return;
     if (a.blacklist.length && nameMatch(a.blacklist, o.name)) return;
@@ -164,6 +166,10 @@ A.update = function (p, dt, t) {
     const low = C.partyNear(p, 9).find((q) => q.hp / q.maxHp * 100 < a.partyHeal);
     if (low) for (const id in ch.skills) { const sk = SKILLS[id]; if (sk.heal && !sk.heal.zone && skillReady(p, id, t)) { C.useSkill(p, id); return; } }
   }
+  // stuck detection: if we have not moved for 2.5s while chasing, skip that target for a while
+  a.ignore = a.ignore || {};
+  if (a.lastX === undefined || Math.hypot(p.x - a.lastX, p.y - a.lastY) > 0.3) { a.lastX = p.x; a.lastY = p.y; a.stillAt = t; }
+  else if (a.target && t - a.stillAt > 2.5 && W.dist(p, a.target) > p.st.range + 1.5) { a.ignore[a.target.id] = t + 25; a.target = null; a.moveTo = null; a.stillAt = t; }
   // target
   let tgt = a.target;
   if (!tgt || tgt.dead || tgt.inst !== p.inst || W.dist(p, tgt) > a.radius + 12) { tgt = a.target = pickTarget(p, a, t); }
@@ -175,7 +181,8 @@ A.update = function (p, dt, t) {
       const x = cx + Math.cos(ang) * d, y = cy + Math.sin(ang) * d;
       a.moveTo = { x, y, r: 0.4 };
     }
-    W.stepToward(p, a.moveTo.x, a.moveTo.y, dt, 0.4);
+    if (!M.walkable(p.inst.map, a.moveTo.x, a.moveTo.y) || t - a.stillAt > 2) a.moveTo = null;
+    else W.stepToward(p, a.moveTo.x, a.moveTo.y, dt, 0.4);
     return;
   }
   // rotation

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Novice Online</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Kanit:wght@300;400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/client/style.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<!-- ====================== LOGIN ====================== -->
+<div id="login" class="screen">
+  <div class="loginBox">
+    <div class="logo"><span>NOVICE</span><b>ONLINE</b><small>Combo Action MMORPG · HTML5</small></div>
+    <input id="user" placeholder="ชื่อผู้ใช้" autocomplete="username">
+    <input id="pass" type="password" placeholder="รหัสผ่าน" autocomplete="current-password">
+    <div class="row"><button id="loginBtn" class="btn gold big">เข้าสู่ระบบ</button><button id="regBtn" class="btn big">สมัครสมาชิก</button></div>
+    <div id="loginStatus" class="status">กำลังเชื่อมต่อ...</div>
+    <div class="features"><span>10 คลาส × 50 สกิล</span><span>คอมโบ & ปฏิกิริยาธาตุ</span><span>PvP · Guild War · World Boss</span><span>ตีบวก +20 · รูน · ประดับ</span><span>ดันเจี้ยน 5 × 1000 ชั้น</span><span>ระบบออโต้ + GM</span></div>
+  </div>
+</div>
+
+<!-- ====================== CHARACTER SELECT ====================== -->
+<div id="select" class="screen" hidden>
+  <div class="selWrap">
+    <div class="selLeft"><h2>ตัวละครของคุณ</h2><div id="charList"></div></div>
+    <div id="createPanel" class="createPanel" hidden>
+      <h2>สร้างตัวละคร — เลือกคลาส</h2>
+      <div id="classGrid" class="classGrid"></div>
+      <div id="classInfo" class="classInfo"></div>
+      <div class="row"><input id="newName" placeholder="ชื่อตัวละคร (2-14 ตัว)" maxlength="14"><button id="createBtn" class="btn gold big">สร้าง & เข้าเกม</button><button id="cancelCreate" class="btn">ยกเลิก</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== HUD ====================== -->
+<div id="hud" hidden>
+  <div id="pframe" class="glass">
+    <div class="por"><img id="pPortrait"><span id="pLv" class="lvb">1</span></div>
+    <div class="pmain">
+      <div class="pname"><b id="pName"></b><small id="pClass"></small></div>
+      <div id="hpBar" class="bar hp"><i></i><em id="shieldBar"></em><span></span></div>
+      <div id="spBar" class="bar sp"><i></i><span></span></div>
+      <div class="res"><small id="resName"></small><div id="resBar"></div></div>
+    </div>
+  </div>
+  <div id="buffs"></div>
+  <div id="partyFrames"></div>
+
+  <div id="tframe" class="glass" hidden><div id="tName"></div><small id="tSub"></small><div id="tHp" class="bar thp"><i></i><span></span></div><div id="tTags"></div></div>
+
+  <div id="miniWrap" class="glass">
+    <div class="mhead"><b id="mapName"></b><small id="mapSub"></small></div>
+    <canvas id="minicv" width="190" height="190"></canvas>
+    <div id="mapBadges"></div>
+    <div class="mfoot"><span id="coords"></span><span id="net"></span><button id="zoomOut" class="btn tiny">−</button><button id="zoomIn" class="btn tiny">＋</button></div>
+  </div>
+  <div id="killFeed"></div>
+  <div id="autoBadge" hidden>AUTO</div>
+
+  <div id="combo" hidden><b id="comboN">0</b><span>COMBO</span><small id="comboBonus"></small><div class="ct"><i id="comboTimer"></i></div></div>
+  <div id="lootFeed"></div>
+
+  <div id="bottom">
+    <div id="castBar" hidden><span id="castName"></span><div><i id="castFill"></i></div></div>
+    <div id="ult"><span id="ultTxt">ULT 0%</span></div>
+    <div class="hotbars">
+      <div id="hotbar1" class="hotbar"></div>
+      <div class="hbRow2"><div id="hotbar2" class="hotbar"></div><button id="autoToggle" class="autoBtn" data-tip="เปิด/ปิดออโต้ (`)"><span>🤖</span><b>AUTO OFF</b></button></div>
+    </div>
+  </div>
+  <div id="exp"><i id="expFill"></i><span id="expTxt"></span></div>
+
+  <div id="chat" class="glass">
+    <div id="chatTabs"><button data-tab="all" class="on">ทั้งหมด</button><button data-tab="map">แผนที่</button><button data-tab="world">โลก</button><button data-tab="party">ปาร์ตี้</button><button data-tab="guild">กิลด์</button><button data-tab="system">ระบบ</button></div>
+    <div id="chatLog"></div>
+    <div class="chatIn"><select id="chatCh"><option value="map">แผนที่</option><option value="world">โลก</option><option value="party">ปาร์ตี้</option><option value="guild">กิลด์</option></select><input id="chatIn" placeholder="Enter เพื่อพิมพ์ · /w ชื่อ · @help (GM)" maxlength="200"></div>
+  </div>
+  <div id="menu"></div>
+
+  <div id="banner" class="banner"></div>
+  <div id="ultBanner"></div>
+  <div id="toasts"></div>
+  <div id="popups"></div>
+  <div id="windows"></div>
+  <div id="death" hidden><div class="dbox"><h1>YOU DIED</h1><p id="deathBy"></p><small id="deathLoss"></small><button id="respawnBtn" class="btn gold big">กลับจุดเกิด</button></div></div>
+</div>
+<div id="tip" hidden></div>
+<div id="disc" hidden><div class="dbox"><h2>การเชื่อมต่อหลุด</h2><button class="btn gold big" onclick="location.reload()">เชื่อมต่อใหม่</button></div></div>
+
+<script src="/shared/rng.js"></script>
+<script src="/shared/data.js"></script>
+<script src="/shared/formulas.js"></script>
+<script src="/shared/mapgen.js"></script>
+<script src="/shared/skills.js"></script>
+<script src="/client/js/art.js"></script>
+<script src="/client/js/game.js"></script>
+<script src="/client/js/ui.js"></script>
+<script>UI.boot();</script>
+</body>
+</html>

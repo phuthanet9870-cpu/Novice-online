@@ -1,0 +1,918 @@
+// HUD + windows + screens (DOM).
+(function () {
+  const D = NO_DATA, F = NO_F;
+  const SKS = () => NO_SKILLS.SKILLS, CSK = () => NO_SKILLS.CLASS_SKILLS;
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fmt = (n) => Math.round(n).toLocaleString();
+  const UI = window.UI = { wins: {}, open: [], chatTab: 'all', chatCh: 'map', selItem: null, skillTab: null, invTab: 'all', log: [] };
+  const HOTKEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 'z', 'x', 'c', 'v', 'b', 'n'];
+  const WINKEYS = { i: 'inv', k: 'skills', u: 'char', o: 'auto', m: 'map', j: 'dungeon', g: 'guild', p: 'party', r: 'rank', h: 'help', f10: 'gm' };
+
+  // ================================================================ screens
+  UI.boot = function () {
+    $('#loginBtn').onclick = () => auth('login');
+    $('#regBtn').onclick = () => auth('register');
+    $('#pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') auth('login'); });
+    try { const u = localStorage.getItem('no_user'); if (u) $('#user').value = u; } catch (e) {}
+    buildClassPicker();
+    G.connect(() => { $('#loginStatus').textContent = 'เชื่อมต่อเซิร์ฟเวอร์แล้ว ✓'; });
+    G.start();
+    setupTooltip();
+    setupHud();
+  };
+  function auth(kind) {
+    const user = $('#user').value.trim(), pass = $('#pass').value;
+    try { localStorage.setItem('no_user', user); } catch (e) {}
+    G.send({ t: kind, user, pass });
+  }
+  UI.onAuth = function (m) {
+    if (!m.ok) { $('#loginStatus').textContent = m.m; $('#loginStatus').className = 'status bad'; return; }
+    UI.gm = m.gm; UI.user = m.user;
+    show('select'); UI.onChars(m);
+  };
+  function show(id) { for (const s of ['login', 'select']) $('#' + s).hidden = s !== id; $('#hud').hidden = id !== 'hud'; }
+  UI.onChars = function (m) {
+    UI.chars = m.chars;
+    const list = $('#charList');
+    list.innerHTML = m.chars.map((c) => `<div class="charCard" data-id="${c.id}"><img src="${ART.portrait(c.cls, c.name, 96)}"><div><b>${esc(c.name)}</b><span>Lv ${c.lv} ${D.CLASSES[c.cls].name}</span><small>${esc(c.guild ? '<' + c.guild + '> ' : '')}${esc(mapName(c.map))}</small></div><button class="btn gold" data-play="${c.id}">เข้าเกม ▶</button><button class="btn tiny danger" data-del="${c.id}" data-name="${esc(c.name)}">ลบ</button></div>`).join('')
+      + (m.chars.length < 6 ? `<div class="charCard new" id="newCharBtn"><div class="plus">＋</div><div><b>สร้างตัวละครใหม่</b><span>เลือกได้ 10 คลาส</span></div></div>` : '');
+    list.onclick = (e) => {
+      const pl = e.target.closest('[data-play]'); if (pl) return G.send({ t: 'play', id: pl.dataset.play });
+      const dl = e.target.closest('[data-del]'); if (dl) { const n = prompt(`พิมพ์ชื่อ "${dl.dataset.name}" เพื่อยืนยันการลบ`); if (n) G.send({ t: 'deleteChar', id: dl.dataset.del, confirm: n }); return; }
+      if (e.target.closest('#newCharBtn')) { $('#createPanel').hidden = false; }
+      const card = e.target.closest('.charCard[data-id]'); if (card && e.detail === 2) G.send({ t: 'play', id: card.dataset.id });
+    };
+    $('#createPanel').hidden = m.chars.length > 0 && !m.created ? true : m.chars.length > 0;
+    if (!m.chars.length) $('#createPanel').hidden = false;
+    if (m.created) G.send({ t: 'play', id: m.created });
+  };
+  let pickCls = 'blade_knight';
+  function buildClassPicker() {
+    const grid = $('#classGrid');
+    grid.innerHTML = D.CLASS_IDS.map((c) => `<div class="clsBtn" data-cls="${c}" style="--c:${D.CLASSES[c].color}"><img src="${ART.classIcon(c, 56)}"><b>${D.CLASSES[c].name}</b><small>${D.CLASSES[c].th}</small></div>`).join('');
+    grid.onclick = (e) => { const b = e.target.closest('[data-cls]'); if (b) { pickCls = b.dataset.cls; renderClassInfo(); } };
+    $('#createBtn').onclick = () => G.send({ t: 'createChar', name: $('#newName').value.trim(), cls: pickCls });
+    $('#cancelCreate').onclick = () => { $('#createPanel').hidden = true; };
+    renderClassInfo();
+  }
+  function renderClassInfo() {
+    for (const b of document.querySelectorAll('.clsBtn')) b.classList.toggle('on', b.dataset.cls === pickCls);
+    const c = D.CLASSES[pickCls];
+    const bar = (k, n) => `<div class="rate"><span>${n}</span><i>${'<b></b>'.repeat(c.rating[k])}${'<u></u>'.repeat(5 - c.rating[k])}</i></div>`;
+    const sk = CSK()[pickCls].map((id) => SKS()[id]);
+    $('#classInfo').innerHTML = `<div class="ciHead"><img src="${ART.portrait(pickCls, 'Preview', 120)}" class="preview"><div><h2 style="color:${c.color}">${c.name}</h2><h3>${c.th} — ${c.role}</h3><p>${c.desc}</p>
+      <div class="chips"><span class="chip">อาวุธ: ${c.weapon}</span><span class="chip">พลังพิเศษ: ${c.res.name}</span><span class="chip">${c.dmg === 'mag' ? 'เวทมนตร์' : 'กายภาพ'} · ${c.scale === 'melee' ? 'ประชิด' : 'ระยะไกล'}</span></div></div></div>
+      <div class="rates">${bar('atk', 'โจมตี')}${bar('def', 'ป้องกัน')}${bar('spd', 'ความเร็ว')}${bar('mag', 'เวท')}${bar('sup', 'ซัพพอร์ต')}${bar('diff', 'ความยาก')}</div>
+      <div class="baseStats">${D.STATS.map((s) => `<span><b>${s.toUpperCase()}</b>${c.start[s]}</span>`).join('')}<span><b>HP</b>${c.hp0}+${c.hpLv}/lv</span><span><b>SP</b>${c.sp0}+${c.spLv}/lv</span><span><b>ASPD</b>${c.aspd}</span><span><b>MOVE</b>${c.move}</span><span><b>RANGE</b>${c.range}</span></div>
+      <div class="branches">${Object.entries(c.branches).map(([k, v]) => `<div><b>${v}</b><small>${sk.filter((s) => s.branch === k).length} สกิล</small></div>`).join('')}<div><b>Ultimate</b><small>5 สกิล</small></div><div><b>Buff</b><small>5 สกิล</small></div></div>
+      <div class="skillPreview">${sk.filter((s) => s.kind === 'ult').map((s) => `<img src="${ART.skillIcon(s)}" data-skill="${s.id}">`).join('')}${sk.filter((s) => s.kind !== 'ult').slice(0, 12).map((s) => `<img src="${ART.skillIcon(s)}" data-skill="${s.id}">`).join('')}</div>`;
+  }
+  function mapName(id) { const d = NO_MAP.getMapDef(id || 'aurelia'); return d ? d.name : id; }
+  UI.kicked = (m) => { alert(m || 'ถูกตัดการเชื่อมต่อ'); location.reload(); };
+  UI.disconnected = () => { const d = $('#disc'); d.hidden = false; };
+
+  // ================================================================ HUD
+  function setupHud() {
+    const hb = $('#hotbar1'), hb2 = $('#hotbar2');
+    hb.innerHTML = HOTKEYS.slice(0, 12).map((k, i) => slotHtml(i, k)).join('');
+    hb2.innerHTML = HOTKEYS.slice(12).map((k, i) => slotHtml(i + 12, k.toUpperCase())).join('') + `<div class="slot bf" id="bfBtn" data-tip="Break Free (Q): หลุดสถานะควบคุม · CD 25s · ใช้ SP 15%"><span class="glyph">⛓</span><kbd>Q</kbd><div class="cd"></div></div>`;
+    for (const el of document.querySelectorAll('.hotbar .slot[data-i]')) {
+      el.onclick = () => G.useHotbar(+el.dataset.i);
+      el.oncontextmenu = (e) => { e.preventDefault(); G.char.hotbar[+el.dataset.i] = null; saveHotbar(); };
+      el.ondragover = (e) => e.preventDefault();
+      el.ondrop = (e) => { e.preventDefault(); const v = e.dataTransfer.getData('text/plain'); if (!v) return; const from = e.dataTransfer.getData('from'); if (from !== '') { const fi = +from; const tmp = G.char.hotbar[+el.dataset.i]; G.char.hotbar[+el.dataset.i] = G.char.hotbar[fi]; G.char.hotbar[fi] = tmp; } else G.char.hotbar[+el.dataset.i] = v; saveHotbar(); };
+      el.draggable = true;
+      el.ondragstart = (e) => { const v = G.char.hotbar[+el.dataset.i]; if (!v) return e.preventDefault(); e.dataTransfer.setData('text/plain', v); e.dataTransfer.setData('from', el.dataset.i); };
+    }
+    $('#bfBtn').onclick = () => G.send({ t: 'breakfree' });
+    $('#menu').innerHTML = [['char', '👤', 'ตัวละคร', 'U'], ['inv', '🎒', 'กระเป๋า', 'I'], ['skills', '📖', 'สกิล', 'K'], ['auto', '🤖', 'ออโต้', 'O'], ['map', '🗺', 'แผนที่โลก', 'M'], ['dungeon', '🗼', 'ดันเจี้ยน', 'J'], ['guild', '🏰', 'กิลด์', 'G'], ['party', '👥', 'ปาร์ตี้', 'P'], ['rank', '🏆', 'อันดับ/บอส', 'R'], ['help', '❔', 'คู่มือ', 'H'], ['gm', '🛡', 'GM', 'F10']]
+      .map(([w, ic, n, k]) => `<button class="mbtn" data-win="${w}" data-tip="${n} (${k})" ${w === 'gm' ? 'id="gmBtn" hidden' : ''}><span>${ic}</span><kbd>${k}</kbd></button>`).join('');
+    $('#menu').onclick = (e) => { const b = e.target.closest('[data-win]'); if (b) UI.toggle(b.dataset.win); };
+    $('#autoToggle').onclick = () => G.send({ t: 'autoOn', on: !G.autoOn() });
+    $('#chatTabs').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (!b) return; UI.chatTab = b.dataset.tab; for (const x of document.querySelectorAll('#chatTabs [data-tab]')) x.classList.toggle('on', x === b); if (['map', 'world', 'party', 'guild'].includes(b.dataset.tab)) { UI.chatCh = b.dataset.tab; $('#chatCh').value = UI.chatCh; } renderChat(); };
+    $('#chatCh').onchange = (e) => { UI.chatCh = e.target.value; };
+    $('#chatIn').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { const v = e.target.value.trim(); if (v) G.send({ t: 'chat', ch: UI.chatCh, m: v }); e.target.value = ''; e.target.blur(); e.stopPropagation(); }
+      if (e.key === 'Escape') e.target.blur();
+      e.stopPropagation();
+    });
+    $('#respawnBtn').onclick = () => { G.send({ t: 'respawn' }); UI.hideDead(); };
+    $('#minicv').onclick = () => UI.toggle('map');
+    $('#zoomIn').onclick = () => { G.zoom = Math.min(1.8, G.zoom * 1.15); };
+    $('#zoomOut').onclick = () => { G.zoom = Math.max(0.55, G.zoom / 1.15); };
+  }
+  function slotHtml(i, k) { return `<div class="slot" data-i="${i}"><img><span class="qty"></span><kbd>${k}</kbd><div class="cd"></div><span class="cdt"></span></div>`; }
+  function saveHotbar() { G.send({ t: 'hotbar', slots: G.char.hotbar }); renderHotbar(); }
+  UI.hotkeyIndex = function (ev) {
+    if (ev.ctrlKey || ev.altKey || ev.metaKey) return -1;
+    return HOTKEYS.indexOf(ev.key.toLowerCase());
+  };
+  UI.typing = () => { const a = document.activeElement; return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT'); };
+  UI.focusChat = () => $('#chatIn').focus();
+  UI.blurChat = () => { if (UI.typing()) document.activeElement.blur(); };
+  UI.windowKey = function (k, ev) { if (k === '`') { G.send({ t: 'autoOn', on: !G.autoOn() }); return; } const w = WINKEYS[k]; if (w) { if (w === 'gm' && !G.char.gm) return; UI.toggle(w); ev.preventDefault(); } };
+
+  UI.onEnter = function (m) {
+    show('hud');
+    $('#disc').hidden = true;
+    $('#gmBtn').hidden = !G.char.gm;
+    const info = m.info;
+    $('#mapName').textContent = info.name;
+    $('#mapSub').textContent = info.th + (info.lv ? ` · Lv ${info.lv}${info.max ? '–' + info.max : ''}` : '');
+    $('#mapBadges').innerHTML = (info.pvp ? '<span class="badge red">PvP</span>' : '<span class="badge green">SAFE</span>') + (info.kind === 'town' ? '<span class="badge gold">TOWN</span>' : '') + (info.auto ? '<span class="badge blue">AUTO OK</span>' : '<span class="badge grey">NO AUTO</span>') + (info.kind === 'dungeon' ? `<span class="badge purple">F${info.floor}/1000</span>` : '');
+    UI.banner(`${info.name}`, info.th, 'map');
+    UI.hideDead();
+    renderPortrait(); renderHotbar(); UI.buffs(); renderParty();
+    for (const w of UI.open) renderWin(w);
+  };
+  function renderPortrait() {
+    if (!G.char) return;
+    $('#pPortrait').src = ART.portrait(G.char.cls, G.char.name, 96);
+    $('#pName').textContent = G.char.name;
+    $('#pClass').textContent = `${D.CLASSES[G.char.cls].name}`;
+    $('#resName').textContent = D.CLASSES[G.char.cls].res.name;
+  }
+  UI.refresh = function (keys) {
+    if (keys.includes('hotbar') || keys.includes('skills') || keys.includes('inv')) renderHotbar();
+    if (keys.includes('party')) renderParty();
+    if (keys.includes('lv')) { renderPortrait(); }
+    for (const w of UI.open) renderWin(w);
+  };
+  function renderHotbar() {
+    if (!G.char) return;
+    for (const el of document.querySelectorAll('.hotbar .slot[data-i]')) {
+      const v = G.char.hotbar[+el.dataset.i];
+      const img = el.querySelector('img'), q = el.querySelector('.qty');
+      el.dataset.skill = ''; el.dataset.itemid = '';
+      if (!v) { img.removeAttribute('src'); img.style.visibility = 'hidden'; q.textContent = ''; el.classList.remove('locked'); continue; }
+      img.style.visibility = 'visible';
+      if (v.startsWith('item:')) { const id = v.slice(5); img.src = ART.itemIcon({ id }); const n = G.char.inv.reduce((a, it) => a + (it.id === id ? it.qty : 0), 0); q.textContent = n; el.classList.toggle('locked', !n); el.dataset.itemid = id; }
+      else { const sk = SKS()[v]; if (!sk) continue; img.src = ART.skillIcon(sk); q.textContent = ''; el.dataset.skill = v; el.classList.toggle('locked', !G.skillLv(v)); }
+    }
+  }
+  function renderParty() {
+    const pt = G.char && G.char.party;
+    $('#partyFrames').innerHTML = pt ? pt.members.filter((m) => m.cid !== G.char.id).map((m) => `<div class="pmem" data-pid="${m.id}"><img src="${ART.classIcon(m.cls, 28)}"><div><b>${esc(m.name)}${pt.leader === m.cid ? ' ♛' : ''}</b><small>Lv${m.lv} · ${esc(mapName(m.map))}</small><div class="bar hp"><i></i></div></div></div>`).join('') : '';
+  }
+  UI.buffs = function () {
+    const el = $('#buffs'); if (!el) return;
+    el.innerHTML = (G.buffs || []).map((b) => `<div class="buff ${b.debuff ? 'de' : ''}" style="--c:${b.icon || '#8f8'}" data-tip="${esc(b.n)}" data-until="${b.until}"><span>${esc((b.n || '?').slice(0, 2))}</span><i></i></div>`).join('');
+  };
+
+  let hudTick = 0;
+  UI.hud = function () {
+    const me = G.sme; if (!me || !G.char) return;
+    setBar('#hpBar', me.hp, me.mhp, `${fmt(me.hp)} / ${fmt(me.mhp)}`);
+    setBar('#spBar', me.sp, me.msp, `${fmt(me.sp)} / ${fmt(me.msp)}`);
+    $('#shieldBar').style.width = Math.min(100, (me.sh || 0) / me.mhp * 100) + '%';
+    $('#pLv').textContent = me.lv;
+    // resource
+    const rmax = me.rmax;
+    if (rmax <= 5) $('#resBar').innerHTML = Array.from({ length: rmax }, (_, i) => `<b class="${i < Math.floor(me.res) ? 'on' : ''}"></b>`).join('');
+    else $('#resBar').innerHTML = `<div class="rgauge ${G.char.cls === 'gunslinger' && me.res > 80 ? 'hot' : ''}"><i style="width:${me.res}%"></i><span>${Math.round(me.res)}</span></div>`;
+    // ult
+    const ult = $('#ult'); ult.style.setProperty('--p', me.ult + '%'); ult.classList.toggle('ready', me.ult >= 100); $('#ultTxt').textContent = me.ult >= 100 ? 'ULTIMATE READY' : `ULT ${me.ult}%`;
+    // exp
+    const next = F.expToNext(me.lv);
+    $('#expFill').style.width = (G.char.lv >= 250 ? 100 : Math.min(100, me.exp / next * 100)) + '%';
+    $('#expTxt').textContent = G.char.lv >= 250 ? 'MAX LEVEL' : `EXP ${(me.exp / next * 100).toFixed(2)}%  (${fmt(me.exp)} / ${fmt(next)})`;
+    // combo
+    const cb = $('#combo');
+    if (me.cb >= 2) {
+      cb.hidden = false; $('#comboN').textContent = me.cb; $('#comboBonus').textContent = `+${Math.min(20, me.cb) * 3}% DMG`;
+      $('#comboTimer').style.width = Math.max(0, me.cbt / (G.st.comboWin || 2.5) * 100) + '%';
+      if (cb.dataset.n != me.cb) { cb.classList.remove('pop'); void cb.offsetWidth; cb.classList.add('pop'); cb.dataset.n = me.cb; }
+    } else cb.hidden = true;
+    // cast bar
+    const cbar = $('#castBar');
+    if (me.cast) { cbar.hidden = false; const sk = SKS()[me.cast[0]]; $('#castName').textContent = sk ? sk.name : ''; $('#castFill').style.width = (1 - me.cast[1] / me.cast[2]) * 100 + '%'; } else cbar.hidden = true;
+    // auto
+    $('#autoToggle').classList.toggle('on', !!me.au); $('#autoToggle').querySelector('b').textContent = me.au ? 'AUTO ON' : 'AUTO OFF';
+    $('#autoBadge').hidden = !me.au;
+    if (me.dead && $('#death').hidden) UI.dead({ by: '', loss: 0 });
+    if (!me.dead && !$('#death').hidden) UI.hideDead();
+    // target frame
+    renderTarget();
+    // party hp
+    for (const el of document.querySelectorAll('.pmem')) { const e = G.ents.get(+el.dataset.pid); el.querySelector('.bar i').style.width = (e ? e.hp : 0) + '%'; el.classList.toggle('far', !e); }
+    if (++hudTick % 5 === 0) { $('#coords').textContent = `${G.self.x.toFixed(0)}, ${G.self.y.toFixed(0)}`; $('#net').textContent = `${G.ping}ms · ${G.fps}fps`; }
+  };
+  function setBar(sel, v, max, txt) { const el = $(sel); el.querySelector('i').style.width = Math.max(0, Math.min(100, v / max * 100)) + '%'; el.querySelector('span').textContent = txt; }
+  function renderTarget() {
+    const e = G.ents.get(G.target);
+    const tf = $('#tframe');
+    if (!e || e.id === G.me || e.k === 'z') { tf.hidden = true; return; }
+    tf.hidden = false;
+    let badge = '', sub = '';
+    if (e.k === 'm') { badge = e.rk === 4 ? '<span class="badge red">WORLD BOSS</span>' : e.rk >= 2 ? '<span class="badge orange">BOSS</span>' : e.rk === 1 ? '<span class="badge gold">ELITE</span>' : ''; sub = `Lv ${e.lv} · ${(D.ELEMENTS[e.el] || {}).n || ''}`; }
+    else if (e.k === 'p') { badge = `<span class="badge blue">${D.CLASSES[e.c].name}</span>`; sub = `Lv ${e.lv}${e.g ? ' · <' + esc(e.g) + '>' : ''}`; }
+    else if (e.k === 'n') { sub = e.th || ''; }
+    else if (e.k === 'c') { badge = '<span class="badge purple">CRYSTAL CORE</span>'; sub = e.g || ''; }
+    else if (e.k === 's') { badge = '<span class="badge purple">SUMMON</span>'; }
+    const key = e.id + '|' + e.hp + '|' + e.tags + '|' + e.fl;
+    if (tf.dataset.key === key) return; tf.dataset.key = key;
+    $('#tName').innerHTML = `${esc(e.n)} ${badge}`;
+    $('#tSub').textContent = sub;
+    $('#tHp').querySelector('i').style.width = e.hp + '%'; $('#tHp').querySelector('span').textContent = e.k === 'n' ? '' : e.hp + '%';
+    $('#tHp').hidden = e.k === 'n';
+    $('#tTags').innerHTML = G.tagList(e).map((t) => ART.tagChip(t)).join('');
+  }
+
+  // per animation frame: cooldowns, minimap, buffs timers
+  let miniT = 0;
+  UI.frame = function (dt) {
+    if (!G.char) return;
+    const nowS = performance.now() / 1000;
+    for (const el of document.querySelectorAll('.hotbar .slot[data-i]')) {
+      const id = el.dataset.skill; const cdEl = el.querySelector('.cd'), cdt = el.querySelector('.cdt');
+      if (!id) { cdEl.style.background = 'none'; cdt.textContent = ''; continue; }
+      const left = Math.max(0, (G.cds[id] || 0) - nowS), dur = G.cdDur[id] || 1;
+      if (left > 0.05) { cdEl.style.background = `conic-gradient(rgba(0,0,0,0.72) ${left / dur * 360}deg, transparent 0)`; cdt.textContent = left >= 1 ? Math.ceil(left) : left.toFixed(1); }
+      else { cdEl.style.background = 'none'; cdt.textContent = ''; }
+      const sk = SKS()[id];
+      if (sk && G.sme) {
+        const lv = G.skillLv(id);
+        const nosp = lv && G.sme.sp < F.skillSp(sk, lv);
+        const noult = sk.kind === 'ult' && G.sme.ult < 100;
+        el.classList.toggle('nosp', !!(nosp || noult));
+        el.classList.toggle('ultready', sk.kind === 'ult' && G.sme.ult >= 100 && lv > 0);
+      }
+    }
+    const bf = $('#bfBtn .cd'); const bl = Math.max(0, (G.cds.breakfree || 0) - nowS); bf.style.background = bl > 0 ? `conic-gradient(rgba(0,0,0,0.72) ${bl / 25 * 360}deg, transparent 0)` : 'none';
+    miniT += dt;
+    if (miniT > 0.2) { miniT = 0; drawMini(); for (const b of document.querySelectorAll('.buff')) { const l = +b.dataset.until - G.t; b.querySelector('i').textContent = l > 3600 ? Math.round(l / 3600) + 'h' : l > 60 ? Math.round(l / 60) + 'm' : Math.max(0, Math.round(l)); } }
+  };
+  function drawMini() {
+    const cv = $('#minicv'), g = cv.getContext('2d');
+    const S = cv.width, R = 70; // tiles radius
+    g.fillStyle = '#000'; g.fillRect(0, 0, S, S);
+    if (!G.mini) return;
+    const sc = S / (R * 2);
+    g.imageSmoothingEnabled = false;
+    g.drawImage(G.mini, G.self.x - R, G.self.y - R, R * 2, R * 2, 0, 0, S, S);
+    for (const e of G.ents.values()) {
+      if (e.fl & 1 && e.k !== 'n') continue;
+      const x = (e.x - G.self.x + R) * sc, y = (e.y - G.self.y + R) * sc;
+      if (x < 0 || y < 0 || x > S || y > S) continue;
+      let c = null, r = 2;
+      if (e.k === 'm') { c = e.rk >= 2 ? '#ff8a00' : e.rk === 1 ? '#ffd34a' : '#ff4a4a'; r = e.rk >= 2 ? 5 : 2; }
+      else if (e.k === 'p' && e.id !== G.me) { c = e.pt ? '#4aff7a' : G.isEnemy(e) ? '#ff40ff' : '#ffffff'; r = 2.5; }
+      else if (e.k === 'n') { c = e.role === 'stairs' || e.role === 'portal' ? '#c08aff' : '#ffe14a'; r = 3; }
+      else if (e.k === 'c') { c = '#5ad0ff'; r = 5; }
+      if (!c) continue;
+      g.fillStyle = c; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+    }
+    g.save(); g.translate(S / 2, S / 2); const se = G.selfEnt(); g.rotate((se ? se.dir : 0) + Math.PI / 2);
+    g.fillStyle = '#5ad0ff'; g.strokeStyle = '#000'; g.beginPath(); g.moveTo(0, -6); g.lineTo(4, 4); g.lineTo(-4, 4); g.closePath(); g.fill(); g.stroke(); g.restore();
+  }
+
+  // ================================================================ notices & chat
+  UI.toast = function (m, kind) {
+    const el = document.createElement('div'); el.className = 'toast ' + (kind || ''); el.textContent = m;
+    $('#toasts').appendChild(el); setTimeout(() => el.classList.add('out'), 2200); setTimeout(() => el.remove(), 2700);
+    while ($('#toasts').children.length > 4) $('#toasts').firstChild.remove();
+  };
+  const bannerQ = []; let bannerBusy = false;
+  UI.banner = function (title, sub, kind) {
+    if (kind === 'map') { for (let i = bannerQ.length - 1; i >= 0; i--) if (bannerQ[i].kind === 'map') bannerQ.splice(i, 1); bannerQ.unshift({ title, sub, kind }); }
+    else { bannerQ.push({ title, sub, kind }); if (bannerQ.length > 4) bannerQ.splice(0, bannerQ.length - 4); }
+    if (!bannerBusy) nextBanner();
+  };
+  function nextBanner() {
+    const b = bannerQ.shift(); if (!b) { bannerBusy = false; return; }
+    bannerBusy = true;
+    const el = $('#banner'); el.className = 'banner show ' + (b.kind || ''); el.innerHTML = `<b>${esc(b.title)}</b>${b.sub ? `<small>${esc(b.sub)}</small>` : ''}`;
+    setTimeout(() => { el.className = 'banner'; setTimeout(nextBanner, 300); }, b.kind === 'map' ? 2000 : bannerQ.length > 1 ? 2600 : 4000);
+  }
+  UI.notice = function (m, k) {
+    UI.chat('system', '', m, k);
+    if (['world', 'boss', 'gvg', 'refine', 'loot', 'event', 'gm'].includes(k)) UI.banner(m, '', k);
+    else UI.toast(m, k === 'warn' ? 'err' : k === 'level' ? 'gold' : '');
+  };
+  UI.chat = function (ch, f, m, k) {
+    UI.log.push({ ch, f, m, k, t: new Date() });
+    if (UI.log.length > 250) UI.log.shift();
+    renderChat();
+  };
+  const CH_COL = { map: '#fff', world: '#ffb347', party: '#7dff9a', guild: '#8ad0ff', whisper: '#ff8ad8', system: '#ffe680' };
+  const CH_NAME = { map: 'แผนที่', world: 'โลก', party: 'ปาร์ตี้', guild: 'กิลด์', whisper: 'กระซิบ', system: 'ระบบ' };
+  function renderChat() {
+    const el = $('#chatLog');
+    const list = UI.log.filter((x) => UI.chatTab === 'all' || x.ch === UI.chatTab || (UI.chatTab === 'system' && x.ch === 'system'));
+    el.innerHTML = list.slice(-80).map((x) => `<div style="color:${CH_COL[x.ch] || '#fff'}"><i>[${CH_NAME[x.ch] || x.ch}]</i> ${x.f ? `<b>${esc(x.f)}:</b> ` : ''}${esc(x.m)}</div>`).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+  UI.gmOut = function (m) { UI.chat('system', 'GM', m); const o = $('#gmOut'); if (o) { o.textContent += '\n> ' + m; o.scrollTop = o.scrollHeight; } };
+  UI.loot = function (m) {
+    for (const it of m.items) { const el = document.createElement('div'); el.className = 'lootItem'; el.textContent = '+ ' + it; $('#lootFeed').appendChild(el); setTimeout(() => el.classList.add('out'), 3000); setTimeout(() => el.remove(), 3600); }
+    while ($('#lootFeed').children.length > 7) $('#lootFeed').firstChild.remove();
+  };
+  UI.killfeed = function (m) {
+    const el = document.createElement('div'); el.className = 'kf'; el.innerHTML = `<img src="${ART.classIcon(m.kc, 20)}"><b>${esc(m.k)}</b> ⚔ <img src="${ART.classIcon(m.vc, 20)}">${esc(m.v)}`;
+    $('#killFeed').appendChild(el); setTimeout(() => el.remove(), 6000);
+  };
+  UI.ultBanner = function (name, by, col) {
+    const el = $('#ultBanner'); el.innerHTML = `<small>${esc(by)}</small><b style="--c:${col}">${esc(name)}</b>`;
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  };
+  UI.dead = function (m) { $('#death').hidden = false; $('#deathBy').textContent = m.by ? `ถูกสังหารโดย ${m.by}` : 'คุณล้มลงแล้ว'; $('#deathLoss').textContent = m.loss ? `เสีย EXP ${fmt(m.loss)}` : ''; };
+  UI.hideDead = () => { $('#death').hidden = true; };
+  UI.autoReport = function (m) { UI.notice(`รายงานออโต้: ${m.mins} นาที · ฆ่า ${m.kills} ตัว · Zeny ${m.zeny >= 0 ? '+' : ''}${fmt(m.zeny)} · เลเวล +${m.lv}`, 'level'); };
+  UI.invite = function (m) {
+    const el = document.createElement('div'); el.className = 'invite';
+    el.innerHTML = `<b>${m.kind === 'party' ? '👥 คำเชิญปาร์ตี้' : '🏰 คำเชิญกิลด์'}</b><p>${esc(m.from)} เชิญคุณ</p><button class="btn gold">ตอบรับ</button><button class="btn">ปฏิเสธ</button>`;
+    const [ok, no] = el.querySelectorAll('button');
+    ok.onclick = () => { G.send({ t: m.kind, a: 'accept', id: m.id }); el.remove(); };
+    no.onclick = () => el.remove();
+    $('#popups').appendChild(el); setTimeout(() => el.remove(), 60000);
+  };
+  UI.playerMenu = function (e, x, y) {
+    closeCtx();
+    const el = document.createElement('div'); el.className = 'ctx'; el.style.left = x + 'px'; el.style.top = y + 'px';
+    el.innerHTML = `<b>${esc(e.n)}</b><button data-a="party">เชิญปาร์ตี้</button><button data-a="guild">เชิญกิลด์</button><button data-a="w">กระซิบ</button><button data-a="duel">ท้าดวล</button>`;
+    el.onclick = (ev) => { const a = ev.target.dataset.a; if (!a) return; if (a === 'party') G.send({ t: 'party', a: 'invite', name: e.n }); if (a === 'guild') G.send({ t: 'guild', a: 'invite', name: e.n }); if (a === 'w') { $('#chatIn').value = `/w ${e.n} `; UI.focusChat(); } if (a === 'duel') G.send({ t: 'chat', m: `/duel ${e.n}` }); closeCtx(); };
+    document.body.appendChild(el); setTimeout(() => document.addEventListener('mousedown', closeCtx, { once: true }), 0);
+  };
+  function closeCtx() { for (const c of document.querySelectorAll('.ctx')) c.remove(); }
+
+  // ================================================================ tooltips
+  function setupTooltip() {
+    const tip = $('#tip');
+    document.addEventListener('mousemove', (e) => {
+      const t = e.target.closest && e.target.closest('[data-tip],[data-skill],[data-item],[data-itemid]');
+      if (!t) { tip.hidden = true; return; }
+      let html = '';
+      if (t.dataset.skill) html = skillTip(t.dataset.skill);
+      else if (t.dataset.item) html = itemTip(findItem(t.dataset.item));
+      else if (t.dataset.itemid) html = itemTip({ id: t.dataset.itemid });
+      else html = esc(t.dataset.tip);
+      if (!html) { tip.hidden = true; return; }
+      tip.innerHTML = html; tip.hidden = false;
+      const w = tip.offsetWidth, h = tip.offsetHeight;
+      tip.style.left = Math.min(innerWidth - w - 8, e.clientX + 16) + 'px';
+      tip.style.top = Math.max(8, Math.min(innerHeight - h - 8, e.clientY + 16)) + 'px';
+    });
+  }
+  function findItem(uid) {
+    if (!G.char) return null;
+    return G.char.inv.find((x) => x.uid === uid) || Object.values(G.char.equip).find((x) => x && x.uid === uid) || null;
+  }
+  UI.findItem = findItem;
+  const OPT_LABEL = Object.fromEntries(D.OPTIONS.map((o) => [o[0], [o[1], o[3]]]));
+  function statLine(k, v) { const l = OPT_LABEL[k] || [k, false]; return `${l[0]} +${v}${l[1] ? '%' : ''}`; }
+  function itemTip(it) {
+    if (!it) return '';
+    if (it.type !== 'equip') {
+      const d = D.ITEMS[it.id]; if (!d) return '';
+      let extra = '';
+      if (d.type === 'potion') extra = `${d.hp ? `ฟื้น HP ${fmt(d.hp)}` : ''}${d.sp ? `ฟื้น SP ${fmt(d.sp)}` : ''} · ต้อง Lv${d.lv}`;
+      if (d.type === 'rune') extra = `${D.RUNE_KINDS[d.kind].type} Rune · ${statLine(D.RUNE_KINDS[d.kind].stat, F.runeValue(d.kind, d.tier))}<br>ฝังในอาวุธ/เกราะที่มีช่องรูน · รวม 3 อัน = ระดับถัดไป · ใส่ชนิดเดียวกัน 3 ชิ้น = Rune Set +25%`;
+      if (d.type === 'jewel') extra = `${statLine(D.JEWELS[d.kind].stat, F.jewelValue(d.kind, d.tier))}<br>ฝังในเครื่องประดับ · รวม 5 อัน = ระดับถัดไป`;
+      const desc = { tele_scroll: 'วาร์ปกลับเมืองล่าสุด', ore_refine: 'วัตถุดิบตีบวก +1 ~ +10', crystal_pure: 'วัตถุดิบตีบวก +11 ~ +15', crystal_divine: 'วัตถุดิบตีบวก +16 ~ +20', scroll_protect: 'ป้องกันของพังเมื่อตีบวกล้มเหลว', scroll_bless: 'ป้องกันระดับลดเมื่อตีบวกล้มเหลว', rune_drill: 'เจาะช่องรูนเพิ่ม (โอกาส 60%)', reroll_stone: 'สุ่มออปชั่นอุปกรณ์ใหม่', memory_crystal: 'รีเซ็ตสกิล', stat_reset: 'รีเซ็ตสเตตัส', guild_emblem: 'ใช้สร้างกิลด์', monster_core: 'ขายให้ร้านค้าได้' }[it.id] || '';
+      return `<div class="tt"><b>${esc(d.n)}</b> <small>${esc(d.th || '')}</small><p>${extra || desc}</p>${it.qty ? `<small>จำนวน ${it.qty}</small>` : ''}</div>`;
+    }
+    const R = D.RARITY[it.rarity];
+    const st = F.itemStats(it, {});
+    const base = ['atk', 'matk', 'def', 'mdef', 'hp'].filter((k) => st[k]).map((k) => `<div class="tl">${k.toUpperCase()} <b>${fmt(st[k])}</b></div>`).join('');
+    const opts = (it.opts || []).map(([k, v]) => `<div class="opt">◆ ${statLine(k, v)}</div>`).join('');
+    const runes = it.sockets ? `<div class="sock">${Array.from({ length: it.sockets }, (_, i) => it.runes[i] ? `<span style="--c:${D.ITEMS[it.runes[i]].icon}">${esc(D.ITEMS[it.runes[i]].n)}</span>` : '<span class="empty">ช่องรูนว่าง</span>').join('')}</div>` : '';
+    const jw = it.jewelSlots ? `<div class="sock">${Array.from({ length: it.jewelSlots }, (_, i) => it.jewels && it.jewels[i] ? `<span style="--c:${D.ITEMS[it.jewels[i]].icon}">${esc(D.ITEMS[it.jewels[i]].n)}</span>` : '<span class="empty">ช่องอัญมณีว่าง</span>').join('')}</div>` : '';
+    const cls = it.slot === 'weapon' ? F.classesForWeapon(it.wtype).map((c) => D.CLASSES[c].name).join(', ') : 'ทุกคลาส';
+    const cur = it.slot && G.char.equip[it.slot === 'ring' ? 'ring1' : it.slot];
+    let cmp = '';
+    if (cur && cur.uid !== it.uid) { const cs = F.itemStats(cur, {}); const diff = ['atk', 'matk', 'def', 'hp'].map((k) => [k, (st[k] || 0) - (cs[k] || 0)]).filter(([, v]) => v); cmp = diff.length ? `<div class="cmp">เทียบกับที่สวม: ${diff.map(([k, v]) => `<span class="${v > 0 ? 'up' : 'down'}">${k.toUpperCase()} ${v > 0 ? '+' : ''}${fmt(v)}</span>`).join(' ')}</div>` : ''; }
+    return `<div class="tt"><b style="color:${R.color}">${it.refine ? '+' + it.refine + ' ' : ''}${esc(it.name)}</b><small style="color:${R.color}">[${R.n}] ${D.SLOT_TH[it.slot] || it.slot} · iLv ${it.ilv} · ต้อง Lv ${it.reqLv}</small>${base}${opts}${runes}${jw}<small>ใช้ได้: ${cls}</small>${cmp}<small class="price">ขายได้ ${fmt(sellPrice(it))} z</small></div>`;
+  }
+  function sellPrice(it) { if (it.type === 'equip') return Math.round((it.ilv * 25 + 40) * (1 + it.rarity * it.rarity * 0.8) * (1 + (it.refine || 0) * 0.15)); const d = D.ITEMS[it.id]; return d.sell || Math.floor((d.price || 10) / 4); }
+  const SHAPE_TH = { single: 'เป้าเดียว', circle: 'วงกลม AoE', line: 'เส้นตรง', cone: 'รูปกรวย', chain: 'กระโดดหลายเป้า', self: 'ตัวเอง' };
+  function skillTip(id) {
+    const sk = SKS()[id]; if (!sk) return '';
+    const lv = G.char ? G.skillLv(id) : 0;
+    return `<div class="tt sk"><b>${esc(sk.name)}</b> <small>${sk.kind === 'ult' ? 'ULTIMATE' : sk.kind === 'buff' ? 'BUFF' : sk.branch} · Lv ${lv}/${sk.maxLv}</small>${skillNumbers(sk, Math.max(1, lv))}<p>${esc(sk.desc)}</p>${skillChips(sk)}</div>`;
+  }
+  function skillNumbers(sk, lv) {
+    const m = F.skillMult(sk, lv);
+    const parts = [];
+    if (sk.kind !== 'ult') parts.push(`<span>SP <b>${F.skillSp(sk, lv)}</b></span>`); else parts.push('<span>ใช้ <b>ULT 100%</b></span>');
+    parts.push(`<span>CD <b>${F.skillCd(sk, lv)}s</b></span>`);
+    if (sk.cast) parts.push(`<span>ร่าย <b>${sk.cast}s</b></span>`);
+    if (sk.kind === 'buff') parts.push(`<span>นาน <b>${sk.dur >= 60 ? Math.round(sk.dur / 60) + 'm' : sk.dur + 's'}</b></span>`);
+    else {
+      if (sk.dmg) parts.push(`<span>ดาเมจ <b>${Math.round(sk.dmg * m * 100)}%${sk.hits > 1 ? ' ×' + sk.hits : ''}</b></span>`);
+      if (sk.perUnit) parts.push(`<span>+<b>${Math.round(sk.perUnit * m * 100)}%</b>/${sk.unit === 'res' ? 'แต้ม' : sk.unit === 'summon' ? 'สมุน' : 'ชั้น'}</span>`);
+      if (sk.zone) parts.push(`<span>โซน <b>${Math.round(sk.zone.mult * m * 100)}%/${sk.zone.tick}s ${sk.zone.dur}s</b></span>`);
+      parts.push(`<span>ระยะ <b>${sk.range}</b></span><span>${SHAPE_TH[sk.shape] || sk.shape}${sk.radius ? ' r' + sk.radius : ''}${sk.length ? ' ' + sk.length + 'ช่อง' : ''}</span>`);
+    }
+    return `<div class="nums">${parts.join('')}</div>`;
+  }
+  function skillChips(sk) {
+    const c = [];
+    for (const a of sk.applies || []) c.push(`<span class="tag" style="--c:${D.TAGS[a.tag].color}">ใส่ ${D.TAGS[a.tag].icon} ${D.TAGS[a.tag].n}${a.stacks > 1 ? ' ×' + a.stacks : ''}</span>`);
+    for (const t of sk.consumes || []) c.push(`<span class="tag cons" style="--c:${D.TAGS[t].color}">ใช้ ${D.TAGS[t].icon} ${D.TAGS[t].n}</span>`);
+    for (const [t, p] of sk.bonusIf || []) c.push(`<span class="tag bonus" style="--c:${D.TAGS[t].color}">ถ้ามี ${D.TAGS[t].n} +${p}%</span>`);
+    if (sk.reaction) c.push(`<span class="tag" style="--c:${D.REACTIONS[sk.reaction].color}">⚡ ${D.REACTIONS[sk.reaction].n}</span>`);
+    if (sk.cond) c.push(`<span class="tag cond">${sk.cond.type === 'targetHp' ? `HP เป้า < ${sk.cond.v}%` : sk.cond.type === 'selfHp' ? `HP เรา < ${sk.cond.v}%` : `Combo ≥ ${sk.cond.v}`}</span>`);
+    if (sk.chainAfter) c.push(`<span class="tag cond">ต่อจาก ${esc(SKS()[sk.chainAfter] ? SKS()[sk.chainAfter].name : '')} ×1.5</span>`);
+    if (sk.consumeRes) c.push('<span class="tag cond">ใช้พลังพิเศษทั้งหมด</span>');
+    if (sk.move) c.push(`<span class="tag mv">เคลื่อนที่ ${sk.move.type} ${sk.move.dist}</span>`);
+    if (sk.summon) c.push(`<span class="tag mv">เรียก ${sk.summon.count} ตัว</span>`);
+    if (sk.trap) c.push('<span class="tag mv">กับดัก</span>');
+    if (sk.heal) c.push(`<span class="tag heal">ฮีล ${sk.heal.pct}%</span>`);
+    if (sk.party || (sk.transform && sk.transform.party)) c.push('<span class="tag heal">ทั้งปาร์ตี้</span>');
+    if (sk.mods) for (const k in sk.mods) c.push(`<span class="tag heal">${k} ${typeof sk.mods[k] === 'number' ? '+' + sk.mods[k] : sk.mods[k]}</span>`);
+    return c.length ? `<div class="chips">${c.join('')}</div>` : '';
+  }
+
+  // ================================================================ windows
+  const WIN = {};
+  UI.toggle = function (name) { if (UI.open.includes(name)) UI.close(name); else UI.show(name); };
+  UI.show = function (name, opts) {
+    const def = WIN[name]; if (!def) return;
+    let w = UI.wins[name];
+    if (!w) {
+      w = document.createElement('div'); w.className = 'win'; w.dataset.name = name; w.style.width = def.w + 'px';
+      w.innerHTML = `<div class="whead"><b>${def.title}</b><button class="x">✕</button></div><div class="wbody"></div>`;
+      w.querySelector('.x').onclick = () => UI.close(name);
+      drag(w, w.querySelector('.whead'));
+      w.addEventListener('mousedown', () => focusWin(w));
+      const body = w.querySelector('.wbody');
+      body.addEventListener('click', (e) => { const a = e.target.closest('[data-act]'); if (a && def.act) def.act(a.dataset.act, a.dataset, a, e); });
+      body.addEventListener('change', (e) => { if (def.change) def.change(e.target, e); });
+      body.addEventListener('input', (e) => { if (def.input) def.input(e.target, e); });
+      $('#windows').appendChild(w);
+      UI.wins[name] = w;
+      const n = Object.keys(UI.wins).length;
+      w.style.left = Math.max(10, Math.min(innerWidth - def.w - 10, 120 + (n % 6) * 40)) + 'px'; w.style.top = Math.max(10, 70 + (n % 5) * 26) + 'px';
+    }
+    w.opts = opts || w.opts || {};
+    w.hidden = false;
+    if (!UI.open.includes(name)) UI.open.push(name);
+    focusWin(w);
+    if (def.onOpen) def.onOpen(w);
+    renderWin(name);
+  };
+  UI.close = function (name) { const w = UI.wins[name]; if (w) w.hidden = true; UI.open = UI.open.filter((x) => x !== name); };
+  UI.closeTop = function () { const n = UI.open[UI.open.length - 1]; if (!n) return false; UI.close(n); return true; };
+  let zTop = 100;
+  function focusWin(w) { w.style.zIndex = ++zTop; const n = w.dataset.name; UI.open = UI.open.filter((x) => x !== n).concat(n); }
+  function drag(el, handle) {
+    handle.addEventListener('mousedown', (e) => {
+      if (e.target.closest('button')) return;
+      const sx = e.clientX - el.offsetLeft, sy = e.clientY - el.offsetTop;
+      const mv = (ev) => { el.style.left = Math.max(0, Math.min(innerWidth - 60, ev.clientX - sx)) + 'px'; el.style.top = Math.max(0, Math.min(innerHeight - 40, ev.clientY - sy)) + 'px'; };
+      const up = () => { removeEventListener('mousemove', mv); removeEventListener('mouseup', up); };
+      addEventListener('mousemove', mv); addEventListener('mouseup', up);
+    });
+  }
+  function renderWin(name) {
+    const w = UI.wins[name], def = WIN[name];
+    if (!w || w.hidden || !def || !G.char) return;
+    const body = w.querySelector('.wbody');
+    const sc = body.scrollTop;
+    const inner = body.querySelector('.scrollKeep'); const isc = inner ? inner.scrollTop : 0;
+    body.innerHTML = def.render(w.opts || {});
+    body.scrollTop = sc;
+    const ni = body.querySelector('.scrollKeep'); if (ni) ni.scrollTop = isc;
+  }
+  UI.renderWin = renderWin;
+  UI.openNpc = function (n) {
+    const r = n.role;
+    if (r === 'shop') UI.show('shop'); else if (r === 'refine') UI.show('refine'); else if (r === 'rune') UI.show('rune');
+    else if (r === 'teleport') UI.show('map'); else if (r === 'dungeon') UI.show('dungeon'); else if (r === 'guild') { UI.show('guild'); G.send({ t: 'info', what: 'gvg' }); }
+    else if (r === 'arena') { UI.show('arena'); G.send({ t: 'info', what: 'wb' }); }
+    else if (r === 'healer') G.send({ t: 'healer' });
+    else if (r === 'stairs') G.send({ t: 'stairs' });
+    else if (r === 'portal') G.send({ t: 'portal', id: n.id });
+  };
+  UI.info = function (m) { UI.lastInfo = UI.lastInfo || {}; UI.lastInfo[m.what] = m; for (const w of UI.open) renderWin(w); };
+
+  // ---------------------------------------------------------------- character
+  WIN.char = {
+    title: '👤 ตัวละคร', w: 640,
+    render() {
+      const ch = G.char, st = G.st, c = D.CLASSES[ch.cls];
+      const slot = (s) => { const it = ch.equip[s]; return `<div class="eqslot" data-act="unequip" data-slot="${s}" ${it ? `data-item="${it.uid}"` : ''}>${it ? `<img src="${ART.itemIcon(it)}">${it.refine ? `<em>+${it.refine}</em>` : ''}` : `<span>${D.SLOT_TH[s]}</span>`}</div>`; };
+      const derived = [['ATK', st.atk], ['MATK', st.matk], ['DEF', st.def], ['MDEF', st.mdef], ['HP', st.maxHp], ['SP', st.maxSp], ['ASPD', st.aspd + '/s'], ['Crit', st.crit + '%'], ['Crit DMG', st.critDmg + '%'], ['Hit', st.hit], ['Flee', st.flee], ['ร่ายเร็ว', st.castReduce + '%'], ['ลด CD', st.cdr + '%'], ['เดิน', st.move], ['Lifesteal', st.lifesteal + '%'], ['ดาเมจ+', st.dmgPct + '%'], ['ลดดาเมจ', st.dmgReduce + '%'], ['คอมโบ+', st.comboDmg + '%'], ['บอส+', st.bossDmg + '%'], ['ดรอป+', st.dropPct + '%'], ['PvP+', st.pvpDmg + '%'], ['PvP ลด', st.pvpRes + '%'], ['ต้าน CC', st.ccRes + '%'], ['Combo Win', st.comboWin + 's']];
+      const gearN = Object.values(ch.equip).filter(Boolean).length;
+      return `<div class="charWin">
+        <div class="paper"><div class="pdoll"><img src="${ART.portrait(ch.cls, ch.name, 140)}"><div class="pinfo"><b>${esc(ch.name)}</b><span style="color:${c.color}">${c.name} · Lv ${ch.lv}</span><small>${ch.guild ? '&lt;' + esc(ch.guild.name) + '&gt;' : 'ไม่มีกิลด์'}</small><small>Best Combo ${ch.bestCombo || 0}</small></div></div>
+        <div class="eqgrid">${['head', 'necklace', 'weapon', 'armor', 'offhand', 'earring', 'cloak', 'ring1', 'boots', 'ring2'].map(slot).join('')}</div><small class="hint">คลิกช่องเพื่อถอด · สวม ${gearN}/10 ${p_runesets()}</small></div>
+        <div class="statCol"><div class="pts">แต้มสเตตัส: <b>${ch.statPts}</b></div>
+        ${D.STATS.map((s) => `<div class="statRow" data-tip="${D.STAT_INFO[s]}"><b>${s.toUpperCase()}</b><span>${ch.stats[s]}${G.char.gear && G.char.gear[s] ? `<em>+${G.char.gear[s]}</em>` : ''}</span><small>ใช้ ${F.statCost(ch.stats[s])}</small><button class="btn tiny" data-act="stat" data-k="${s}" data-n="1">+1</button><button class="btn tiny" data-act="stat" data-k="${s}" data-n="10">+10</button></div>`).join('')}
+        <div class="derived">${derived.map(([k, v]) => `<div><small>${k}</small><b>${typeof v === 'number' ? fmt(v) : v}</b></div>`).join('')}</div>
+        <button class="btn tiny" data-act="resetStats">รีเซ็ตสเตตัส (ฟรีถึง Lv50)</button></div></div>`;
+    },
+    act(a, d) { if (a === 'stat') G.send({ t: 'stat', k: d.k, n: +d.n }); if (a === 'unequip' && G.char.equip[d.slot]) G.send({ t: 'unequip', slot: d.slot }); if (a === 'resetStats' && confirm('รีเซ็ตสเตตัส?')) G.send({ t: 'resetStats' }); }
+  };
+  function p_runesets() { const s = G.char.gear && G.char.gear.runeSets; return s && s.length ? '· Rune Set: ' + s.map((k) => D.RUNE_KINDS[k].n).join(', ') : ''; }
+
+  // ---------------------------------------------------------------- inventory
+  const INV_TABS = [['all', 'ทั้งหมด'], ['equip', 'อุปกรณ์'], ['use', 'ใช้ได้'], ['mat', 'วัตถุดิบ'], ['rune', 'รูน/อัญมณี']];
+  function invFilter(it, tab) {
+    if (tab === 'all') return true;
+    if (tab === 'equip') return it.type === 'equip';
+    const d = D.ITEMS[it.id]; if (!d) return false;
+    if (tab === 'use') return d.type === 'potion' || d.type === 'scroll';
+    if (tab === 'mat') return d.type === 'mat' || d.type === 'loot';
+    if (tab === 'rune') return d.type === 'rune' || d.type === 'jewel';
+  }
+  WIN.inv = {
+    title: '🎒 กระเป๋า', w: 520,
+    render() {
+      const ch = G.char;
+      const items = ch.inv.filter((it) => invFilter(it, UI.invTab));
+      const sel = findItem(UI.selItem);
+      const cells = items.map((it) => `<div class="cell ${UI.selItem === it.uid ? 'sel' : ''}" data-act="sel" data-uid="${it.uid}" data-item="${it.uid}" draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${it.type === 'equip' ? '' : 'item:' + it.id}');event.dataTransfer.setData('from','')"><img src="${ART.itemIcon(it)}">${it.qty > 1 ? `<span class="q">${it.qty > 999 ? '999+' : it.qty}</span>` : ''}${it.refine ? `<em>+${it.refine}</em>` : ''}</div>`).join('');
+      let actions = '<small class="hint">คลิกไอเทมเพื่อเลือก · ลากยา/ม้วนไปวางที่ Hotbar ได้ · ดับเบิลคลิก = ใช้/สวม</small>';
+      if (sel) {
+        const d = sel.type === 'equip' ? null : D.ITEMS[sel.id];
+        actions = `<div class="selName">${sel.type === 'equip' ? `<b style="color:${D.RARITY[sel.rarity].color}">${sel.refine ? '+' + sel.refine + ' ' : ''}${esc(sel.name)}</b>` : `<b>${esc(d.n)}</b> ×${sel.qty}`}</div><div class="acts">
+          ${sel.type === 'equip' ? '<button class="btn gold" data-act="equip">สวมใส่</button>' : ''}
+          ${d && (d.type === 'potion' || d.type === 'scroll') ? '<button class="btn gold" data-act="use">ใช้</button><button class="btn" data-act="hot">ใส่ Hotbar</button>' : ''}
+          ${d && (d.type === 'rune' && d.tier < 5 || d && d.type === 'jewel' && d.tier < 10) ? `<button class="btn" data-act="combine">รวม (${d.type === 'rune' ? 3 : 5}→1)</button>` : ''}
+          <button class="btn" data-act="sell">ขาย (${fmt(sellPrice(sel) * (sel.qty || 1))}z)</button><button class="btn danger" data-act="drop">ทิ้ง</button></div>`;
+      }
+      return `<div class="tabs">${INV_TABS.map(([k, n]) => `<button class="${UI.invTab === k ? 'on' : ''}" data-act="tab" data-k="${k}">${n}</button>`).join('')}</div>
+        <div class="invGrid scrollKeep" ondblclick="(function(e){const c=e.target.closest('[data-uid]');if(c)G.send({t:'use',uid:c.dataset.uid});})(event)">${cells}${'<div class="cell empty"></div>'.repeat(Math.max(0, 40 - items.length))}</div>
+        <div class="invFoot"><span class="zeny">💰 ${fmt(ch.zeny)} Zeny</span><span>${ch.inv.length}/150</span></div><div class="invAct">${actions}</div>`;
+    },
+    act(a, d) {
+      const sel = UI.selItem;
+      if (a === 'tab') UI.invTab = d.k;
+      else if (a === 'sel') UI.selItem = d.uid;
+      else if (a === 'equip') G.send({ t: 'equip', uid: sel });
+      else if (a === 'use') G.send({ t: 'use', uid: sel });
+      else if (a === 'sell') { const it = findItem(sel); if (it && (it.type !== 'equip' || it.rarity < 3 || confirm('ขายของหายากนี้?'))) G.send({ t: 'sell', uid: sel, qty: it.qty }); UI.selItem = null; }
+      else if (a === 'drop') { if (confirm('ทิ้งไอเทมนี้?')) G.send({ t: 'drop', uid: sel }); UI.selItem = null; }
+      else if (a === 'combine') { const it = findItem(sel); if (it) G.send({ t: 'combine', id: it.id }); }
+      else if (a === 'hot') { const it = findItem(sel); const i = G.char.hotbar.findIndex((x, k) => !x && k >= 12); const j = i >= 0 ? i : G.char.hotbar.indexOf(null); if (it && j >= 0) { G.char.hotbar[j] = 'item:' + it.id; saveHotbar(); } }
+      renderWin('inv');
+    }
+  };
+
+  // ---------------------------------------------------------------- skills
+  WIN.skills = {
+    title: '📖 ตำราสกิล (50 สกิล)', w: 760,
+    render() {
+      const ch = G.char, c = D.CLASSES[ch.cls];
+      const all = CSK()[ch.cls].map((id) => SKS()[id]);
+      const tabs = [...Object.keys(c.branches).map((k) => [k, c.branches[k]]), ['Ultimate', '★ Ultimate'], ['Buff', '✚ Buff']];
+      if (!UI.skillTab || !tabs.find((t) => t[0] === UI.skillTab)) UI.skillTab = tabs[0][0];
+      const list = all.filter((s) => s.branch === UI.skillTab);
+      const learned = Object.keys(ch.skills).length;
+      return `<div class="skHead"><span>แต้มสกิล: <b class="big">${ch.skillPts}</b></span><span>เรียนแล้ว ${learned}/50</span><span>Lv ${ch.lv}</span><span class="hint">ลากไอคอนไปวางที่ Hotbar · คลิกขวาที่ Hotbar เพื่อลบ</span><button class="btn tiny" data-act="reset">รีเซ็ตสกิล</button></div>
+      <div class="tabs">${tabs.map(([k, n]) => `<button class="${UI.skillTab === k ? 'on' : ''}" data-act="tab" data-k="${esc(k)}">${esc(n)} <small>${all.filter((s) => s.branch === k).length}</small></button>`).join('')}</div>
+      <div class="skList scrollKeep">${list.map((s) => {
+        const lv = ch.skills[s.id] || 0; const can = ch.lv >= s.reqLv && lv < s.maxLv && ch.skillPts >= (s.kind === 'ult' ? 2 : 1);
+        return `<div class="skCard ${lv ? '' : 'unl'} ${ch.lv < s.reqLv ? 'lock' : ''}"><img src="${ART.skillIcon(s)}" draggable="true" data-skill="${s.id}" ondragstart="event.dataTransfer.setData('text/plain','${s.id}');event.dataTransfer.setData('from','')">
+          <div class="skMain"><div class="skTitle"><b>${esc(s.name)}</b><span class="lv">Lv ${lv}/${s.maxLv}</span>${s.role && 'SLF'.includes(s.role) ? `<span class="role r${s.role}">${{ S: 'STARTER', L: 'LINKER', F: 'FINISHER' }[s.role]}</span>` : ''}<span class="req ${ch.lv < s.reqLv ? 'bad' : ''}">ต้อง Lv${s.reqLv}</span></div>
+          ${skillNumbers(s, Math.max(1, lv))}<p>${esc(s.desc)}</p>${skillChips(s)}</div>
+          <div class="skBtns"><button class="btn gold" data-act="learn" data-id="${s.id}" ${can ? '' : 'disabled'}>+ ${s.kind === 'ult' ? '(2 แต้ม)' : ''}</button><button class="btn tiny" data-act="slot" data-id="${s.id}" ${lv ? '' : 'disabled'}>ใส่ปุ่ม</button></div></div>`;
+      }).join('')}</div>`;
+    },
+    act(a, d) {
+      if (a === 'tab') { UI.skillTab = d.k; renderWin('skills'); }
+      if (a === 'learn') G.send({ t: 'learn', id: d.id });
+      if (a === 'reset' && confirm('รีเซ็ตสกิลทั้งหมด? (ฟรีถึง Lv100)')) G.send({ t: 'resetSkills' });
+      if (a === 'slot') { if (G.char.hotbar.includes(d.id)) return UI.toast('อยู่ใน Hotbar แล้ว'); const i = G.char.hotbar.indexOf(null); if (i < 0) return UI.toast('Hotbar เต็ม', 'err'); G.char.hotbar[i] = d.id; saveHotbar(); UI.toast(`ใส่ ${SKS()[d.id].name} ที่ช่อง ${HOTKEYS[i].toUpperCase()}`); }
+    }
+  };
+
+  // ---------------------------------------------------------------- auto
+  const CONDS = [['always', 'ใช้เสมอ'], ['opener', 'เปิดฉาก (เป้าเลือดเต็ม)'], ['tag', 'เป้ามีแท็ก'], ['notag', 'เป้าไม่มีแท็ก'], ['targetHpBelow', 'HP เป้า < %'], ['selfHpBelow', 'HP เรา < %'], ['selfSpAbove', 'SP เรา > %'], ['mobsAround', 'มอนรอบตัว ≥'], ['comboAtLeast', 'Combo ≥'], ['isElite', 'เป้าเป็น Elite/Boss']];
+  let autoDraft = null;
+  WIN.auto = {
+    title: '🤖 ระบบออโต้', w: 700,
+    onOpen() { autoDraft = JSON.parse(JSON.stringify(G.char.auto)); },
+    render() {
+      const a = autoDraft || (autoDraft = JSON.parse(JSON.stringify(G.char.auto)));
+      const learned = CSK()[G.char.cls].filter((id) => G.skillLv(id) && SKS()[id].kind === 'attack');
+      const near = [...new Set([...G.ents.values()].filter((e) => e.k === 'm').map((e) => e.n.replace(/^Elite /, '')))].slice(0, 16);
+      const chipList = (k) => `<div class="chipEdit">${a[k].map((n, i) => `<span class="chip">${esc(n)}<button data-act="rmchip" data-k="${k}" data-i="${i}">×</button></span>`).join('')}<input placeholder="พิมพ์ชื่อ + Enter" data-chipin="${k}"></div>`;
+      const on = G.autoOn();
+      return `<div class="autoTop ${on ? 'on' : ''}"><div><b>${on ? '● ออโต้กำลังทำงาน' : '○ ออโต้ปิดอยู่'}</b><small>${G.info.auto ? 'แผนที่นี้ใช้ออโต้ได้' : 'แผนที่นี้ห้ามใช้ออโต้ (PvP/GvG/World Boss)'}</small></div><button class="btn ${on ? 'danger' : 'gold'} big" data-act="toggle">${on ? 'หยุดออโต้' : 'เริ่มออโต้'}</button><button class="btn" data-act="save">💾 บันทึกการตั้งค่า</button></div>
+      <div class="autoGrid scrollKeep">
+        <section><h4>🎯 การเลือกเป้าหมาย</h4>
+          <label>โหมด <select data-k="mode">${[['nearest', 'ใกล้สุด'], ['lowest', 'HP น้อยสุด'], ['priority', 'ตามลำดับ Whitelist'], ['defensive', 'ตีเฉพาะที่ตีเรา']].map(([v, n]) => `<option value="${v}" ${a.mode === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+          <label>รัศมีค้นหา <input type="range" min="4" max="40" value="${a.radius}" data-k="radius"><b>${a.radius} ช่อง</b></label>
+          <label class="ck"><input type="checkbox" data-k="anchor" ${a.anchor ? 'checked' : ''}> ยึดจุดเริ่มต้น (ไม่เดินออกนอกวง)</label>
+          <label class="ck"><input type="checkbox" data-k="avoidBoss" ${a.avoidBoss ? 'checked' : ''}> หลีกเลี่ยงบอส</label>
+          <label class="ck"><input type="checkbox" data-k="ksProtect" ${a.ksProtect ? 'checked' : ''}> ไม่แย่งมอนคนอื่น (KS Protect)</label>
+          <div class="sub">มอนที่ต้องการตี (Whitelist)</div>${chipList('whitelist')}
+          <div class="sub">มอนที่ไม่ตี (Blacklist)</div>${chipList('blacklist')}
+          <div class="sub">มอนใกล้ตัว: ${near.map((n) => `<button class="chip add" data-act="addw" data-n="${esc(n)}">+${esc(n)}</button>`).join('') || '-'}</div>
+        </section>
+        <section><h4>⚔ ลำดับสกิล (บนลงล่าง = ความสำคัญ)</h4>
+          <div class="rot">${a.rotation.map((r, i) => `<div class="rotRow"><span class="n">${i + 1}</span><img src="${ART.skillIcon(SKS()[r.id])}" data-skill="${r.id}"><select data-rot="${i}" data-f="id">${learned.map((id) => `<option value="${id}" ${id === r.id ? 'selected' : ''}>${esc(SKS()[id].name)}</option>`).join('')}</select>
+            <select data-rot="${i}" data-f="cond">${CONDS.map(([v, n]) => `<option value="${v}" ${r.cond === v ? 'selected' : ''}>${n}</option>`).join('')}</select>
+            ${['tag', 'notag'].includes(r.cond) ? `<select data-rot="${i}" data-f="v">${D.TAG_IDS.map((t) => `<option value="${t}" ${r.v === t ? 'selected' : ''}>${D.TAGS[t].n}</option>`).join('')}</select>` : ['always', 'opener', 'isElite'].includes(r.cond) ? '' : `<input type="number" data-rot="${i}" data-f="v" value="${+r.v || 0}" style="width:54px">`}
+            <button class="btn tiny" data-act="up" data-i="${i}">▲</button><button class="btn tiny" data-act="down" data-i="${i}">▼</button><button class="btn tiny danger" data-act="rm" data-i="${i}">✕</button></div>`).join('') || '<small class="hint">ยังไม่ได้ตั้ง → ใช้สกิลโจมตีจาก Hotbar ตามลำดับ</small>'}</div>
+          <div class="acts"><button class="btn" data-act="addRot" ${learned.length ? '' : 'disabled'}>+ เพิ่มสกิล</button><button class="btn" data-act="fromHot">นำเข้าจาก Hotbar</button><button class="btn" data-act="combo">สร้างคอมโบอัตโนมัติ (S→L→F)</button><button class="btn danger" data-act="clearRot">ล้าง</button></div>
+          <label>ใช้ Ultimate <select data-k="useUlt">${[['never', 'ไม่ใช้'], ['elite', 'เฉพาะ Elite/Boss'], ['always', 'ใช้ทันทีที่เต็ม']].map(([v, n]) => `<option value="${v}" ${a.useUlt === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+          <label class="ck"><input type="checkbox" data-k="autoBuff" ${a.autoBuff ? 'checked' : ''}> ต่อบัฟอัตโนมัติ (สกิลบัฟที่เรียนแล้ว)</label>
+          <label class="ck"><input type="checkbox" data-k="breakFree" ${a.breakFree ? 'checked' : ''}> ใช้ Break Free เมื่อติด CC</label>
+          <label>ฮีลเพื่อนเมื่อ HP < <input type="range" min="0" max="95" value="${a.partyHeal}" data-k="partyHeal"><b>${a.partyHeal}%</b></label>
+        </section>
+        <section><h4>🧪 ยา & เอาตัวรอด</h4>
+          <label>ใช้ยา HP เมื่อ < <input type="range" min="0" max="95" value="${a.hpPot}" data-k="hpPot"><b>${a.hpPot}%</b></label>
+          <label>ใช้ยา SP เมื่อ < <input type="range" min="0" max="95" value="${a.spPot}" data-k="spPot"><b>${a.spPot}%</b></label>
+          <label class="ck"><input type="checkbox" data-k="returnTown" ${a.returnTown ? 'checked' : ''}> กลับเมืองเมื่อยาหมด/กระเป๋าเต็ม</label>
+          <label class="ck"><input type="checkbox" data-k="supply" ${a.supply ? 'checked' : ''}> ซื้อยาอัตโนมัติ แล้วกลับจุดเดิม</label>
+          <label>จำนวนยาที่ซื้อ <input type="number" min="0" max="500" value="${a.potBuy}" data-k="potBuy" style="width:70px"></label>
+          <label class="ck"><input type="checkbox" data-k="respawnReturn" ${a.respawnReturn ? 'checked' : ''}> ตายแล้วเกิดและกลับมาฟาร์มต่อ</label>
+        </section>
+        <section><h4>📦 เก็บของ & ออฟไลน์</h4>
+          <label>เก็บอุปกรณ์ตั้งแต่ <select data-k="lootMinRarity">${D.RARITY.map((r, i) => `<option value="${i}" ${+a.lootMinRarity === i ? 'selected' : ''} style="color:${r.color}">${r.n}</option>`).join('')}</select></label>
+          <label class="ck"><input type="checkbox" data-k="lootPotions" ${a.lootPotions ? 'checked' : ''}> เก็บยา</label>
+          <label class="ck"><input type="checkbox" data-k="lootMats" ${a.lootMats ? 'checked' : ''}> เก็บวัตถุดิบ</label>
+          <label class="ck"><input type="checkbox" data-k="offline" ${a.offline ? 'checked' : ''}> <b>ออโต้ออฟไลน์</b> — ปิดเว็บแล้วยังฟาร์มต่อ (สูงสุด 12 ชม.)</label>
+          <small class="hint">ออโต้ทำงานบนเซิร์ฟเวอร์ · ของที่ไม่เก็บจะถูกขายเป็น Zeny อัตโนมัติ · คีย์ลัด \` เปิด/ปิด</small>
+        </section></div>`;
+    },
+    act(a, d) {
+      const A = autoDraft;
+      if (a === 'toggle') { G.send({ t: 'auto', cfg: A }); G.send({ t: 'autoOn', on: !G.autoOn() }); }
+      if (a === 'save') { G.send({ t: 'auto', cfg: A }); UI.toast('บันทึกการตั้งค่าออโต้แล้ว', 'gold'); }
+      if (a === 'rmchip') A[d.k].splice(+d.i, 1);
+      if (a === 'addw' && !A.whitelist.includes(d.n)) A.whitelist.push(d.n);
+      const learned = CSK()[G.char.cls].filter((id) => G.skillLv(id) && SKS()[id].kind === 'attack');
+      if (a === 'addRot' && learned.length) A.rotation.push({ id: learned.find((id) => !A.rotation.some((r) => r.id === id)) || learned[0], cond: 'always', v: 0 });
+      if (a === 'rm') A.rotation.splice(+d.i, 1);
+      if (a === 'up' && +d.i > 0) { const r = A.rotation; [r[+d.i - 1], r[+d.i]] = [r[+d.i], r[+d.i - 1]]; }
+      if (a === 'down' && +d.i < A.rotation.length - 1) { const r = A.rotation; [r[+d.i + 1], r[+d.i]] = [r[+d.i], r[+d.i + 1]]; }
+      if (a === 'clearRot') A.rotation = [];
+      if (a === 'fromHot') A.rotation = G.char.hotbar.filter((h) => h && SKS()[h] && SKS()[h].kind === 'attack' && G.skillLv(h)).map((id) => ({ id, cond: 'always', v: 0 }));
+      if (a === 'combo') {
+        // finishers first when their tag is present, then linkers when their bonus tag is present, then starters
+        const sk = learned.map((id) => SKS()[id]);
+        const rot = [];
+        for (const s of sk.filter((s) => s.role === 'F' && s.consumes)) rot.push({ id: s.id, cond: 'tag', v: s.consumes[0] });
+        for (const s of sk.filter((s) => s.cond && s.cond.type === 'targetHp')) rot.push({ id: s.id, cond: 'targetHpBelow', v: s.cond.v });
+        for (const s of sk.filter((s) => s.role === 'L' && s.bonusIf)) rot.push({ id: s.id, cond: 'tag', v: s.bonusIf[0][0] });
+        for (const s of sk.filter((s) => s.role === 'S')) rot.push({ id: s.id, cond: s.applies ? 'notag' : 'always', v: s.applies ? s.applies[0].tag : 0 });
+        for (const s of sk.filter((s) => !rot.some((r) => r.id === s.id))) rot.push({ id: s.id, cond: 'always', v: 0 });
+        A.rotation = rot.slice(0, 18);
+        UI.toast('สร้างลำดับคอมโบจากบทบาทสกิลแล้ว', 'gold');
+      }
+      renderWin('auto');
+    },
+    change(t) {
+      const A = autoDraft;
+      if (t.dataset.k) { const k = t.dataset.k; A[k] = t.type === 'checkbox' ? t.checked : t.type === 'range' || t.type === 'number' || k === 'lootMinRarity' ? +t.value : t.value; renderWin('auto'); }
+      if (t.dataset.rot !== undefined) { const r = A.rotation[+t.dataset.rot]; r[t.dataset.f] = t.type === 'number' ? +t.value : t.value; if (t.dataset.f === 'cond') r.v = ['tag', 'notag'].includes(t.value) ? 'airborne' : 0; renderWin('auto'); }
+    },
+    input(t) { if (t.type === 'range') { t.nextElementSibling.textContent = t.value + (t.dataset.k === 'radius' ? ' ช่อง' : '%'); } }
+  };
+  document.addEventListener('keydown', (e) => {
+    const t = e.target; if (e.key === 'Enter' && t.dataset && t.dataset.chipin) { const v = t.value.trim(); if (v && autoDraft) { autoDraft[t.dataset.chipin].push(v); t.value = ''; renderWin('auto'); } }
+  }, true);
+
+  // ---------------------------------------------------------------- world map / teleport
+  WIN.map = {
+    title: '🗺 แผนที่โลก & เทเลพอร์ต', w: 760,
+    onOpen() { G.send({ t: 'info', what: 'boss' }); },
+    render() {
+      const boss = (UI.lastInfo && UI.lastInfo.boss) ? Object.fromEntries(UI.lastInfo.boss.list.map((b) => [b.map, b])) : {};
+      const inTown = G.info.kind === 'town';
+      const towns = D.TOWNS.map((t) => `<div class="town" style="--c:${D.BIOMES[t.biome].ground[0]}"><b>${t.name}</b><small>${t.th}</small><small>แนะนำ Lv${t.lv}+</small><button class="btn gold tiny" data-act="warp" data-m="${t.id}">วาร์ป (ฟรี)</button></div>`).join('');
+      const regions = D.TOWNS.map((t) => `<div class="region"><h4>${t.name} Region</h4>${D.FARM_MAPS.filter((f) => f.town === t.id).map((f) => {
+        const b = boss[f.name]; const ok = G.char.lv >= f.min - 5;
+        return `<div class="farm ${ok ? '' : 'hard'}"><span class="biome" style="background:${D.BIOMES[f.biome].ground[0]}"></span><div><b>${f.name}</b> ${f.pk ? '<span class="badge red">PK</span>' : ''}<small>${f.th} · Lv ${f.min}–${f.max} · ${f.w}×${f.h}</small><small>${b ? (b.alive ? '👹 Field Boss อยู่!' : b.next != null ? `บอสเกิดใน ${Math.ceil(b.next / 60)} นาที` : '') : ''}</small></div><button class="btn tiny" data-act="warp" data-m="${f.id}" ${inTown || G.char.gm ? '' : 'disabled'}>${f.min * 15}z</button></div>`;
+      }).join('')}</div>`).join('');
+      return `<div class="mapTop"><div class="curMap"><canvas id="bigMap" width="220" height="220"></canvas><div><b>${esc(G.info.name)}</b><small>${esc(G.info.th)}</small><small>ตำแหน่ง ${G.self.x | 0}, ${G.self.y | 0}</small><small>${G.map.w}×${G.map.h} ช่อง</small></div></div>
+        <div class="towns">${towns}</div></div>
+        ${inTown ? '' : '<div class="warn">วาร์ปไปแผนที่ฟาร์มได้จากในเมือง (Gatekeeper) — ใช้ Return Scroll / Waygate เพื่อกลับเมือง</div>'}
+        <div class="special"><button class="btn" data-act="warp" data-m="pvp_arena">⚔ Blood Colosseum (PvP)</button><button class="btn" data-act="warp" data-m="wb_arena">🌋 Ruined Sanctum (World Boss)</button><button class="btn" data-act="dg">🗼 ดันเจี้ยน 5×1000 ชั้น</button></div>
+        <div class="regions scrollKeep">${regions}</div>`;
+    },
+    act(a, d) { if (a === 'warp') G.send({ t: 'warp', map: d.m }); if (a === 'dg') UI.show('dungeon'); }
+  };
+  const _renderWin = renderWin;
+  renderWin = function (name) { _renderWin(name); if (name === 'map') drawBigMap(); };
+  UI.renderWin = renderWin;
+  function drawBigMap() {
+    const cv = document.getElementById('bigMap'); if (!cv || !G.mini) return;
+    const g = cv.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, 220, 220);
+    const s = Math.min(220 / G.map.w, 220 / G.map.h);
+    g.drawImage(G.mini, 0, 0, G.map.w * s, G.map.h * s);
+    for (const e of G.ents.values()) if (e.k === 'n') { g.fillStyle = '#ffe14a'; g.fillRect(e.x * s - 2, e.y * s - 2, 4, 4); }
+    g.fillStyle = '#5ad0ff'; g.beginPath(); g.arc(G.self.x * s, G.self.y * s, 4, 0, 7); g.fill(); g.strokeStyle = '#fff'; g.stroke();
+  }
+
+  // ---------------------------------------------------------------- dungeon
+  WIN.dungeon = {
+    title: '🗼 ดันเจี้ยน — 5 ประเภท × 1000 ชั้น', w: 760,
+    render(o) {
+      const best = G.char.dungeonBest || {};
+      return `<p class="hint">ทุก 10 ชั้นมีบอสประจำชั้น · ทุก 100 ชั้นมีบอสใหญ่ · กำจัดมอน 70% (หรือบอส) เพื่อเปิดบันได · เริ่มได้ที่ชั้น 1 หรือ Checkpoint (11, 21, 31...) ที่ผ่านมาแล้ว · ปาร์ตี้เข้าด้วยกันได้</p>
+      <div class="dgList">${D.DUNGEONS.map((d) => {
+        const b = best[d.id] || 0; const cps = [1]; for (let f = 11; f <= Math.min(1000, b + 1); f += 10) cps.push(f); if (b + 1 <= 1000 && !cps.includes(b + 1)) cps.push(b + 1);
+        return `<div class="dg" style="--c:${D.ELEMENTS[d.element].color}"><div class="dgHead"><b>${d.name}</b><small>${d.th}</small></div><p>${d.desc}</p>
+          <div class="prog"><i style="width:${b / 10}%"></i><span>ผ่านแล้ว ${b} / 1000</span></div>
+          <small>มอน Lv ${D.dungeonLevel(d, Math.max(1, b + 1))} (ชั้น ${b + 1}) → Lv ${D.dungeonLevel(d, 1000)} (ชั้น 1000)</small>
+          <div class="acts"><select data-dg="${d.id}">${cps.slice(-40).reverse().map((f) => `<option value="${f}">ชั้น ${f}</option>`).join('')}</select><button class="btn gold" data-act="enter" data-id="${d.id}">เข้าดันเจี้ยน</button></div></div>`;
+      }).join('')}</div>${G.info.kind === 'dungeon' ? `<div class="acts"><button class="btn gold" data-act="stairs">ไปชั้นถัดไป (ต้องยืนที่บันได)</button><button class="btn" data-act="leave">ออกจากดันเจี้ยน</button></div>` : ''}`;
+    },
+    act(a, d) {
+      if (a === 'enter') { const sel = document.querySelector(`[data-dg="${d.id}"]`); G.send({ t: 'dungeon', type: d.id, floor: +sel.value }); }
+      if (a === 'stairs') G.send({ t: 'stairs' });
+      if (a === 'leave') G.send({ t: 'use', id: 'tele_scroll' });
+    }
+  };
+
+  // ---------------------------------------------------------------- shop
+  WIN.shop = {
+    title: '🛒 ร้านค้า', w: 560,
+    render(o) {
+      const list = D.SHOP[G.mapId] || D.SHOP.aurelia;
+      const tab = o.tab || 'buy';
+      const sellable = G.char.inv.filter((it) => it.type === 'equip' || (D.ITEMS[it.id] && D.ITEMS[it.id].type !== 'potion'));
+      return `<div class="tabs"><button class="${tab === 'buy' ? 'on' : ''}" data-act="tab" data-k="buy">ซื้อ</button><button class="${tab === 'sell' ? 'on' : ''}" data-act="tab" data-k="sell">ขาย</button><span class="zeny">💰 ${fmt(G.char.zeny)}</span></div>
+      ${tab === 'buy' ? `<div class="shopList scrollKeep">${list.map((id) => { const d = D.ITEMS[id]; return `<div class="shopRow"><img src="${ART.itemIcon({ id })}" data-itemid="${id}"><div><b>${d.n}</b><small>${d.th}${d.lv > 1 ? ' · Lv' + d.lv : ''}</small></div><span class="price">${fmt(d.price)} z</span><input type="number" min="1" max="999" value="${d.type === 'potion' ? 50 : 1}" data-q="${id}"><button class="btn gold tiny" data-act="buy" data-id="${id}">ซื้อ</button></div>`; }).join('')}</div>`
+        : `<div class="acts"><button class="btn" data-act="sellJunk">ขาย Monster Core + อุปกรณ์ Common ทั้งหมด</button></div><div class="shopList scrollKeep">${sellable.map((it) => `<div class="shopRow"><img src="${ART.itemIcon(it)}" data-item="${it.uid}"><div><b style="color:${it.type === 'equip' ? D.RARITY[it.rarity].color : '#fff'}">${esc(it.type === 'equip' ? (it.refine ? '+' + it.refine + ' ' : '') + it.name : D.ITEMS[it.id].n)}</b><small>${it.qty ? '×' + it.qty : D.RARITY[it.rarity].n}</small></div><span class="price">${fmt(sellPrice(it) * (it.qty || 1))} z</span><button class="btn tiny" data-act="sell" data-uid="${it.uid}" data-q="${it.qty || 1}">ขาย</button></div>`).join('')}</div>`}`;
+    },
+    act(a, d) {
+      const w = UI.wins.shop;
+      if (a === 'tab') { w.opts.tab = d.k; renderWin('shop'); }
+      if (a === 'buy') { const q = document.querySelector(`[data-q="${d.id}"]`); G.send({ t: 'buy', id: d.id, qty: +q.value || 1 }); }
+      if (a === 'sell') G.send({ t: 'sell', uid: d.uid, qty: +d.q });
+      if (a === 'sellJunk') for (const it of G.char.inv) if (it.id === 'monster_core' || (it.type === 'equip' && it.rarity === 0)) G.send({ t: 'sell', uid: it.uid, qty: it.qty || 1 });
+    }
+  };
+
+  // ---------------------------------------------------------------- refine
+  function gearList() { return [...Object.values(G.char.equip).filter(Boolean).map((it) => ({ it, eq: 1 })), ...G.char.inv.filter((it) => it.type === 'equip').map((it) => ({ it, eq: 0 }))]; }
+  const cnt = (id) => G.char.inv.reduce((a, it) => a + (it.id === id ? it.qty : 0), 0);
+  WIN.refine = {
+    title: '⚒ ตีบวก +20', w: 700,
+    render(o) {
+      const list = gearList();
+      const sel = list.find((x) => x.it.uid === o.uid) || list[0];
+      let right = '<p class="hint">เลือกอุปกรณ์</p>';
+      if (sel) {
+        const it = sel.it; const isAcc = ['necklace', 'earring', 'ring'].includes(it.slot); const max = isAcc ? D.ACC_REFINE_MAX : 20;
+        const cur = it.refine || 0, nx = cur + 1;
+        if (cur >= max) right = `<div class="refBig"><img src="${ART.itemIcon(it)}"><b>+${cur} ${esc(it.name)}</b><p>ตีบวกสูงสุดแล้ว!</p></div>`;
+        else {
+          const cost = D.refineCost(nx), f = D.refineFail(nx), rate = Math.min(100, D.REFINE_RATES[nx - 1] + (G.char.pity || 0) * 0.5);
+          const have = cnt(cost.mat);
+          right = `<div class="refBig"><div class="refItem lv${Math.min(20, cur)}"><img src="${ART.itemIcon(it)}" data-item="${it.uid}"></div><b style="color:${D.RARITY[it.rarity].color}">${esc(it.name)}</b>
+            <div class="refArrow"><span>+${cur}</span>➜<span class="nx">+${nx}</span></div>
+            <div class="rate"><div class="rbar"><i style="width:${rate}%"></i></div><b>${rate.toFixed(1)}%</b>${G.char.pity ? `<small>Pity +${(G.char.pity * 0.5).toFixed(1)}%</small>` : ''}</div>
+            <div class="reqs"><div class="${have >= cost.qty ? 'ok' : 'bad'}"><img src="${ART.itemIcon({ id: cost.mat })}">${D.ITEMS[cost.mat].n} ${have}/${cost.qty}</div><div class="${G.char.zeny >= cost.zeny ? 'ok' : 'bad'}">💰 ${fmt(cost.zeny)} Zeny</div></div>
+            <div class="failInfo">${f.breakChance ? `⚠ ล้มเหลว: <b class="bad">ของพัง ${f.breakChance * 100}%</b> หรือ -${f.down}` : f.down ? `ล้มเหลว: ระดับลด ${f.downMin ? f.downMin + '~' : ''}${f.down}` : 'ล้มเหลว: ไม่มีผล (ปลอดภัย)'}</div>
+            <label class="ck"><input type="checkbox" id="refProt" ${o.prot ? 'checked' : ''}> Protection Scroll (กันพัง) — มี ${cnt('scroll_protect')}</label>
+            <label class="ck"><input type="checkbox" id="refBless" ${o.bless ? 'checked' : ''}> Blessed Scroll (กันลด) — มี ${cnt('scroll_bless')}</label>
+            <button class="btn gold big" data-act="go" data-uid="${it.uid}">⚒ ตีบวก!</button>
+            <small class="hint">โบนัส: อาวุธ/เกราะ +6% ต่อระดับ (เพิ่มขึ้นหลัง +10 และ +15) · +10/+15/+20 ปลดออร่าและโบนัสพิเศษ</small></div>`;
+        }
+      }
+      return `<div class="twoCol"><div class="pickList scrollKeep">${list.map(({ it, eq }) => `<div class="pick ${sel && sel.it.uid === it.uid ? 'on' : ''}" data-act="pick" data-uid="${it.uid}" data-item="${it.uid}"><img src="${ART.itemIcon(it)}"><span style="color:${D.RARITY[it.rarity].color}">${it.refine ? '+' + it.refine + ' ' : ''}${esc(it.name)}</span>${eq ? '<em>สวมอยู่</em>' : ''}</div>`).join('')}</div><div class="refPanel">${right}<div id="refFx"></div></div></div>
+      <details><summary>ตารางอัตราสำเร็จ +1 ~ +20</summary><div class="rateTable">${D.REFINE_RATES.map((r, i) => `<span>+${i + 1}<b>${r}%</b></span>`).join('')}</div></details>`;
+    },
+    act(a, d) {
+      const w = UI.wins.refine;
+      if (a === 'pick') { w.opts.uid = d.uid; renderWin('refine'); }
+      if (a === 'go') { w.opts.uid = d.uid; w.opts.prot = $('#refProt').checked; w.opts.bless = $('#refBless').checked; G.send({ t: 'refine', uid: d.uid, prot: w.opts.prot, bless: w.opts.bless }); }
+    }
+  };
+  UI.refineResult = function (m) {
+    const fx = $('#refFx');
+    const msg = m.ok ? `✨ สำเร็จ! +${m.to}` : m.broke ? '💥 พัง! ของหายไป...' : m.to < m.from ? `❌ ล้มเหลว ลดเป็น +${m.to}` : '❌ ล้มเหลว';
+    UI.toast(msg, m.ok ? 'gold' : 'err');
+    if (fx) { fx.className = m.ok ? 'ok' : 'fail'; fx.textContent = msg; setTimeout(() => { fx.className = ''; fx.textContent = ''; }, 1600); }
+    if (m.ok && UI.wins.refine) UI.wins.refine.opts.uid = m.uid;
+  };
+
+  // ---------------------------------------------------------------- runes & jewels
+  WIN.rune = {
+    title: '💎 รูน & ประดับ', w: 720,
+    render(o) {
+      const list = gearList();
+      const sel = list.find((x) => x.it.uid === o.uid) || list[0];
+      const gems = G.char.inv.filter((it) => D.ITEMS[it.id] && (D.ITEMS[it.id].type === 'rune' || D.ITEMS[it.id].type === 'jewel'));
+      let right = '';
+      if (sel) {
+        const it = sel.it;
+        const socks = it.jewelSlots ? Array.from({ length: it.jewelSlots }, (_, i) => it.jewels && it.jewels[i]) : Array.from({ length: it.sockets || 0 }, (_, i) => it.runes[i]);
+        const fit = gems.filter((g) => (it.jewelSlots ? D.ITEMS[g.id].type === 'jewel' : D.ITEMS[g.id].type === 'rune'));
+        right = `<div class="runeTop"><img src="${ART.itemIcon(it)}" data-item="${it.uid}"><div><b style="color:${D.RARITY[it.rarity].color}">${esc(it.name)}</b><small>${it.jewelSlots ? 'ช่องอัญมณี' : 'ช่องรูน'} ${socks.filter(Boolean).length}/${socks.length}</small></div></div>
+          <div class="sockets">${socks.map((s) => s ? `<div class="sock on" style="--c:${D.ITEMS[s].icon}"><img src="${ART.itemIcon({ id: s })}" data-itemid="${s}"></div>` : '<div class="sock"></div>').join('') || '<small class="hint">ไม่มีช่อง — ใช้ Rune Drill เจาะ</small>'}</div>
+          <div class="acts">${!it.jewelSlots ? `<button class="btn" data-act="drill" data-uid="${it.uid}">🔩 เจาะช่อง (Rune Drill ×1 มี ${cnt('rune_drill')})</button>` : ''}<button class="btn" data-act="reroll" data-uid="${it.uid}">🎲 สุ่มออปชั่น (Reroll ×1 มี ${cnt('reroll_stone')})</button><button class="btn danger" data-act="unsock" data-uid="${it.uid}">ถอดทั้งหมด</button></div>
+          <h4>ฝังลงอุปกรณ์นี้</h4><div class="gemList">${fit.map((g) => `<div class="gem" data-act="sock" data-uid="${it.uid}" data-gem="${g.uid}" data-itemid="${g.id}"><img src="${ART.itemIcon(g)}"><span>${D.ITEMS[g.id].n} ×${g.qty}</span></div>`).join('') || '<small class="hint">ไม่มีรูน/อัญมณีที่ใส่ได้</small>'}</div>`;
+      }
+      return `<div class="twoCol"><div class="pickList scrollKeep">${list.map(({ it, eq }) => `<div class="pick ${sel && sel.it.uid === it.uid ? 'on' : ''}" data-act="pick" data-uid="${it.uid}" data-item="${it.uid}"><img src="${ART.itemIcon(it)}"><span style="color:${D.RARITY[it.rarity].color}">${esc(it.name)}</span><em>${it.jewelSlots ? '◆' + (it.jewels || []).length + '/' + it.jewelSlots : '◇' + (it.runes || []).length + '/' + (it.sockets || 0)}</em></div>`).join('')}</div><div>${right}
+        <h4>รวมรูน (3→1) / อัญมณี (5→1)</h4><div class="gemList">${gems.map((g) => { const d = D.ITEMS[g.id]; const need = d.type === 'rune' ? 3 : 5; const max = d.type === 'rune' ? 5 : 10; return `<div class="gem ${g.qty >= need && d.tier < max ? '' : 'dim'}" data-act="combine" data-id="${g.id}" data-itemid="${g.id}"><img src="${ART.itemIcon(g)}"><span>${d.n} ×${g.qty}</span></div>`; }).join('')}</div></div></div>`;
+    },
+    act(a, d) {
+      const w = UI.wins.rune;
+      if (a === 'pick') { w.opts.uid = d.uid; renderWin('rune'); }
+      if (a === 'sock') { w.opts.uid = d.uid; G.send({ t: 'socket', uid: d.uid, gem: d.gem }); }
+      if (a === 'drill') G.send({ t: 'drill', uid: d.uid });
+      if (a === 'reroll' && confirm('สุ่มออปชั่นใหม่ทั้งหมด?')) G.send({ t: 'reroll', uid: d.uid });
+      if (a === 'unsock' && confirm('ถอดรูน/อัญมณีทั้งหมด (เสีย Zeny)?')) G.send({ t: 'unsocket', uid: d.uid });
+      if (a === 'combine') G.send({ t: 'combine', id: d.id });
+    }
+  };
+
+  // ---------------------------------------------------------------- guild & gvg
+  WIN.guild = {
+    title: '🏰 กิลด์ & Guild War', w: 720,
+    onOpen() { G.send({ t: 'info', what: 'gvg' }); },
+    render() {
+      const g = G.char.guild;
+      const gv = UI.lastInfo && UI.lastInfo.gvg;
+      const days = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัส', 'ศุกร์', 'เสาร์'];
+      const war = gv ? `<div class="gvg ${gv.active ? 'live' : ''}"><h4>⚔ Guild War ${gv.active ? `<span class="badge red">LIVE · เหลือ ${Math.ceil(gv.endsIn / 60)} นาที</span>` : `<small>ทุกวัน${days[gv.schedule.day]} ${gv.schedule.hour}:00 (${gv.schedule.durationMin} นาที)</small>`}</h4>
+        <div class="castles">${gv.castles.map((c) => `<div class="castle"><b>${c.name}</b><small>${c.th}</small><span>เจ้าของ: <b>${esc(c.owner || '— ว่าง —')}</b></span><div class="prog"><i style="width:${c.core}%"></i><span>Core ${c.core}%</span></div><button class="btn tiny ${gv.active ? 'gold' : ''}" data-act="castle" data-id="${c.id}">เข้าปราสาท</button></div>`).join('')}</div>
+        <small class="hint">ทำลาย Crystal Core กลางปราสาทเพื่อยึด · เจ้าของปราสาทได้ ATK/MATK/EXP +5% ต่อปราสาท และรางวัลหลังวอร์ · พันธมิตร 2 กิลด์</small></div>` : '';
+      if (!g) return `<div class="gCreate"><h4>สร้างกิลด์</h4><p>ต้องเลเวล 20+ และ Guild Emblem 1 ชิ้น (ร้านค้า Aurelia/Skyreach)</p><input id="gName" placeholder="ชื่อกิลด์ 3-16 ตัว"><button class="btn gold" data-act="create">ก่อตั้งกิลด์</button><p class="hint">หรือให้หัวหน้ากิลด์เชิญคุณ (คลิกขวาที่ผู้เล่น)</p></div>${war}`;
+      const me = g.members.find((m) => m.cid === G.char.id) || {};
+      const officer = me.rank === 'master' || me.rank === 'officer';
+      return `<div class="gHead"><div><h3>${esc(g.name)}</h3><small>Lv ${g.lv} · สมาชิก ${g.members.length} · ออนไลน์ ${g.members.filter((m) => m.on).length}${g.castles.length ? ' · 🏰 ' + g.castles.join(', ') : ''}</small></div><span class="rank">${me.rank}</span></div>
+        <div class="notice">📜 ${esc(g.notice)} ${officer ? '<button class="btn tiny" data-act="notice">แก้ไข</button>' : ''}</div>
+        <div class="acts">${officer ? '<input id="gInv" placeholder="ชื่อผู้เล่น"><button class="btn" data-act="invite">เชิญ</button>' : ''}${me.rank === 'master' ? '<input id="gAlly" placeholder="ชื่อกิลด์พันธมิตร"><button class="btn" data-act="ally">เป็นพันธมิตร</button>' : ''}<button class="btn danger" data-act="leave">${me.rank === 'master' ? 'ยุบ/ออก' : 'ออกจากกิลด์'}</button></div>
+        <div class="members scrollKeep">${g.members.sort((a, b) => b.on - a.on || b.lv - a.lv).map((m) => `<div class="mem ${m.on ? 'on' : ''}"><i></i><img src="${ART.classIcon(m.cls, 24)}"><b>${esc(m.name)}</b><span>Lv${m.lv}</span><span class="rank">${m.rank}</span>${me.rank === 'master' && m.cid !== G.char.id ? `<button class="btn tiny" data-act="promote" data-n="${esc(m.name)}" data-r="${m.rank === 'officer' ? 'member' : 'officer'}">${m.rank === 'officer' ? 'ลดขั้น' : 'Officer'}</button><button class="btn tiny" data-act="promote" data-n="${esc(m.name)}" data-r="master">โอน Master</button>` : ''}${officer && m.rank !== 'master' && m.cid !== G.char.id ? `<button class="btn tiny danger" data-act="kick" data-n="${esc(m.name)}">เตะ</button>` : ''}</div>`).join('')}</div>${war}`;
+    },
+    act(a, d) {
+      if (a === 'create') G.send({ t: 'guild', a: 'create', name: $('#gName').value });
+      if (a === 'invite') G.send({ t: 'guild', a: 'invite', name: $('#gInv').value });
+      if (a === 'ally') G.send({ t: 'guild', a: 'ally', name: $('#gAlly').value });
+      if (a === 'leave' && confirm('ยืนยัน?')) G.send({ t: 'guild', a: 'leave' });
+      if (a === 'kick' && confirm('เตะ ' + d.n + '?')) G.send({ t: 'guild', a: 'kick', name: d.n });
+      if (a === 'promote') G.send({ t: 'guild', a: 'rank', name: d.n, rank: d.r });
+      if (a === 'notice') { const v = prompt('ประกาศกิลด์', G.char.guild.notice); if (v != null) G.send({ t: 'guild', a: 'notice', text: v }); }
+      if (a === 'castle') G.send({ t: 'warp', map: d.id });
+    }
+  };
+  WIN.party = {
+    title: '👥 ปาร์ตี้', w: 420,
+    render() {
+      const pt = G.char.party;
+      return `<div class="acts"><input id="pInv" placeholder="ชื่อผู้เล่น"><button class="btn gold" data-act="invite">เชิญเข้าปาร์ตี้</button></div>
+        ${pt ? `<div class="members">${pt.members.map((m) => `<div class="mem on"><i></i><img src="${ART.classIcon(m.cls, 24)}"><b>${esc(m.name)}${pt.leader === m.cid ? ' ♛' : ''}</b><span>Lv${m.lv}</span><small>${esc(mapName(m.map))}</small>${pt.leader === G.char.id && m.cid !== G.char.id ? `<button class="btn tiny danger" data-act="kick" data-n="${esc(m.name)}">เตะ</button>` : ''}</div>`).join('')}</div><button class="btn danger" data-act="leave">ออกจากปาร์ตี้</button>` : '<p class="hint">ยังไม่มีปาร์ตี้ — สูงสุด 6 คน · แชร์ EXP (+12%/คน) · บัฟ/ฮีลปาร์ตี้ · เข้าดันเจี้ยนด้วยกัน · Element Reaction ข้ามคลาส</p>'}`;
+    },
+    act(a, d) { if (a === 'invite') G.send({ t: 'party', a: 'invite', name: $('#pInv').value }); if (a === 'leave') G.send({ t: 'party', a: 'leave' }); if (a === 'kick') G.send({ t: 'party', a: 'kick', name: d.n }); }
+  };
+  WIN.arena = {
+    title: '⚔ Arena Master', w: 560,
+    onOpen() { G.send({ t: 'info', what: 'wb' }); },
+    render() {
+      const wb = UI.lastInfo && UI.lastInfo.wb;
+      return `<div class="arenaBtns"><button class="btn big" data-act="go" data-m="pvp_arena">⚔ เข้า Blood Colosseum<br><small>PvP ทุกคน (ยกเว้นปาร์ตี้) · ไม่เสีย EXP</small></button><button class="btn big gold" data-act="go" data-m="wb_arena">🌋 เข้า Ruined Sanctum<br><small>ลาน World Boss · PvP เปิดระหว่างบอสอยู่</small></button></div>
+      ${wb ? `<h4>World Boss</h4><p>${wb.alive ? `👹 <b>${esc(wb.alive.name)}</b> HP ${wb.alive.hp}%` : `เกิดทุกวันเวลา ${wb.hours.map((h) => h + ':00').join(' / ')}`}</p>
+      <div class="rankList">${wb.rank.map((r, i) => `<div><span>${i + 1}</span><img src="${ART.classIcon(r[2], 20)}"><b>${esc(r[0])}</b><em>${fmt(r[1])}</em></div>`).join('') || '<small class="hint">ยังไม่มีอันดับดาเมจรอบนี้</small>'}</div>
+      <small class="hint">รางวัล: อันดับ 1 = Mythic + Divine ×3 · Top10 = Legendary · Top50 = Epic · ทุกคน = Rare + Pure Crystal · กิลด์ดาเมจสูงสุดได้บัฟ 24 ชม.</small>` : ''}`;
+    },
+    act(a, d) { if (a === 'go') G.send({ t: 'warp', map: d.m }); }
+  };
+  WIN.rank = {
+    title: '🏆 จัดอันดับ & บอส', w: 640,
+    onOpen() { G.send({ t: 'info', what: 'rank' }); G.send({ t: 'info', what: 'boss' }); G.send({ t: 'info', what: 'wb' }); },
+    render(o) {
+      const r = UI.lastInfo && UI.lastInfo.rank; const tab = o.tab || 'level';
+      const b = UI.lastInfo && UI.lastInfo.boss;
+      const tabs = [['level', 'เลเวล'], ['pvp', 'PvP Kills'], ['combo', 'Best Combo'], ['tower', 'ดันเจี้ยนสูงสุด'], ['boss', 'Field Boss']];
+      let body = '<p class="hint">กำลังโหลด...</p>';
+      if (tab === 'boss' && b) body = `<div class="rankList">${b.list.map((x) => `<div><b>${esc(x.map)}</b><em>${x.alive ? '<span class="badge red">ALIVE</span>' : x.next != null ? Math.ceil(x.next / 60) + ' นาที' : 'ยังไม่โหลด'}</em></div>`).join('')}</div>`;
+      else if (r && r[tab]) body = `<div class="rankList">${r[tab].map((x, i) => `<div class="${i < 3 ? 'top' + (i + 1) : ''}"><span>${i + 1}</span><img src="${ART.classIcon(x.cls, 22)}"><b>${esc(x.name)}</b><small>Lv${x.lv}</small><em>${tab === 'level' ? 'Lv ' + x.lv : fmt(x.v)}</em></div>`).join('')}</div>`;
+      return `<div class="tabs">${tabs.map(([k, n]) => `<button class="${tab === k ? 'on' : ''}" data-act="tab" data-k="${k}">${n}</button>`).join('')}</div>${body}`;
+    },
+    act(a, d) { if (a === 'tab') { UI.wins.rank.opts.tab = d.k; renderWin('rank'); } }
+  };
+
+  // ---------------------------------------------------------------- GM panel
+  WIN.gm = {
+    title: '🛡 GM Control Panel', w: 760,
+    render() {
+      const quick = [['heal', '❤ Heal'], ['god', '🛡 God'], ['hide', '👻 Hide'], ['speed 3', '⚡ Speed×3'], ['speed 1', 'Speed×1'], ['lvup 10', '+10 Lv'], ['allskills', '📖 All Skills'], ['killall', '☠ Kill All'], ['spawnboss', '👹 Spawn Boss'], ['spawn wolf 10', '🐺 10 Wolves'], ['worldboss start', '🌋 World Boss'], ['gvg start 30', '⚔ GvG 30m'], ['gvg stop', 'GvG Stop'], ['event start doubleexp', '×2 EXP'], ['event stop doubleexp', 'EXP ×1'], ['event start doubledrop', '×2 Drop'], ['weather rain', '🌧 Rain'], ['weather snow', '❄ Snow'], ['weather none', '☀ Clear'], ['zeny 1000000', '💰 +1M'], ['item crystal_divine 10', 'Divine ×10'], ['item scroll_protect 10', 'Protect ×10'], ['gear weapon 100 5 +15', 'Mythic Weapon +15'], ['stairs', '🗼 Open Stairs'], ['who', '👥 Who'], ['bosstimer', '⏱ Boss Timers'], ['save', '💾 Save'], ['audit 20', '📜 Audit']];
+      return `<div class="gmQuick">${quick.map(([c, n]) => `<button class="btn tiny" data-act="cmd" data-c="${esc(c)}">${n}</button>`).join('')}</div>
+        <div class="gmLine"><input id="gmIn" placeholder="พิมพ์คำสั่ง เช่น warp golden_dunes / item pot_hp_3 100 / ban name 3 spam"><button class="btn gold" data-act="run">Run</button></div>
+        <pre id="gmOut" class="gmOut">GM Lv ${G.char.gm} พร้อมใช้งาน — ทุกคำสั่งถูกบันทึกใน audit log</pre>
+        <details open><summary>คำสั่งทั้งหมด (${(G.gmList || []).length})</summary><div class="gmList">${(G.gmList || []).map((c) => `<div data-act="fill" data-c="${esc(c.usage.replace(/^@/, '').split(' ')[0])}"><code>${esc(c.usage)}</code><span>${esc(c.desc)}</span><em>Lv${c.lv}</em></div>`).join('')}</div></details>`;
+    },
+    act(a, d) {
+      if (a === 'cmd') G.send({ t: 'gm', cmd: d.c });
+      if (a === 'run') { const v = $('#gmIn').value.trim(); if (v) G.send({ t: 'gm', cmd: v.replace(/^@/, '') }); }
+      if (a === 'fill') { $('#gmIn').value = d.c + ' '; $('#gmIn').focus(); }
+    }
+  };
+  document.addEventListener('keydown', (e) => { if (e.target.id === 'gmIn' && e.key === 'Enter') { const v = e.target.value.trim(); if (v) G.send({ t: 'gm', cmd: v.replace(/^@/, '') }); e.target.value = ''; } }, true);
+
+  // ---------------------------------------------------------------- help
+  WIN.help = {
+    title: '❔ คู่มือ & ปุ่มลัด', w: 760,
+    render() {
+      return `<div class="help scrollKeep"><h4>ปุ่มควบคุม</h4><div class="keys">
+        <span><kbd>WASD</kbd>/<kbd>คลิกพื้น</kbd> เดิน</span><span><kbd>คลิกมอน</kbd> โจมตีปกติ</span><span><kbd>Tab</kbd> สลับเป้า</span><span><kbd>Space</kbd> ตีเป้าใกล้สุด</span>
+        <span><kbd>1</kbd>–<kbd>=</kbd> Hotbar แถว 1</span><span><kbd>Z X C V B N</kbd> Hotbar แถว 2</span><span><kbd>Q</kbd> Break Free</span><span><kbd>F1</kbd>/<kbd>F2</kbd> ยา HP/SP</span>
+        <span><kbd>U</kbd> ตัวละคร</span><span><kbd>I</kbd> กระเป๋า</span><span><kbd>K</kbd> สกิล</span><span><kbd>O</kbd> ออโต้</span><span><kbd>\`</kbd> เปิด/ปิดออโต้</span><span><kbd>M</kbd> แผนที่</span><span><kbd>J</kbd> ดันเจี้ยน</span><span><kbd>G</kbd> กิลด์</span><span><kbd>P</kbd> ปาร์ตี้</span><span><kbd>R</kbd> อันดับ</span><span><kbd>Enter</kbd> แชท</span><span><kbd>ล้อเมาส์</kbd> ซูม</span><span><kbd>คลิกขวาผู้เล่น</kbd> เมนู</span><span><kbd>F10</kbd> GM</span></div>
+        <h4>ระบบคอมโบ</h4><p>สกิลแบ่งเป็น <b class="rS">STARTER</b> (เปิด/ใส่แท็ก) → <b class="rL">LINKER</b> (โบนัสเมื่อเป้ามีแท็ก) → <b class="rF">FINISHER</b> (ใช้แท็กทิ้ง แลกดาเมจมหาศาล — ถ้าไม่มีแท็กดาเมจเหลือครึ่งเดียว) · ใช้สกิลต่างกันติดกันภายใน 2.5 วินาที = Combo +1 · ดาเมจ +3% ต่อ Combo (สูงสุด +60%) · Combo 5/10/15/20 เติมเกจ Ultimate</p>
+        <div class="chips">${D.TAG_IDS.map((t) => `${ART.tagChip(t)}<small>${D.TAGS[t].th}</small>`).join(' ')}</div>
+        <h4>ปฏิกิริยาธาตุ (ข้ามคลาสได้)</h4><div class="rxList">${Object.entries(D.REACTIONS).map(([k, r]) => `<div><b style="color:${r.color}">${r.n}</b><span>${r.need.map((n) => D.TAGS[n].n).join(r.all ? ' + ' : ' / ')} ${r.el ? '+ สกิลธาตุ ' + r.el.join('/') : ''}</span><em>×${r.mult}</em></div>`).join('')}</div>
+        <h4>คำสั่งแชท</h4><p><code>/w ชื่อ ข้อความ</code> กระซิบ · <code>/p</code> ปาร์ตี้ · <code>/g</code> กิลด์ · <code>/world</code> แชทโลก · <code>/invite ชื่อ</code> · <code>/ginvite ชื่อ</code> · <code>/duel ชื่อ</code> · <code>@help</code> คำสั่ง GM</p>
+        <h4>เนื้อหา</h4><p>5 เมืองหลัก · 25 แผนที่ฟาร์ม (Lv1–250) แต่ละแผนที่ใหญ่ 260–340 ช่อง พร้อม Field Boss · 5 ดันเจี้ยน × 1000 ชั้น · World Boss วันละ 3 รอบ · Guild War 5 ปราสาท · PvP Arena + Open PK (แผนที่ 21–25) · ตีบวก +20 · รูน 10 ชนิด × 5 ระดับ · อัญมณี 6 ชนิด × 10 ระดับ · 10 คลาส × 50 สกิล</p></div>`;
+    }
+  };
+})();

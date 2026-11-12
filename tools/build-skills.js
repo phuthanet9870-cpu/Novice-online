@@ -229,11 +229,13 @@ function build() {
       const id = `${cls}_${String(r.idx).padStart(2, '0')}`;
       nameToId[r.name.toLowerCase()] = id;
       const t = r.desc.replace(/\(=Freeze\)/g, '');
+      // reaction notes like "เป้า Wet → Electrocute" describe a reaction, not a tag applied by this skill
+      const noteRe = /(?:เป้า\s*)?([A-Z][A-Za-z]*(?: [A-Z][A-Za-z]*)?)(?:\s*\+\s*[A-Z][A-Za-z]*(?:\s*\([^)]*\))?)?\s*→\s*(Electrocute|Firestorm|Twilight|Purge|Shatter|Steam Burst|Toxic Blaze)/g;
       const melee = clsDef.scale === 'melee' || (cls === 'warlock' && r.branch === 'Reaper') || (cls === 'cleric' && r.branch === 'Inquis' && /กระบอง|ตี|พุ่ง/.test(t)) || (cls === 'gunslinger' && /Point Blank|Kick Back|Slide/.test(r.name));
       const sk = { id, cls, kind: 'attack', idx: r.idx, name: r.name, desc: r.desc, branch: r.branch, role: r.role === '–' ? '-' : r.role, melee };
       sk.element = detectElement(cls, r.branch, r.name, t);
       sk.dmgType = clsDef.dmg;
-      let s = t;
+      let s = t.replace(noteRe, ' ');
       // --- consumption
       let m;
       const consumes = [];
