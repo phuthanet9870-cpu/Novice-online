@@ -1,0 +1,383 @@
+// Inventory, character progression, drops, shop, refine +20, runes & jewels.
+const D = require('../shared/data.js');
+const F = require('../shared/formulas.js');
+const RNG = require('../shared/rng.js');
+const { SKILLS, CLASS_SKILLS } = require('../shared/skills.js');
+const db = require('./db');
+const W = require('./world');
+const C = require('./combat');
+const S = require('./social');
+
+const I = module.exports;
+const INV_MAX = 150;
+const r = RNG.rng(Date.now() & 0xffffffff);
+const uid = () => 'u' + db.nextId();
+const send = (p, m) => p.sess && p.sess.send(m);
+const err = (p, m) => { send(p, { t: 'err', m }); return false; };
+const note = (p, m, k = 'system') => send(p, { t: 'notice', k, m });
+
+// ------------------------------------------------------------------ character creation
+I.newChar = function (acc, name, cls) {
+  const c = D.CLASSES[cls];
+  const id = 'c' + db.nextId();
+  const ch = {
+    id, acc: acc.user.toLowerCase(), name, cls, lv: 1, exp: 0, statPts: 5, stats: Object.assign({}, c.start), skillPts: 3, skills: {},
+    hotbar: new Array(18).fill(null), inv: [], equip: {}, zeny: 2500, map: 'aurelia', lastTown: 'aurelia', x: undefined, y: undefined,
+    dungeonBest: {}, created: Date.now(), ult: 0, pity: 0, kills: 0, pvpKills: 0
+  };
+  const first = CLASS_SKILLS[cls][0];
+  ch.skills[first] = 1; ch.hotbar[0] = first;
+  const w = F.genEquip(r, 'weapon', 1, 0, c.weapon); w.uid = uid(); ch.equip.weapon = w;
+  const a = F.genEquip(r, 'armor', 1, 0); a.uid = uid(); ch.equip.armor = a;
+  const b = F.genEquip(r, 'boots', 1, 0); b.uid = uid(); ch.equip.boots = b;
+  I.addItem(ch, 'pot_hp_1', 30); I.addItem(ch, 'pot_sp_1', 10); I.addItem(ch, 'tele_scroll', 5); I.addItem(ch, 'ore_refine', 5);
+  ch.hotbar[12] = 'item:pot_hp_1'; ch.hotbar[13] = 'item:pot_sp_1';
+  return ch;
+};
+
+// ------------------------------------------------------------------ inventory primitives
+I.count = (ch, id) => ch.inv.reduce((a, it) => a + (it.id === id ? it.qty : 0), 0);
+I.find = (ch, u) => ch.inv.find((it) => it.uid === u);
+I.addItem = function (ch, id, qty = 1) {
+  if (!D.ITEMS[id]) return false;
+  const st = ch.inv.find((it) => it.id === id);
+  if (st) { st.qty += qty; return true; }
+  if (ch.inv.length >= INV_MAX) return false;
+  ch.inv.push({ uid: uid(), id, qty });
+  return true;
+};
+I.addEquip = function (ch, it) {
+  if (ch.inv.length >= INV_MAX) return false;
+  it.uid = it.uid || uid();
+  ch.inv.push(it);
+  return true;
+};
+I.consume = function (ch, id, qty) {
+  if (I.count(ch, id) < qty) return false;
+  for (const it of ch.inv) {
+    if (it.id !== id || qty <= 0) continue;
+    const take = Math.min(qty, it.qty); it.qty -= take; qty -= take;
+  }
+  ch.inv = ch.inv.filter((it) => it.type === 'equip' || it.qty > 0);
+  return true;
+};
+I.removeUid = function (ch, u, qty) {
+  const it = I.find(ch, u); if (!it) return null;
+  if (it.type === 'equip' || qty === undefined || qty >= it.qty) { ch.inv = ch.inv.filter((x) => x !== it); return it; }
+  it.qty -= qty; return Object.assign({}, it, { qty });
+};
+const invSync = (p) => C.sendChar(p, ['inv', 'zeny']);
+const fullSync = (p) => C.sendChar(p, ['inv', 'equip', 'zeny', 'st', 'gear']);
+I.itemName = (it) => it.type === 'equip' ? `${it.refine ? '+' + it.refine + ' ' : ''}${it.name}` : (D.ITEMS[it.id] || {}).n || it.id;
+
+// ------------------------------------------------------------------ progression
+I.gainExp = function (p, amt) {
+  const ch = p.char;
+  if (ch.lv >= D.MAX_LEVEL) return;
+  amt = Math.round(amt * (db.data.settings.exp || 1) * (1 + S.castleBonus(p) / 100));
+  ch.exp += amt;
+  let up = 0;
+  while (ch.lv < D.MAX_LEVEL && ch.exp >= F.expToNext(ch.lv)) {
+    ch.exp -= F.expToNext(ch.lv); ch.lv++; up++;
+    ch.statPts += 5 + (ch.lv % 10 === 0 ? 3 : 0);
+    ch.skillPts += 1 + (ch.lv % 5 === 0 ? 1 : 0);
+  }
+  if (ch.lv >= D.MAX_LEVEL) ch.exp = 0;
+  if (up) {
+    p.lv = ch.lv; C.recalc(p); p.hp = p.maxHp; p.sp = p.maxSp;
+    p.inst.emit({ k: 'lvup', t: p.id, x: p.x, y: p.y });
+    note(p, `เลเวลอัป! Lv ${ch.lv}  (+สเตตัส / +แต้มสกิล)`, 'level');
+    if (ch.lv % 50 === 0 || ch.lv === D.MAX_LEVEL) S.broadcast({ t: 'notice', k: 'world', m: `🎉 ${ch.name} ถึงเลเวล ${ch.lv} แล้ว!` });
+    C.sendChar(p, ['lv', 'next', 'statPts', 'skillPts', 'stats', 'st']);
+  }
+};
+
+I.addStat = function (p, k, n) {
+  const ch = p.char;
+  if (!D.STATS.includes(k)) return;
+  n = Math.max(1, Math.min(100, n | 0));
+  for (let i = 0; i < n; i++) {
+    const cost = F.statCost(ch.stats[k]);
+    if (ch.statPts < cost || ch.stats[k] >= F.STAT_MAX) break;
+    ch.statPts -= cost; ch.stats[k]++;
+  }
+  C.recalc(p); C.sendChar(p, ['stats', 'statPts', 'st']);
+};
+I.learn = function (p, id) {
+  const ch = p.char, sk = SKILLS[id];
+  if (!sk || sk.cls !== ch.cls) return err(p, 'สกิลไม่ถูกต้อง');
+  const cur = ch.skills[id] || 0;
+  if (cur >= sk.maxLv) return err(p, 'สกิลเลเวลสูงสุดแล้ว');
+  if (ch.lv < sk.reqLv) return err(p, `ต้องเลเวล ${sk.reqLv}`);
+  const cost = sk.kind === 'ult' ? 2 : 1;
+  if (ch.skillPts < cost) return err(p, 'แต้มสกิลไม่พอ');
+  ch.skillPts -= cost; ch.skills[id] = cur + 1;
+  if (!cur) { const i = ch.hotbar.indexOf(null); if (i >= 0 && i < 12) ch.hotbar[i] = id; }
+  C.sendChar(p, ['skills', 'skillPts', 'hotbar']);
+};
+I.resetSkills = function (p) {
+  const ch = p.char;
+  if (ch.lv > 100 && !I.consume(ch, 'memory_crystal', 1)) return err(p, 'ต้องใช้ Memory Crystal (ฟรีถึงเลเวล 100)');
+  ch.skills = {}; const first = CLASS_SKILLS[ch.cls][0]; ch.skills[first] = 1;
+  ch.skillPts = F.skillPointsAt(ch.lv) - 1;
+  ch.hotbar = ch.hotbar.map((h) => (h && h.startsWith('item:') ? h : null)); ch.hotbar[0] = first;
+  C.sendChar(p, ['skills', 'skillPts', 'hotbar', 'inv']); note(p, 'รีเซ็ตสกิลเรียบร้อย');
+};
+I.resetStats = function (p) {
+  const ch = p.char;
+  if (ch.lv > 50 && !I.consume(ch, 'stat_reset', 1)) return err(p, 'ต้องใช้ Rebirth Elixir (ฟรีถึงเลเวล 50)');
+  ch.stats = Object.assign({}, D.CLASSES[ch.cls].start); ch.statPts = 5 + F.statPointsAt(ch.lv);
+  C.recalc(p); C.sendChar(p, ['stats', 'statPts', 'st', 'inv']); note(p, 'รีเซ็ตสเตตัสเรียบร้อย');
+};
+I.setHotbar = function (p, slots) {
+  if (!Array.isArray(slots)) return;
+  p.char.hotbar = new Array(18).fill(null).map((_, i) => {
+    const v = slots[i];
+    if (typeof v !== 'string') return null;
+    if (v.startsWith('item:') && D.ITEMS[v.slice(5)]) return v;
+    return SKILLS[v] && SKILLS[v].cls === p.cls ? v : null;
+  });
+};
+
+// ------------------------------------------------------------------ equip / use / sell
+I.equip = function (p, u) {
+  const ch = p.char, it = I.find(ch, u);
+  if (!it || it.type !== 'equip') return err(p, 'ไอเทมนี้สวมใส่ไม่ได้');
+  if (ch.lv < it.reqLv) return err(p, `ต้องเลเวล ${it.reqLv}`);
+  if (it.slot === 'weapon' && it.wtype !== D.CLASSES[ch.cls].weapon) return err(p, `${D.CLASSES[ch.cls].name} ใช้อาวุธประเภท ${D.CLASSES[ch.cls].weapon} เท่านั้น`);
+  let slot = it.slot;
+  if (slot === 'ring') slot = !ch.equip.ring1 ? 'ring1' : !ch.equip.ring2 ? 'ring2' : 'ring1';
+  I.removeUid(ch, u);
+  if (ch.equip[slot]) ch.inv.push(ch.equip[slot]);
+  ch.equip[slot] = it;
+  C.recalc(p); fullSync(p);
+  return true;
+};
+I.unequip = function (p, slot) {
+  const ch = p.char;
+  if (!ch.equip[slot]) return;
+  if (ch.inv.length >= INV_MAX) return err(p, 'กระเป๋าเต็ม');
+  ch.inv.push(ch.equip[slot]); delete ch.equip[slot];
+  C.recalc(p); fullSync(p);
+};
+I.use = function (p, u, byId) {
+  const ch = p.char;
+  const it = byId ? ch.inv.find((x) => x.id === byId) : I.find(ch, u);
+  if (!it) return err(p, 'ไม่มีไอเทม');
+  if (it.type === 'equip') return I.equip(p, it.uid);
+  const def = D.ITEMS[it.id];
+  if (p.dead) return false;
+  const t = W.now();
+  if (def.type === 'potion') {
+    if ((p.potCd || 0) > t) return false;
+    if (ch.lv < def.lv) return err(p, `ต้องเลเวล ${def.lv}`);
+    p.potCd = t + 0.5;
+    if (def.hp) C.heal(p, def.hp, p);
+    if (def.sp) p.sp = Math.min(p.maxSp, p.sp + def.sp);
+    I.consume(ch, it.id, 1); invSync(p);
+    p.inst.emit({ k: 'pot', t: p.id, x: p.x, y: p.y, c: def.icon });
+    return true;
+  }
+  if (it.id === 'tele_scroll') {
+    if (p.inst.def.kind === 'castle' && S.gvgActive()) return err(p, 'ใช้ไม่ได้ระหว่างกิลด์วอร์');
+    I.consume(ch, it.id, 1); W.enterMap(p, ch.lastTown || 'aurelia'); return true;
+  }
+  return err(p, 'ไอเทมนี้ใช้โดยตรงไม่ได้');
+};
+I.sellPrice = function (it) {
+  if (it.type === 'equip') return Math.round((it.ilv * 25 + 40) * (1 + it.rarity * it.rarity * 0.8) * (1 + (it.refine || 0) * 0.15));
+  const d = D.ITEMS[it.id]; return d.sell || Math.floor((d.price || 10) / 4);
+};
+I.sell = function (p, u, qty) {
+  const ch = p.char, it = I.find(ch, u);
+  if (!it) return;
+  const q = it.type === 'equip' ? 1 : Math.max(1, Math.min(it.qty, qty | 0 || it.qty));
+  const got = I.sellPrice(it) * q;
+  I.removeUid(ch, u, q); ch.zeny += got;
+  invSync(p);
+  note(p, `ขาย ${I.itemName(it)} x${q} ได้ ${got.toLocaleString()} Zeny`);
+};
+I.drop = function (p, u, qty) { const it = I.removeUid(p.char, u, qty); if (it) { invSync(p); note(p, `ทิ้ง ${I.itemName(it)}`); } };
+I.buy = function (p, id, qty) {
+  const inst = p.inst;
+  if (inst.def.kind !== 'town' && !p.gm) return err(p, 'ซื้อได้เฉพาะในเมือง');
+  const list = D.SHOP[inst.mapId] || D.SHOP.aurelia;
+  if (!list.includes(id)) return err(p, 'ร้านนี้ไม่มีขาย');
+  qty = Math.max(1, Math.min(999, qty | 0));
+  const cost = D.ITEMS[id].price * qty;
+  if (p.char.zeny < cost) return err(p, 'Zeny ไม่พอ');
+  if (!I.addItem(p.char, id, qty)) return err(p, 'กระเป๋าเต็ม');
+  p.char.zeny -= cost; invSync(p);
+  note(p, `ซื้อ ${D.ITEMS[id].n} x${qty} (-${cost.toLocaleString()} Zeny)`);
+  return true;
+};
+
+// ------------------------------------------------------------------ drops & exp on kill
+function potTier(lv) { return lv < 30 ? 1 : lv < 80 ? 2 : lv < 140 ? 3 : lv < 200 ? 4 : 5; }
+I.onMonsterKilled = function (m, killer) {
+  const inst = m.inst;
+  // exp split with party nearby
+  const mates = killer.party ? C.partyNear(killer, 30) : [killer];
+  const share = 1 + 0.12 * (mates.length - 1);
+  for (const q of mates) {
+    let e = m.exp * share / mates.length;
+    const diff = q.lv - m.lv;
+    if (diff > 30) e *= 0.1; else if (diff > 15) e *= 0.5;
+    if (inst.def.kind === 'dungeon') e *= 1.3;
+    I.gainExp(q, e);
+    q.char.kills = (q.char.kills || 0) + 1;
+  }
+  // loot
+  const ch = killer.char;
+  const dropMul = (db.data.settings.drop || 1) * (1 + killer.st.dropPct / 100) * (inst.def.kind === 'dungeon' ? 1 + inst.def.floor / 400 : 1);
+  const lv = m.lv, rk = m.rank;
+  const got = [];
+  const give = (id, q = 1) => { if (autoSkip(killer, id)) { ch.zeny += (D.ITEMS[id].sell || 5) * q; return; } if (I.addItem(ch, id, q)) got.push(D.ITEMS[id].n + (q > 1 ? ' x' + q : '')); };
+  const zen = Math.round(m.zeny * (0.8 + r() * 0.4) * (db.data.settings.drop || 1));
+  ch.zeny += zen;
+  const roll = (p) => r() < p * dropMul;
+  if (roll(0.07)) give('pot_hp_' + potTier(lv));
+  if (roll(0.035)) give('pot_sp_' + Math.min(4, potTier(lv)));
+  if (roll(0.25)) give('monster_core');
+  if (roll(rk ? 0.25 : 0.05)) give('ore_refine', rk >= 2 ? 5 : 1);
+  if (lv >= 50 && roll(rk ? 0.08 : 0.012)) give('crystal_pure', rk >= 2 ? 3 : 1);
+  if (lv >= 120 && roll(rk ? 0.02 : 0.003)) give('crystal_divine', rk >= 2 ? 2 : 1);
+  const runeTier = Math.min(5, 1 + Math.floor(lv / 60) + (rk >= 2 && r() < 0.4 ? 1 : 0));
+  if (roll(rk >= 2 ? 1 : rk ? 0.07 : 0.009)) give(`rune_${r.pick(Object.keys(D.RUNE_KINDS).filter((k) => k !== 'titan' || rk >= 2))}_${runeTier}`);
+  if (roll(rk >= 2 ? 0.8 : rk ? 0.05 : 0.007)) give(`jewel_${r.pick(Object.keys(D.JEWELS))}_${Math.min(10, 1 + Math.floor(lv / 40) + (rk >= 2 ? 1 : 0))}`);
+  if (rk >= 2 && roll(0.3)) give('scroll_protect');
+  if (rk >= 2 && roll(0.15)) give('rune_drill');
+  if (rk >= 2 && roll(0.12)) give('reroll_stone');
+  const eqN = rk >= 2 ? 3 : 1;
+  for (let i = 0; i < eqN; i++) {
+    if (!roll(rk >= 2 ? 1 : rk ? 0.25 : 0.03)) continue;
+    let rar = F.rollRarity(r, killer.st.dropPct / 100);
+    if (rk >= 2) rar = Math.max(rar, 2 + (r() < 0.4 ? 1 : 0) + (r() < 0.12 ? 1 : 0));
+    else if (rk === 1) rar = Math.max(rar, 1);
+    const slot = r.pick(D.SLOTS);
+    const it = F.genEquip(r, slot === 'ring2' ? 'ring1' : slot, Math.max(1, lv + r.int(-3, 3)), rar, r() < 0.55 ? D.CLASSES[ch.cls].weapon : null);
+    if (killer.auto.on && it.rarity < (killer.auto.lootMinRarity || 0)) { ch.zeny += I.sellPrice(it); continue; }
+    if (I.addEquip(ch, it)) {
+      got.push(`[${D.RARITY[it.rarity].n}] ${it.name}`);
+      if (it.rarity >= 4) S.broadcast({ t: 'notice', k: 'loot', m: `✨ ${ch.name} ได้รับ [${D.RARITY[it.rarity].n}] ${it.name} จาก ${m.name}!` });
+    } else note(killer, 'กระเป๋าเต็ม! ไอเทมหาย', 'warn');
+  }
+  inst.emit({ k: 'loot', t: m.id, x: m.x, y: m.y, z: zen, n: got.length });
+  if (got.length) send(killer, { t: 'loot', items: got, z: zen });
+  invSync(killer);
+};
+function autoSkip(p, id) {
+  if (!p.auto.on) return false;
+  const d = D.ITEMS[id];
+  if (d.type === 'potion' && !p.auto.lootPotions) return true;
+  if ((d.type === 'mat' || d.type === 'loot') && !p.auto.lootMats) return true;
+  return false;
+}
+
+// ------------------------------------------------------------------ refine +20
+I.refine = function (p, u, prot, bless) {
+  const ch = p.char;
+  if (p.inst.def.kind !== 'town' && !p.gm) return err(p, 'ตีบวกได้ที่ช่างตีเหล็กในเมือง');
+  let it = I.find(ch, u), equipped = null;
+  if (!it) for (const s of D.SLOTS) if (ch.equip[s] && ch.equip[s].uid === u) { it = ch.equip[s]; equipped = s; }
+  if (!it || it.type !== 'equip') return err(p, 'เลือกอุปกรณ์ที่จะตีบวก');
+  const isAcc = ['necklace', 'earring', 'ring'].includes(it.slot);
+  const max = isAcc ? D.ACC_REFINE_MAX : 20;
+  const from = it.refine || 0;
+  if (from >= max) return err(p, `ตีบวกสูงสุด +${max} แล้ว`);
+  const target = from + 1;
+  const cost = D.refineCost(target);
+  if (I.count(ch, cost.mat) < cost.qty) return err(p, `ต้องใช้ ${D.ITEMS[cost.mat].n} x${cost.qty}`);
+  if (ch.zeny < cost.zeny) return err(p, `ต้องใช้ ${cost.zeny.toLocaleString()} Zeny`);
+  if (prot && I.count(ch, 'scroll_protect') < 1) return err(p, 'ไม่มี Protection Scroll');
+  if (bless && I.count(ch, 'scroll_bless') < 1) return err(p, 'ไม่มี Blessed Scroll');
+  I.consume(ch, cost.mat, cost.qty); ch.zeny -= cost.zeny;
+  if (prot) I.consume(ch, 'scroll_protect', 1);
+  if (bless) I.consume(ch, 'scroll_bless', 1);
+  const rate = Math.min(100, D.REFINE_RATES[target - 1] * (db.data.settings.refine || 1) + (ch.pity || 0) * 0.5);
+  const ok = r() * 100 < rate;
+  let broke = false, to = from;
+  if (ok) { to = target; ch.pity = 0; }
+  else {
+    ch.pity = (ch.pity || 0) + 1;
+    const f = D.refineFail(target);
+    if (f.breakChance && !prot && r() < f.breakChance) broke = true;
+    else if (f.down && !bless) to = Math.max(0, from - (f.downMin ? r.int(f.downMin, f.down) : f.down));
+  }
+  if (broke) {
+    if (equipped) delete ch.equip[equipped]; else I.removeUid(ch, u);
+    I.addItem(ch, 'ore_refine', 3);
+  } else it.refine = to;
+  if (equipped) C.recalc(p);
+  send(p, { t: 'refineRes', ok, broke, from, to, rate: Math.round(rate * 10) / 10, name: it.name, uid: u });
+  if (ok && to >= 15) S.broadcast({ t: 'notice', k: 'refine', m: `🔥 ${ch.name} ตีบวก ${it.name} สำเร็จเป็น +${to}!` });
+  fullSync(p); C.sendChar(p, ['pity']);
+  return true;
+};
+
+// ------------------------------------------------------------------ runes / jewels / drill / reroll
+function locate(ch, u) {
+  const it = I.find(ch, u); if (it) return { it };
+  for (const s of D.SLOTS) if (ch.equip[s] && ch.equip[s].uid === u) return { it: ch.equip[s], slot: s };
+  return {};
+}
+I.socket = function (p, equ, itemUid) {
+  const ch = p.char;
+  const { it, slot } = locate(ch, equ);
+  const gem = I.find(ch, itemUid);
+  if (!it || it.type !== 'equip' || !gem) return err(p, 'เลือกอุปกรณ์และรูน/อัญมณี');
+  const d = D.ITEMS[gem.id];
+  if (d.type === 'rune') {
+    if ((it.runes || []).length >= (it.sockets || 0)) return err(p, 'ช่องรูนเต็ม (ใช้ Rune Drill เพื่อเจาะเพิ่ม)');
+    it.runes = it.runes || []; it.runes.push(gem.id);
+  } else if (d.type === 'jewel') {
+    if (!it.jewelSlots) return err(p, 'อัญมณีฝังได้เฉพาะเครื่องประดับ');
+    if ((it.jewels || []).length >= it.jewelSlots) return err(p, 'ช่องอัญมณีเต็ม');
+    it.jewels = it.jewels || []; it.jewels.push(gem.id);
+  } else return err(p, 'ไอเทมนี้ฝังไม่ได้');
+  I.consume(ch, gem.id, 1);
+  if (slot) C.recalc(p);
+  fullSync(p); note(p, `ฝัง ${d.n} ลงใน ${it.name} สำเร็จ`);
+};
+I.unsocket = function (p, equ) {
+  const ch = p.char; const { it, slot } = locate(ch, equ);
+  if (!it || it.type !== 'equip') return;
+  const cost = 5000 + it.ilv * 100;
+  if (ch.zeny < cost) return err(p, `ถอดรูน/อัญมณีต้องใช้ ${cost} Zeny`);
+  ch.zeny -= cost;
+  for (const g of [...(it.runes || []), ...(it.jewels || [])]) I.addItem(ch, g, 1);
+  it.runes = []; it.jewels = [];
+  if (slot) C.recalc(p); fullSync(p);
+};
+I.drill = function (p, equ) {
+  const ch = p.char; const { it, slot } = locate(ch, equ);
+  if (!it || it.type !== 'equip' || it.jewelSlots) return err(p, 'เจาะได้เฉพาะอาวุธ/เกราะ');
+  const max = it.slot === 'weapon' ? 3 : 2;
+  if ((it.sockets || 0) >= max) return err(p, 'ช่องรูนสูงสุดแล้ว');
+  if (!I.consume(ch, 'rune_drill', 1)) return err(p, 'ต้องใช้ Rune Drill');
+  if (r() < 0.6) { it.sockets = (it.sockets || 0) + 1; note(p, `เจาะช่องรูนสำเร็จ! (${it.sockets}/${max})`); }
+  else note(p, 'เจาะช่องล้มเหลว...', 'warn');
+  if (slot) C.recalc(p); fullSync(p);
+};
+I.reroll = function (p, equ) {
+  const ch = p.char; const { it, slot } = locate(ch, equ);
+  if (!it || it.type !== 'equip' || it.rarity < 1) return err(p, 'ต้องเป็นอุปกรณ์ Uncommon ขึ้นไป');
+  if (!I.consume(ch, 'reroll_stone', 1)) return err(p, 'ต้องใช้ Reroll Stone');
+  F.rollOptions(r, it);
+  if (slot) C.recalc(p); fullSync(p); note(p, `สุ่มออปชั่นใหม่ให้ ${it.name} แล้ว`);
+};
+// combine 3 runes of same tier → next tier; 5 jewels → next level
+I.combine = function (p, id) {
+  const ch = p.char, d = D.ITEMS[id];
+  if (!d) return;
+  if (d.type === 'rune') {
+    if (d.tier >= 5) return err(p, 'รูนระดับสูงสุดแล้ว');
+    if (!I.consume(ch, id, 3)) return err(p, 'ต้องมีรูนชนิดเดียวกัน 3 อัน');
+    I.addItem(ch, `rune_${d.kind}_${d.tier + 1}`, 1); note(p, `รวมรูนสำเร็จ → ${D.ITEMS[`rune_${d.kind}_${d.tier + 1}`].n}`);
+  } else if (d.type === 'jewel') {
+    if (d.tier >= 10) return err(p, 'อัญมณีระดับสูงสุดแล้ว');
+    if (!I.consume(ch, id, 5)) return err(p, 'ต้องมีอัญมณีชนิดเดียวกัน 5 อัน');
+    I.addItem(ch, `jewel_${d.kind}_${d.tier + 1}`, 1); note(p, `รวมอัญมณีสำเร็จ → ${D.ITEMS[`jewel_${d.kind}_${d.tier + 1}`].n}`);
+  }
+  invSync(p);
+};

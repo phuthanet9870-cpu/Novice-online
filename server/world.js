@@ -9,11 +9,11 @@ const I = require('./items');
 const A = require('./auto');
 const S = require('./social');
 
-const W = module.exports = {
+const W = Object.assign(module.exports, {
   instances: new Map(), players: new Map(), // charId -> player entity
   nextEnt: 1, tickN: 0, flags: {}, // per-map GM flags {pvp, noAuto, weather}
   rand: RNG.rng(Date.now() & 0xffffffff)
-};
+});
 const now = () => Date.now() / 1000;
 W.now = now;
 const CELL = 8;

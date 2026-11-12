@@ -7,7 +7,7 @@ const W = require('./world');
 const I = require('./items');
 const S = require('./social');
 
-const C = module.exports = {};
+const C = module.exports;
 const now = () => Date.now() / 1000;
 const HARD = new Set(D.TAG_IDS.filter((t) => D.TAGS[t].cc === 'hard'));
 const DOT = { bleed: 1, poison: 1, burn: 1 };
