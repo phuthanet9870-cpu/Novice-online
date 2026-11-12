@@ -1,0 +1,13 @@
+{
+  "name": "novice-online",
+  "version": "0.2.0",
+  "description": "HTML5 online action MMORPG — combo skills, PvP, Guild War, World Boss, refine +20, 5 dungeons x 1000 floors",
+  "main": "server/index.js",
+  "scripts": {
+    "build:skills": "node tools/build-skills.js",
+    "start": "node tools/build-skills.js && node server/index.js",
+    "dev": "node server/index.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": { "ws": "^8.18.0" }
+}
