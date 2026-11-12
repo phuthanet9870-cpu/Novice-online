@@ -3,7 +3,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
-const D = require('../shared/data.js');
+const D = require('../shared/data2.js');
 const { SKILLS } = require('../shared/skills.js');
 const db = require('./db').load();
 const W = require('./world');
@@ -12,6 +12,8 @@ const I = require('./items');
 const A = require('./auto');
 const S = require('./social');
 const GM = require('./gm');
+const P = require('./progress');
+const E = require('./econ');
 
 const PORT = +process.env.PORT || 8080;
 const ROOT = path.join(__dirname, '..');
@@ -122,7 +124,10 @@ function handle(sess, m) {
       if (ch.jailUntil && ch.jailUntil > Date.now()) map = 'jail';
       if (p.inst) W.enterMap(p, p.inst.id, p.x, p.y);
       else W.enterMap(p, map, ch.x, ch.y);
+      P.onLogin(p); C.recalc(p); C.sendChar(p, Object.keys(C.charPayload(p)));
       if (p.auto.on) sess.send({ t: 'notice', k: 'system', m: 'ออโต้ออฟไลน์ยังทำงานอยู่ — กลับมาแล้ว!' });
+      if (E.unread(ch)) sess.send({ t: 'notice', k: 'system', m: `✉ คุณมีจดหมายใหม่ ${E.unread(ch)} ฉบับ (ไปรษณีย์ในเมือง)` });
+      if (ch.login.claimed !== new Date().getFullYear() + '-' + (new Date().getMonth() + 1) + '-' + new Date().getDate()) sess.send({ t: 'loginReward' });
       sess.send({ t: 'notice', k: 'system', m: `ยินดีต้อนรับสู่ Novice Online, ${ch.name}! (ออนไลน์ ${W.players.size} คน)` });
       if (acc.gm) sess.send({ t: 'gmlist', list: GM.list(acc.gm) });
       return;
@@ -133,9 +138,9 @@ function handle(sess, m) {
   const p = sess.p;
   switch (m.t) {
     case 'mv': if (typeof m.x === 'number' && typeof m.y === 'number') C.clientMove(p, m.x, m.y); break;
-    case 'atk': { const e = p.inst.entities.get(m.id); p.atkTarget = e && C.isEnemy(p, e) ? e.id : null; break; }
+    case 'atk': { P.dismount(p); const e = p.inst.entities.get(m.id); p.atkTarget = e && C.isEnemy(p, e) ? e.id : null; break; }
     case 'stop': p.atkTarget = null; break;
-    case 'sk': if (typeof m.id === 'string') { if (p.auto.on) return; C.useSkill(p, m.id, m.tid | 0, typeof m.x === 'number' ? m.x : undefined, typeof m.y === 'number' ? m.y : undefined); } break;
+    case 'sk': if (typeof m.id === 'string') { if (p.auto.on) return; P.dismount(p); C.useSkill(p, m.id, m.tid | 0, typeof m.x === 'number' ? m.x : undefined, typeof m.y === 'number' ? m.y : undefined); } break;
     case 'breakfree': if (!A.breakFree(p)) sess.send({ t: 'err', m: 'ใช้ไม่ได้ตอนนี้ (CD 25s / ต้องติดสถานะ / SP 15%)' }); break;
     case 'chat': {
       const msg = String(m.m || '');
@@ -181,12 +186,30 @@ function handle(sess, m) {
     case 'portal': { const e = p.inst.entities.get(m.id); if (e && e.role === 'portal' && W.dist(e, p) < 4) W.enterMap(p, e.dest); break; }
     case 'healer': if (p.inst.def.kind === 'town') { p.hp = p.maxHp; p.sp = p.maxSp; C.addBuff(p, 'npc:bless', { str: 10, int: 10, dex: 10, agi: 10 }, 600, 'Blessing of Mira', '#fff'); sess.send({ t: 'notice', k: 'system', m: 'Sister Mira: ฮีลเต็ม + Blessing 10 นาที' }); } break;
     case 'auto': p.auto = Object.assign(A.sanitize(m.cfg), { on: p.auto.on, ax: p.auto.ax, ay: p.auto.ay, state: p.auto.state, startAt: p.auto.startAt, kills0: p.auto.kills0, startZeny: p.auto.startZeny, startLv: p.auto.startLv }); persist(p); C.sendChar(p, ['auto']); break;
-    case 'autoOn': A.setOn(p, !!m.on); C.sendChar(p, ['auto']); break;
+    case 'autoOn': if (m.on) P.dismount(p); A.setOn(p, !!m.on); C.sendChar(p, ['auto']); break;
     case 'party': S.party(p, m); break;
     case 'guild': S.guild(p, m); break;
     case 'info': S.info(p, m.what); break;
     case 'gm': if (p.gm) GM.run(p, '@' + String(m.cmd || '')); break;
     case 'ping': sess.send({ t: 'pong', c: m.c }); break;
+    case 'quest': P.claimQuest(p, m.kind, m.id); break;
+    case 'loginClaim': P.claimLogin(p); break;
+    case 'title': P.setTitle(p, String(m.title || '')); break;
+    case 'friend': P.friend(p, m.a, m.name); break;
+    case 'emote': P.emote(p, m.i); break;
+    case 'pet': P.setPet(p, m.id); break;
+    case 'mount': P.toggleMount(p, m.id); break;
+    case 'ranked': P.rankedJoin(p, !!m.on); break;
+    case 'gskill': P.guildSkill(p, m.k); break;
+    case 'gstore': P.guildStorage(p, m.a, m.uid, m.qty); break;
+    case 'storage': if (m.a === 'open') E.storageSend(p); else E.storage(p, m); break;
+    case 'mail': E.mail(p, m); break;
+    case 'ah': E.ah(p, m); break;
+    case 'trade': E.trade(p, m); break;
+    case 'craft': E.craft(p, m.i, m.n); break;
+    case 'tokenBuy': E.tokenBuy(p, m.i); break;
+    case 'stableBuy': E.stableBuy(p, m.id); break;
+    case 'refreshChar': C.sendChar(p, Object.keys(C.charPayload(p))); break;
   }
 }
 

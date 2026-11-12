@@ -1,11 +1,12 @@
 // Combat engine: damage, combo tags, reactions, skill execution, buffs, death.
-const D = require('../shared/data.js');
+const D = require('../shared/data2.js');
 const F = require('../shared/formulas.js');
 const M = require('../shared/mapgen.js');
 const { SKILLS } = require('../shared/skills.js');
 const W = require('./world');
 const I = require('./items');
 const S = require('./social');
+const P = require('./progress');
 
 const C = module.exports;
 const now = () => Date.now() / 1000;
@@ -30,6 +31,7 @@ C.isEnemy = function (a, b) {
   if (pa === pb) return false;
   // player vs player
   const inst = a.inst;
+  if (inst && inst.mapId === 'duel_arena') return true;
   if (!inst || !inst.pvp) return !!(pa.duel && pa.duel === pb.id);
   if (pa.party && pa.party === pb.party) return false;
   if ((inst.def.kind === 'castle' || inst.def.kind === 'wb') && pa.char.guild && pa.char.guild === pb.char.guild) return false;
@@ -53,6 +55,8 @@ C.recalc = function (p) {
       mods[k] = (mods[k] || 0) + v;
     }
   }
+  const ext = P.extraMods(p);
+  for (const k in ext) { if (k === 'cdr') cdrBonus += ext[k]; else if (k !== 'expPct') mods[k] = (mods[k] || 0) + ext[k]; }
   const castle = S.castleBonus(p);
   if (castle) { mods.atkPct = (mods.atkPct || 0) + castle; mods.matkPct = (mods.matkPct || 0) + castle; }
   p.gear = F.gearStats(p.char.equip);
@@ -74,6 +78,7 @@ C.makePlayer = function (char, sess, acc) {
     stealthUntil: 0, invulnUntil: 0, dead: false, god: false, hidden: false, speedMul: 1, known: new Set(), lastMv: now(), movedAt: 0,
     nextBonus: 0, summons: [], traps: [], delayed: [], ccDR: {}, size: 0.6, guildName: '', title: '', buffsChanged: true
   };
+  P.init(char);
   p.auto = Object.assign(defaultAuto(), char.auto || {}, { on: false });
   C.recalc(p);
   p.hp = Math.min(p.maxHp, char.hp || p.maxHp); if (p.hp <= 0) p.hp = p.maxHp;
@@ -92,7 +97,7 @@ C.charPayload = function (p) {
   return {
     id: c.id, name: c.name, cls: c.cls, lv: c.lv, exp: c.exp, next: F.expToNext(c.lv), statPts: c.statPts, stats: c.stats, skillPts: c.skillPts,
     skills: c.skills, hotbar: c.hotbar, inv: c.inv, equip: c.equip, zeny: c.zeny, st: p.st, gear: p.gear, auto: p.auto, dungeonBest: c.dungeonBest || {},
-    guild: S.guildInfo(c.guild), party: S.partyInfo(p), gm: p.gm, lastTown: c.lastTown, bestCombo: c.bestCombo || 0, pity: c.pity || 0
+    guild: S.guildInfo(c.guild), party: S.partyInfo(p), gm: p.gm, lastTown: c.lastTown, bestCombo: c.bestCombo || 0, pity: c.pity || 0, ...P.payload(p)
   };
 };
 C.sendChar = function (p, fields) {
@@ -758,6 +763,7 @@ function afterCast(p, sk, anyHit) {
       p.comboT = t;
       if (p.combo > p.bestCombo) p.bestCombo = p.combo;
       if (p.combo > (p.char.bestCombo || 0)) p.char.bestCombo = p.combo;
+      if (p.combo >= 10 && p.combo % 2 === 0) P.event(p, 'combo', { n: p.combo });
       const ms = { 5: 10, 10: 15, 15: 20, 20: 30 }[p.combo];
       if (ms) { p.ult = Math.min(100, p.ult + ms); p.inst.emit({ k: 'txt', t: p.id, x: p.x, y: p.y, m: `${p.combo} COMBO! +${ms}% ULT`, c: '#ffd34a', big: 1 }); }
       if (sk.kind !== 'ult') p.ult = Math.min(100, p.ult + 3);
@@ -765,6 +771,7 @@ function afterCast(p, sk, anyHit) {
       if (!sk.consumeRes) gainRes(p, 'skill', sk);
     }
     p.lastSkill = sk.id;
+    P.event(p, 'skill');
   }
 }
 

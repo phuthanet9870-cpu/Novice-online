@@ -1,11 +1,13 @@
 // Party, guild, chat, Guild War (castles), field bosses, world boss, dungeon stairs, rankings.
-const D = require('../shared/data.js');
+const D = require('../shared/data2.js');
 const F = require('../shared/formulas.js');
 const RNG = require('../shared/rng.js');
 const db = require('./db');
 const W = require('./world');
 const C = require('./combat');
 const I = require('./items');
+const P = require('./progress');
+const E = require('./econ');
 
 const S = module.exports;
 const now = () => Date.now() / 1000;
@@ -179,6 +181,7 @@ S.pvpKill = function (k, v) {
   v.char.pvpDeaths = (v.char.pvpDeaths || 0) + 1;
   if (k.duel === v.id) { k.duel = v.duel = null; v.dead = false; v.hp = 1; }
   for (const q of k.inst.players) send(q, { t: 'killfeed', k: k.name, v: v.name, kc: k.cls, vc: v.cls });
+  P.onPvpKill(k, v);
 };
 
 // ------------------------------------------------------------------ field bosses
@@ -230,6 +233,7 @@ S.onBossDeath = function (m, killer) {
   if (m.fieldBoss) {
     const st = fieldBoss[inst.mapId]; if (st) { st.alive = null; st.nextAt = now() + 3600 + r() * 1800; }
     S.announce(`⚔ ${killer ? killer.name : '?'} ได้ MVP จาก [${m.name}] ที่ ${inst.def.name}!`, 'boss');
+    for (const [pid] of m.dmgBy) { const q = inst.entities.get(pid); if (q && q !== killer) P.event(q, 'kill', { rank: m.rank, exp: 0 }); }
     if (killer) { I.addItem(killer.char, 'crystal_pure', 2); I.addItem(killer.char, 'scroll_protect', 1); I.gainExp(killer, m.exp * 0.5); send(killer, { t: 'notice', k: 'boss', m: 'MVP Reward: Pure Crystal x2, Protection Scroll x1, EXP โบนัส' }); C.sendChar(killer, ['inv']); }
   }
 };
@@ -246,6 +250,7 @@ S.checkStairs = function (inst, m) {
     const best = p.char.dungeonBest || (p.char.dungeonBest = {});
     best[inst.def.dungeon] = Math.max(best[inst.def.dungeon] || 0, inst.def.floor);
     C.sendChar(p, ['dungeonBest']);
+    P.event(p, 'floor', { n: 1 });
     if (inst.def.floor % 100 === 0) S.announce(`🗼 ${p.name} พิชิต ${inst.def.name}!`);
   }
 };
@@ -342,6 +347,7 @@ S.spawnWorldBoss = function (which) {
 S.wbDamage = function (p, dmg) {
   const e = wb.dmg.get(p.char.id) || { name: p.name, dmg: 0, guild: p.char.guild, cls: p.cls };
   e.dmg += dmg; e.guild = p.char.guild; wb.dmg.set(p.char.id, e);
+  if (!p.wbCounted) P.event(p, 'wb');
 };
 S.wbRanking = () => [...wb.dmg.entries()].sort((a, b) => b[1].dmg - a[1].dmg);
 S.onWorldBossDeath = function (m) {
@@ -359,7 +365,7 @@ S.onWorldBossDeath = function (m) {
     const it = F.genEquip(rr, rr.pick(D.SLOTS.filter((s) => s !== 'ring2')), Math.max(ch.lv, 100), rar, D.CLASSES[ch.cls].weapon);
     I.addEquip(ch, it); for (const [id, q] of extra) I.addItem(ch, id, q);
     ch.zeny += 50000 * (i < 10 ? 4 : 1);
-    if (p) { note(p, `World Boss รางวัลอันดับ ${i + 1}: [${D.RARITY[rar].n}] ${it.name}`, 'boss'); C.sendChar(p, ['inv', 'zeny']); }
+    if (p) { note(p, `World Boss รางวัลอันดับ ${i + 1}: [${D.RARITY[rar].n}] ${it.name}`, 'boss'); C.sendChar(p, ['inv', 'zeny']); P.event(p, 'kill', { rank: 4, exp: 0 }); p.wbCounted = false; }
   });
   const gsum = {};
   for (const [, e] of rank) if (e.guild) gsum[e.guild] = (gsum[e.guild] || 0) + e.dmg;
@@ -375,6 +381,8 @@ S.onWorldBossDeath = function (m) {
 
 // ------------------------------------------------------------------ scheduler & misc
 S.secondTick = function (t) {
+  P.secondTick(t);
+  if (Math.floor(t) % 60 === 0) E.ahExpire();
   for (const id in fieldBoss) {
     const st = fieldBoss[id];
     if (!st.alive && t >= st.nextAt) { const inst = W.instances.get(id); if (inst && inst.spawned) spawnFieldBoss(inst); else st.nextAt = t + 120; }
@@ -391,7 +399,7 @@ S.secondTick = function (t) {
   if (d.getDay() === gs.day && d.getHours() === gs.hour && d.getMinutes() === 0 && gvg.lastKey !== key && !gvg.active) { gvg.lastKey = key; S.startGvg(); }
   if (gvg.active && t >= gvg.endsAt) S.stopGvg();
 };
-S.onLogout = function (p) { if (p.party) S.party(p, { a: 'leave' }); };
+S.onLogout = function (p) { if (p.party) S.party(p, { a: 'leave' }); E.onLogout(p); const i = P.queue.findIndex((q) => q.p === p); if (i >= 0) P.queue.splice(i, 1); };
 
 S.info = function (p, what) {
   if (what === 'gvg') {

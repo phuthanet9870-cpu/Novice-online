@@ -1,5 +1,5 @@
 // GM commands (@command) with 5 permission levels and an audit log.
-const D = require('../shared/data.js');
+const D = require('../shared/data2.js');
 const F = require('../shared/formulas.js');
 const M = require('../shared/mapgen.js');
 const RNG = require('../shared/rng.js');
@@ -136,6 +136,14 @@ const CMDS = {
   dungeon: [2, '@dungeon <type> <floor>', 'วาร์ปเข้าดันเจี้ยนชั้นใดก็ได้', (p, a) => { if (!D.DUNGEONS.find((d) => d.id === a[0])) return 'types: ' + D.DUNGEONS.map((d) => d.id).join(', '); S.enterDungeon(p, a[0], +a[1] || 1); return 'ok'; }],
   stairs: [2, '@stairs', 'เปิดบันไดดันเจี้ยนทันที', (p) => { const inst = p.inst; if (inst.def.kind !== 'dungeon') return 'ไม่ได้อยู่ในดันเจี้ยน'; inst.kills = inst.mobTotal; S.checkStairs(inst, { floorBoss: true }); return 'opened'; }],
   title: [3, '@title <player> <ข้อความ>', 'ตั้งฉายาเหนือหัว', (p, a) => { const q = need(W.findPlayerByName(a[0]), a[0]); q.title = a.slice(1).join(' ').slice(0, 24); for (const o of q.inst.players) o.known.delete(q.id); return 'ok'; }],
+  pet: [3, '@pet <bunny|fox|owl|cat|turtle|wisp|drake> [lv]', 'ให้สัตว์เลี้ยง', (p, a) => { const P = require('./progress'); if (!D.PETS[a[0]]) return Object.keys(D.PETS).join(', '); P.init(p.char); let pet = p.char.pets.find((x) => x.id === a[0]); if (!pet) { pet = { id: a[0], lv: 1, exp: 0 }; p.char.pets.push(pet); } pet.lv = Math.max(1, Math.min(D.PET_MAX, +a[1] || pet.lv)); p.char.pet = pet; sync(p); P.refreshLook(p); return 'pet ' + a[0] + ' lv' + pet.lv; }],
+  mount: [3, '@mount <pony|horse|wolf|griffin|dragon>', 'ให้พาหนะ', (p, a) => { if (!D.MOUNTS[a[0]]) return Object.keys(D.MOUNTS).join(', '); require('./progress').init(p.char); if (!p.char.mounts.includes(a[0])) p.char.mounts.push(a[0]); p.char.mount = a[0]; sync(p); return 'ok'; }],
+  quest: [4, '@quest <index> [player]', 'ตั้งภารกิจหลัก (ข้ามไป)', (p, a) => { const q = need(target(p, a[1]), a[1]); require('./progress').init(q.char); q.char.quests.main = Math.max(0, Math.min(D.MAIN_QUESTS.length, +a[0] || 0)); q.char.quests.prog = 0; sync(q); return 'main quest → ' + q.char.quests.main; }],
+  mmr: [4, '@mmr <n> [player]', 'ตั้ง MMR จัดอันดับ', (p, a) => { const q = need(target(p, a[1]), a[1]); q.char.mmr = +a[0] || 1000; sync(q); return 'mmr ' + q.char.mmr; }],
+  karma: [3, '@karma <n> [player]', 'ตั้ง Karma (ชื่อแดง)', (p, a) => { const q = need(target(p, a[1]), a[1]); q.char.karma = Math.max(0, +a[0] || 0); require('./progress').refreshLook(q); return 'karma ' + q.char.karma; }],
+  sendmail: [3, '@sendmail <player> <item_id> <qty> [ข้อความ]', 'ส่งไอเทมทางจดหมาย (ผู้เล่นออฟไลน์ได้)', (p, a) => { const ch = db.charByName(a[0]); if (!ch) return 'ไม่พบ'; if (!D.ITEMS[a[1]]) return 'id ผิด'; require('./econ').mailSystem(ch.id, 'ของขวัญจาก GM', a.slice(3).join(' '), [{ id: a[1], qty: +a[2] || 1, uid: 'u' + db.nextId() }], 0, 'GM'); return 'sent'; }],
+  guildlv: [4, '@guildlv <lv>', 'ตั้งเลเวลกิลด์ของตัวเอง', (p, a) => { const g = db.data.guilds[p.char.guild]; if (!g) return 'ไม่มีกิลด์'; g.lv = Math.max(1, Math.min(D.GUILD_MAX_LV, +a[0] || 1)); g.exp = 0; db.dirty = true; sync(p); return 'guild lv ' + g.lv; }],
+  achieve: [4, '@achieve [player]', 'ตรวจความสำเร็จใหม่', (p, a) => { const q = need(target(p, a[0]), a[0]); require('./progress').checkAch(q); return 'checked'; }],
   audit: [5, '@audit [n]', 'ดู GM audit log ล่าสุด', (p, a) => { try { const lines = require('fs').readFileSync(require('path').join(__dirname, '..', 'data', 'gm_audit.log'), 'utf8').trim().split('\n'); return lines.slice(-(+a[0] || 15)).join('\n'); } catch (e) { return 'ว่าง'; } }]
 };
 G.CMDS = CMDS;

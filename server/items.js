@@ -1,5 +1,5 @@
 // Inventory, character progression, drops, shop, refine +20, runes & jewels.
-const D = require('../shared/data.js');
+const D = require('../shared/data2.js');
 const F = require('../shared/formulas.js');
 const RNG = require('../shared/rng.js');
 const { SKILLS, CLASS_SKILLS } = require('../shared/skills.js');
@@ -7,6 +7,7 @@ const db = require('./db');
 const W = require('./world');
 const C = require('./combat');
 const S = require('./social');
+const P = require('./progress');
 
 const I = module.exports;
 const INV_MAX = 150;
@@ -32,6 +33,7 @@ I.newChar = function (acc, name, cls) {
   const b = F.genEquip(r, 'boots', 1, 0); b.uid = uid(); ch.equip.boots = b;
   I.addItem(ch, 'pot_hp_1', 30); I.addItem(ch, 'pot_sp_1', 10); I.addItem(ch, 'tele_scroll', 5); I.addItem(ch, 'ore_refine', 5);
   ch.hotbar[12] = 'item:pot_hp_1'; ch.hotbar[13] = 'item:pot_sp_1';
+  P.init(ch);
   return ch;
 };
 
@@ -74,7 +76,7 @@ I.itemName = (it) => it.type === 'equip' ? `${it.refine ? '+' + it.refine + ' ' 
 I.gainExp = function (p, amt) {
   const ch = p.char;
   if (ch.lv >= D.MAX_LEVEL) return;
-  amt = Math.round(amt * (db.data.settings.exp || 1) * (1 + S.castleBonus(p) / 100));
+  amt = Math.round(amt * (db.data.settings.exp || 1) * (1 + (S.castleBonus(p) + P.expBonus(p)) / 100));
   ch.exp += amt;
   let up = 0;
   while (ch.lv < D.MAX_LEVEL && ch.exp >= F.expToNext(ch.lv)) {
@@ -89,6 +91,7 @@ I.gainExp = function (p, amt) {
     note(p, `เลเวลอัป! Lv ${ch.lv}  (+สเตตัส / +แต้มสกิล)`, 'level');
     if (ch.lv % 50 === 0 || ch.lv === D.MAX_LEVEL) S.broadcast({ t: 'notice', k: 'world', m: `🎉 ${ch.name} ถึงเลเวล ${ch.lv} แล้ว!` });
     C.sendChar(p, ['lv', 'next', 'statPts', 'skillPts', 'stats', 'st']);
+    P.event(p, 'level'); P.checkAch(p);
   }
 };
 
@@ -182,6 +185,7 @@ I.use = function (p, u, byId) {
     if (p.inst.def.kind === 'castle' && S.gvgActive()) return err(p, 'ใช้ไม่ได้ระหว่างกิลด์วอร์');
     I.consume(ch, it.id, 1); W.enterMap(p, ch.lastTown || 'aurelia'); return true;
   }
+  if (['pet', 'mount', 'petfood', 'buffitem'].includes(def.type)) return P.useSpecial(p, it, def);
   return err(p, 'ไอเทมนี้ใช้โดยตรงไม่ได้');
 };
 I.sellPrice = function (it) {
@@ -194,6 +198,7 @@ I.sell = function (p, u, qty) {
   const q = it.type === 'equip' ? 1 : Math.max(1, Math.min(it.qty, qty | 0 || it.qty));
   const got = I.sellPrice(it) * q;
   I.removeUid(ch, u, q); ch.zeny += got;
+  P.event(p, 'sell');
   invSync(p);
   note(p, `ขาย ${I.itemName(it)} x${q} ได้ ${got.toLocaleString()} Zeny`);
 };
@@ -226,6 +231,7 @@ I.onMonsterKilled = function (m, killer) {
     if (inst.def.kind === 'dungeon') e *= 1.3;
     I.gainExp(q, e);
     q.char.kills = (q.char.kills || 0) + 1;
+    P.event(q, 'kill', { rank: m.rank, exp: e });
   }
   // loot
   const ch = killer.char;
@@ -239,6 +245,10 @@ I.onMonsterKilled = function (m, killer) {
   if (roll(0.07)) give('pot_hp_' + potTier(lv));
   if (roll(0.035)) give('pot_sp_' + Math.min(4, potTier(lv)));
   if (roll(0.25)) give('monster_core');
+  if (roll(0.12)) give('herb', rk ? 3 : 1);
+  if (lv >= 25 && roll(0.08)) give('mana_dust', rk ? 3 : 1);
+  if (rk >= 2 && roll(0.25)) give(r() < 0.5 ? 'exp_scroll' : 'drop_scroll');
+  if (rk >= 1 && roll(0.04)) give('pet_food', 2);
   if (roll(rk ? 0.25 : 0.05)) give('ore_refine', rk >= 2 ? 5 : 1);
   if (lv >= 50 && roll(rk ? 0.08 : 0.012)) give('crystal_pure', rk >= 2 ? 3 : 1);
   if (lv >= 120 && roll(rk ? 0.02 : 0.003)) give('crystal_divine', rk >= 2 ? 2 : 1);
@@ -297,7 +307,7 @@ I.refine = function (p, u, prot, bless) {
   const rate = Math.min(100, D.REFINE_RATES[target - 1] * (db.data.settings.refine || 1) + (ch.pity || 0) * 0.5);
   const ok = r() * 100 < rate;
   let broke = false, to = from;
-  if (ok) { to = target; ch.pity = 0; }
+  if (ok) { to = target; ch.pity = 0; P.event(p, 'refine', { to }); }
   else {
     ch.pity = (ch.pity || 0) + 1;
     const f = D.refineFail(target);

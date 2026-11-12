@@ -356,6 +356,24 @@
     g.restore();
   };
 
+  ART.drawMount = function (g, kind, x, y, t, moving, face) {
+    const M = NO_DATA.MOUNTS[kind]; if (!M) return;
+    const c = M.color, dark = shade(c, -0.35);
+    const step = moving ? Math.sin(t * 14) * 3 : 0;
+    g.save(); g.translate(x, y); g.scale(face, 1);
+    const flying = kind === 'griffin' || kind === 'dragon';
+    if (flying) { g.fillStyle = kind === 'dragon' ? '#5a1a1a' : '#f0e0b0'; const f = Math.sin(t * 8) * 0.5; for (const s of [-1, 1]) { g.save(); g.translate(-2, -14); g.rotate(s * (0.5 + f)); g.beginPath(); g.moveTo(0, 0); g.lineTo(-22, -16 * s); g.lineTo(-8, -2 * s); g.closePath(); g.fill(); g.restore(); } }
+    g.fillStyle = dark; for (const lx of [-10, -4, 5, 11]) g.fillRect(lx, -4 + (lx % 2 ? step : -step) * 0.3, 3, 8);
+    g.fillStyle = c; g.beginPath(); g.ellipse(0, -8, 16, 8, 0, 0, 7); g.fill();
+    g.beginPath(); g.moveTo(10, -12); g.quadraticCurveTo(16, -26, 22, -22); g.lineTo(18, -12); g.fill();
+    g.beginPath(); g.ellipse(22, -22, 6, 4.5, 0.4, 0, 7); g.fill();
+    if (kind === 'pony' || kind === 'horse') { g.fillStyle = kind === 'horse' ? '#2a1a0a' : '#f0e0c0'; g.fillRect(9, -24, 4, 10); g.beginPath(); g.moveTo(-15, -10); g.quadraticCurveTo(-24, -4, -20, 4); g.lineTo(-14, -6); g.fill(); }
+    if (kind === 'wolf') { g.beginPath(); g.moveTo(20, -26); g.lineTo(22, -32); g.lineTo(25, -25); g.fill(); g.beginPath(); g.moveTo(-15, -10); g.lineTo(-25, -16 + Math.sin(t * 8) * 2); g.lineTo(-15, -6); g.fill(); }
+    if (kind === 'dragon') { g.fillStyle = '#ffd34a'; g.beginPath(); g.moveTo(20, -26); g.lineTo(18, -33); g.lineTo(23, -27); g.fill(); }
+    g.fillStyle = '#7a2a2a'; g.fillRect(-6, -16, 12, 5);
+    g.fillStyle = '#111'; g.beginPath(); g.arc(24, -23, 1.3, 0, 7); g.fill();
+    g.restore();
+  };
   ART.drawNpc = function (g, e, x, y, t) {
     const bob = Math.sin(t * 2 + e.id) * 1;
     if (e.role === 'stairs' || e.role === 'portal') {
@@ -456,6 +474,12 @@
         else if (def.type === 'jewel') { g.fillStyle = c; g.shadowColor = c; g.shadowBlur = 8; g.beginPath(); g.moveTo(0, -13); g.lineTo(12, -3); g.lineTo(0, 14); g.lineTo(-12, -3); g.closePath(); g.fill(); g.fillStyle = 'rgba(255,255,255,0.5)'; g.beginPath(); g.moveTo(0, -13); g.lineTo(-6, -3); g.lineTo(0, 2); g.fill(); }
         else if (/crystal/.test(it.id)) { g.fillStyle = c; g.shadowColor = c; g.shadowBlur = 10; g.beginPath(); g.moveTo(0, -16); g.lineTo(8, 0); g.lineTo(0, 15); g.lineTo(-8, 0); g.closePath(); g.fill(); }
         else if (/scroll/.test(it.id)) { g.fillStyle = '#f0e2b8'; g.fillRect(-11, -9, 22, 18); g.fillStyle = c; g.fillRect(-13, -11, 4, 22); g.fillRect(9, -11, 4, 22); g.fillStyle = '#8a6a3a'; g.fillRect(-6, -4, 12, 2); g.fillRect(-6, 1, 9, 2); }
+        else if (def.type === 'pet') { g.fillStyle = '#f8f0e0'; g.beginPath(); g.ellipse(0, 2, 11, 14, 0, 0, 7); g.fill(); g.fillStyle = c; for (const [x, y, r] of [[-4, -4, 3], [5, 2, 3.5], [-2, 8, 2.5], [4, -9, 2]]) { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } g.strokeStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.ellipse(0, 2, 11, 14, 0, 0, 7); g.stroke(); }
+        else if (def.type === 'mount') { g.strokeStyle = c; g.lineWidth = 5; g.beginPath(); g.arc(0, 0, 11, 0.5, Math.PI * 2 - 0.5 + Math.PI); g.stroke(); g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.stroke(); g.fillStyle = '#fff'; for (const a of [0.9, 2.2, 3.6, 4.9]) { g.beginPath(); g.arc(Math.cos(a) * 11, Math.sin(a) * 11, 1.5, 0, 7); g.fill(); } }
+        else if (def.type === 'buffitem' || def.type === 'petfood') { g.shadowColor = c; g.shadowBlur = 10; g.fillStyle = c; g.beginPath(); g.moveTo(-4, -14); g.lineTo(4, -14); g.lineTo(4, -6); g.lineTo(11, 10); g.quadraticCurveTo(0, 16, -11, 10); g.lineTo(-4, -6); g.closePath(); g.fill(); g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(-2, -4, 3, 10); }
+        else if (def.type === 'currency') { g.fillStyle = c; g.shadowColor = c; g.shadowBlur = 8; g.beginPath(); g.arc(0, 0, 13, 0, 7); g.fill(); g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, 9, 0, 7); g.stroke(); g.fillStyle = 'rgba(0,0,0,0.35)'; g.font = 'bold 12px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(it.id === 'arena_token' ? '⚔' : '★', 0, 1); }
+        else if (it.id === 'herb') { g.fillStyle = c; for (let a = -1; a <= 1; a++) { g.save(); g.rotate(a * 0.6); g.beginPath(); g.ellipse(0, -6, 4, 10, 0, 0, 7); g.fill(); g.restore(); } g.strokeStyle = '#3a6a2a'; g.lineWidth = 2; g.beginPath(); g.moveTo(0, 2); g.lineTo(0, 14); g.stroke(); }
+        else if (it.id === 'mana_dust') { g.fillStyle = c; g.shadowColor = c; g.shadowBlur = 8; for (let i = 0; i < 9; i++) { g.beginPath(); g.arc(Math.cos(i * 2.4) * (i % 3) * 5, Math.sin(i * 2.4) * (i % 3) * 5 + 2, 2.5, 0, 7); g.fill(); } }
         else { g.fillStyle = c; g.beginPath(); g.moveTo(-12, 8); g.lineTo(-6, -10); g.lineTo(6, -12); g.lineTo(13, 4); g.lineTo(4, 12); g.closePath(); g.fill(); g.fillStyle = 'rgba(255,255,255,0.3)'; g.beginPath(); g.moveTo(-6, -10); g.lineTo(0, -4); g.lineTo(6, -12); g.fill(); }
       }
       g.restore();

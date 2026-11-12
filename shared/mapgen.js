@@ -1,7 +1,7 @@
 // Deterministic procedural map generation + A* pathfinding (shared).
 (function (root, factory) {
   const isNode = typeof require === 'function';
-  const m = factory(isNode ? require('./rng.js') : root.NO_RNG, isNode ? require('./data.js') : root.NO_DATA);
+  const m = factory(isNode ? require('./rng.js') : root.NO_RNG, isNode ? require('./data2.js') : root.NO_DATA);
   if (typeof module === 'object' && module.exports) module.exports = m; else root.NO_MAP = m;
 })(typeof self !== 'undefined' ? self : this, function (RNG, D) {
   // tile codes

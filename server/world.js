@@ -1,5 +1,5 @@
 // World simulation: instances (maps), entities, spatial grid, monster AI, snapshots, tick loop.
-const D = require('../shared/data.js');
+const D = require('../shared/data2.js');
 const F = require('../shared/formulas.js');
 const M = require('../shared/mapgen.js');
 const RNG = require('../shared/rng.js');
@@ -412,7 +412,8 @@ function desc(e, viewer) {
     const eq = e.char.equip || {};
     const w = eq.weapon;
     Object.assign(base, { c: e.cls, lv: e.lv, g: e.guildName || '', gm: e.gm > 0 && !e.hidden ? 1 : 0,
-      w: w ? [w.rarity, w.refine || 0] : [0, 0], ar: eq.armor ? eq.armor.rarity : 0, pt: e.party && viewer.party === e.party ? 1 : 0, title: e.title || '' });
+      w: w ? [w.rarity, w.refine || 0] : [0, 0], ar: eq.armor ? eq.armor.rarity : 0, pt: e.party && viewer.party === e.party ? 1 : 0, title: e.title || '',
+      pet: e.char.pet ? [e.char.pet.id, e.char.pet.lv] : 0, mt: e.mounted || '', ka: e.char.karma > 0 ? 1 : 0, rk: D.rankTier ? D.rankTier(e.char.mmr || 1000)[1] : '' });
   } else if (e.kind === 'm' || e.kind === 's') {
     Object.assign(base, { lv: e.lv, sh: e.shape, col: e.color, el: e.element, rk: e.kind === 's' ? 5 : e.rank, sz: e.size, mhp: e.maxHp, own: e.owner ? e.owner.id : 0 });
   } else if (e.kind === 'n') Object.assign(base, { role: e.role, col: e.color, th: e.th || '', dest: e.dest || '' });

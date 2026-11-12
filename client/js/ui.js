@@ -7,7 +7,7 @@
   const fmt = (n) => Math.round(n).toLocaleString();
   const UI = window.UI = { wins: {}, open: [], chatTab: 'all', chatCh: 'map', selItem: null, skillTab: null, invTab: 'all', log: [] };
   const HOTKEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 'z', 'x', 'c', 'v', 'b', 'n'];
-  const WINKEYS = { i: 'inv', k: 'skills', u: 'char', o: 'auto', m: 'map', j: 'dungeon', g: 'guild', p: 'party', r: 'rank', h: 'help', f10: 'gm' };
+  const WINKEYS = { i: 'inv', k: 'skills', u: 'char', o: 'auto', m: 'map', j: 'dungeon', g: 'guild', p: 'party', r: 'rank', h: 'help', f10: 'gm', l: 'quests', y: 'achieve', f: 'friends', ',': 'pets', '.': 'settings' };
 
   // ================================================================ screens
   UI.boot = function () {
@@ -86,7 +86,7 @@
       el.ondragstart = (e) => { const v = G.char.hotbar[+el.dataset.i]; if (!v) return e.preventDefault(); e.dataTransfer.setData('text/plain', v); e.dataTransfer.setData('from', el.dataset.i); };
     }
     $('#bfBtn').onclick = () => G.send({ t: 'breakfree' });
-    $('#menu').innerHTML = [['char', '👤', 'ตัวละคร', 'U'], ['inv', '🎒', 'กระเป๋า', 'I'], ['skills', '📖', 'สกิล', 'K'], ['auto', '🤖', 'ออโต้', 'O'], ['map', '🗺', 'แผนที่โลก', 'M'], ['dungeon', '🗼', 'ดันเจี้ยน', 'J'], ['guild', '🏰', 'กิลด์', 'G'], ['party', '👥', 'ปาร์ตี้', 'P'], ['rank', '🏆', 'อันดับ/บอส', 'R'], ['help', '❔', 'คู่มือ', 'H'], ['gm', '🛡', 'GM', 'F10']]
+    $('#menu').innerHTML = [['char', '👤', 'ตัวละคร', 'U'], ['inv', '🎒', 'กระเป๋า', 'I'], ['skills', '📖', 'สกิล', 'K'], ['auto', '🤖', 'ออโต้', 'O'], ['quests', '📜', 'ภารกิจ', 'L'], ['map', '🗺', 'แผนที่โลก', 'M'], ['dungeon', '🗼', 'ดันเจี้ยน', 'J'], ['achieve', '🏅', 'ความสำเร็จ/ฉายา', 'Y'], ['pets', '🐾', 'สัตว์เลี้ยง/พาหนะ', ','], ['mail', '✉', 'จดหมาย', '-'], ['market', '🏛', 'ตลาดประมูล', '-'], ['craft', '⚗', 'คราฟต์/แลกโทเคน', '-'], ['guild', '🏰', 'กิลด์', 'G'], ['party', '👥', 'ปาร์ตี้', 'P'], ['friends', '💬', 'เพื่อน', 'F'], ['rank', '🏆', 'อันดับ/บอส', 'R'], ['settings', '⚙', 'ตั้งค่า', '.'], ['help', '❔', 'คู่มือ', 'H'], ['gm', '🛡', 'GM', 'F10']]
       .map(([w, ic, n, k]) => `<button class="mbtn" data-win="${w}" data-tip="${n} (${k})" ${w === 'gm' ? 'id="gmBtn" hidden' : ''}><span>${ic}</span><kbd>${k}</kbd></button>`).join('');
     $('#menu').onclick = (e) => { const b = e.target.closest('[data-win]'); if (b) UI.toggle(b.dataset.win); };
     $('#autoToggle').onclick = () => G.send({ t: 'autoOn', on: !G.autoOn() });
@@ -196,6 +196,9 @@
     renderTarget();
     // party hp
     for (const el of document.querySelectorAll('.pmem')) { const e = G.ents.get(+el.dataset.pid); el.querySelector('.bar i').style.width = (e ? e.hp : 0) + '%'; el.classList.toggle('far', !e); }
+    const mb = document.querySelector('[data-win="mail"]'); if (mb) mb.classList.toggle('badge-dot', !!G.char.unread);
+    if (me.cb >= 3 && me.cb !== UI._lastCb && window.SFX) SFX.combo(me.cb);
+    UI._lastCb = me.cb;
     if (++hudTick % 5 === 0) { $('#coords').textContent = `${G.self.x.toFixed(0)}, ${G.self.y.toFixed(0)}`; $('#net').textContent = `${G.ping}ms · ${G.fps}fps`; }
   };
   function setBar(sel, v, max, txt) { const el = $(sel); el.querySelector('i').style.width = Math.max(0, Math.min(100, v / max * 100)) + '%'; el.querySelector('span').textContent = txt; }
@@ -270,6 +273,7 @@
   // ================================================================ notices & chat
   UI.toast = function (m, kind) {
     const el = document.createElement('div'); el.className = 'toast ' + (kind || ''); el.textContent = m;
+    if (window.SFX && kind === 'err') SFX.err();
     $('#toasts').appendChild(el); setTimeout(() => el.classList.add('out'), 2200); setTimeout(() => el.remove(), 2700);
     while ($('#toasts').children.length > 4) $('#toasts').firstChild.remove();
   };
@@ -287,7 +291,7 @@
   }
   UI.notice = function (m, k) {
     UI.chat('system', '', m, k);
-    if (['world', 'boss', 'gvg', 'refine', 'loot', 'event', 'gm'].includes(k)) UI.banner(m, '', k);
+    if (['world', 'boss', 'gvg', 'refine', 'loot', 'event', 'gm', 'pvp'].includes(k)) { UI.banner(m, '', k); if (window.SFX) { if (k === 'boss') SFX.boss(); else if (k === 'loot') SFX.rare(); else SFX.notice(); } }
     else UI.toast(m, k === 'warn' ? 'err' : k === 'level' ? 'gold' : '');
   };
   UI.chat = function (ch, f, m, k) {
@@ -305,6 +309,7 @@
   }
   UI.gmOut = function (m) { UI.chat('system', 'GM', m); const o = $('#gmOut'); if (o) { o.textContent += '\n> ' + m; o.scrollTop = o.scrollHeight; } };
   UI.loot = function (m) {
+    if (window.SFX) { if (m.items.some((x) => /Legendary|Mythic|Epic/.test(x))) SFX.rare(); else SFX.loot(); }
     for (const it of m.items) { const el = document.createElement('div'); el.className = 'lootItem'; el.textContent = '+ ' + it; $('#lootFeed').appendChild(el); setTimeout(() => el.classList.add('out'), 3000); setTimeout(() => el.remove(), 3600); }
     while ($('#lootFeed').children.length > 7) $('#lootFeed').firstChild.remove();
   };
@@ -316,12 +321,13 @@
     const el = $('#ultBanner'); el.innerHTML = `<small>${esc(by)}</small><b style="--c:${col}">${esc(name)}</b>`;
     el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
   };
-  UI.dead = function (m) { $('#death').hidden = false; $('#deathBy').textContent = m.by ? `ถูกสังหารโดย ${m.by}` : 'คุณล้มลงแล้ว'; $('#deathLoss').textContent = m.loss ? `เสีย EXP ${fmt(m.loss)}` : ''; };
+  UI.dead = function (m) { if ($('#death').hidden && window.SFX) SFX.death(); $('#death').hidden = false; $('#deathBy').textContent = m.by ? `ถูกสังหารโดย ${m.by}` : 'คุณล้มลงแล้ว'; $('#deathLoss').textContent = m.loss ? `เสีย EXP ${fmt(m.loss)}` : ''; };
   UI.hideDead = () => { $('#death').hidden = true; };
   UI.autoReport = function (m) { UI.notice(`รายงานออโต้: ${m.mins} นาที · ฆ่า ${m.kills} ตัว · Zeny ${m.zeny >= 0 ? '+' : ''}${fmt(m.zeny)} · เลเวล +${m.lv}`, 'level'); };
   UI.invite = function (m) {
     const el = document.createElement('div'); el.className = 'invite';
-    el.innerHTML = `<b>${m.kind === 'party' ? '👥 คำเชิญปาร์ตี้' : '🏰 คำเชิญกิลด์'}</b><p>${esc(m.from)} เชิญคุณ</p><button class="btn gold">ตอบรับ</button><button class="btn">ปฏิเสธ</button>`;
+    el.innerHTML = `<b>${m.kind === 'party' ? '👥 คำเชิญปาร์ตี้' : m.kind === 'trade' ? '🤝 คำขอเทรด' : '🏰 คำเชิญกิลด์'}</b><p>${esc(m.from)} ${m.kind === 'trade' ? 'ขอเทรดกับคุณ' : 'เชิญคุณ'}</p><button class="btn gold">ตอบรับ</button><button class="btn">ปฏิเสธ</button>`;
+    if (window.SFX) SFX.notice();
     const [ok, no] = el.querySelectorAll('button');
     ok.onclick = () => { G.send({ t: m.kind, a: 'accept', id: m.id }); el.remove(); };
     no.onclick = () => el.remove();
@@ -330,8 +336,8 @@
   UI.playerMenu = function (e, x, y) {
     closeCtx();
     const el = document.createElement('div'); el.className = 'ctx'; el.style.left = x + 'px'; el.style.top = y + 'px';
-    el.innerHTML = `<b>${esc(e.n)}</b><button data-a="party">เชิญปาร์ตี้</button><button data-a="guild">เชิญกิลด์</button><button data-a="w">กระซิบ</button><button data-a="duel">ท้าดวล</button>`;
-    el.onclick = (ev) => { const a = ev.target.dataset.a; if (!a) return; if (a === 'party') G.send({ t: 'party', a: 'invite', name: e.n }); if (a === 'guild') G.send({ t: 'guild', a: 'invite', name: e.n }); if (a === 'w') { $('#chatIn').value = `/w ${e.n} `; UI.focusChat(); } if (a === 'duel') G.send({ t: 'chat', m: `/duel ${e.n}` }); closeCtx(); };
+    el.innerHTML = `<b>${esc(e.n)}</b><button data-a="party">เชิญปาร์ตี้</button><button data-a="guild">เชิญกิลด์</button><button data-a="trade">ขอเทรด</button><button data-a="friend">เพิ่มเพื่อน</button><button data-a="w">กระซิบ</button><button data-a="duel">ท้าดวล</button>`;
+    el.onclick = (ev) => { const a = ev.target.dataset.a; if (!a) return; if (a === 'party') G.send({ t: 'party', a: 'invite', name: e.n }); if (a === 'guild') G.send({ t: 'guild', a: 'invite', name: e.n }); if (a === 'w') { $('#chatIn').value = `/w ${e.n} `; UI.focusChat(); } if (a === 'duel') G.send({ t: 'chat', m: `/duel ${e.n}` }); if (a === 'trade') G.send({ t: 'trade', a: 'request', name: e.n }); if (a === 'friend') G.send({ t: 'friend', a: 'add', name: e.n }); closeCtx(); };
     document.body.appendChild(el); setTimeout(() => document.addEventListener('mousedown', closeCtx, { once: true }), 0);
   };
   function closeCtx() { for (const c of document.querySelectorAll('.ctx')) c.remove(); }
@@ -426,6 +432,7 @@
 
   // ================================================================ windows
   const WIN = {};
+  UI.WIN = WIN; UI.esc = esc; UI.fmt = fmt; UI.sellPrice = (it) => sellPrice(it); UI.skillTip = (id) => skillTip(id); UI.itemTip = (it) => itemTip(it);
   UI.toggle = function (name) { if (UI.open.includes(name)) UI.close(name); else UI.show(name); };
   UI.show = function (name, opts) {
     const def = WIN[name]; if (!def) return;
@@ -484,6 +491,7 @@
     else if (r === 'healer') G.send({ t: 'healer' });
     else if (r === 'stairs') G.send({ t: 'stairs' });
     else if (r === 'portal') G.send({ t: 'portal', id: n.id });
+    else if (r === 'storage') UI.show('storage'); else if (r === 'market') UI.show('market'); else if (r === 'mail') UI.show('mail'); else if (r === 'quest') UI.show('quests'); else if (r === 'craft') UI.show('craft'); else if (r === 'stable') UI.show('pets', { tab: 'shop' });
   };
   UI.info = function (m) { UI.lastInfo = UI.lastInfo || {}; UI.lastInfo[m.what] = m; for (const w of UI.open) renderWin(w); };
 
@@ -781,6 +789,7 @@
     const fx = $('#refFx');
     const msg = m.ok ? `✨ สำเร็จ! +${m.to}` : m.broke ? '💥 พัง! ของหายไป...' : m.to < m.from ? `❌ ล้มเหลว ลดเป็น +${m.to}` : '❌ ล้มเหลว';
     UI.toast(msg, m.ok ? 'gold' : 'err');
+    if (window.SFX) SFX.refine(m.ok, m.broke);
     if (fx) { fx.className = m.ok ? 'ok' : 'fail'; fx.textContent = msg; setTimeout(() => { fx.className = ''; fx.textContent = ''; }, 1600); }
     if (m.ok && UI.wins.refine) UI.wins.refine.opts.uid = m.uid;
   };

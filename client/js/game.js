@@ -46,6 +46,7 @@
     killfeed: (m) => UI.killfeed(m),
     autoReport: (m) => UI.autoReport(m),
     pong: (m) => { G.ping = Math.round(performance.now() - m.c); },
+    storage: (m) => UI.onStorage(m), mail: (m) => UI.onMail(m), ah: (m) => UI.onAh(m), trade: (m) => UI.onTrade(m), ranked: (m) => UI.onRanked(m), loginReward: () => UI.loginPopup(),
     reloadSkills: () => { const s = document.createElement('script'); s.src = '/shared/skills.js?' + Date.now(); s.onload = () => { SK = NO_SKILLS.SKILLS; ART.clearIcons(); UI.refresh(['skills']); }; document.head.appendChild(s); }
   };
 
@@ -58,6 +59,7 @@
     G.self.x = m.x; G.self.y = m.y; G.cam.x = m.x; G.cam.y = m.y; G.path = null; G.pending = null; G.target = 0;
     G.char = m.char; G.st = m.char.st;
     G.weather = m.info.weather || (D.BIOMES[G.map.def.biome] && G.map.def.biome === 'snow' ? 'snow' : G.map.def.biome === 'volcano' ? 'ash' : '');
+    if (window.SFX) { SFX.setBiome(G.map.def.kind === 'town' ? 'town' : G.map.def.biome); SFX.startMusic(); }
     UI.onEnter(m);
   }
 
@@ -170,6 +172,8 @@
       else if (k === 'f1') { G.send({ t: 'use', id: bestPot('hp') }); ev.preventDefault(); }
       else if (k === 'f2') { G.send({ t: 'use', id: bestPot('sp') }); ev.preventDefault(); }
       else if (k === 'q') G.send({ t: 'breakfree' });
+      else if (k === 't') G.send({ t: 'mount' });
+      else if (k === 'e') UI.emoteWheel();
       else if (k === 'escape') { if (!UI.closeTop()) UI.toggle('help'); }
       else if (k === 'enter') { UI.focusChat(); ev.preventDefault(); }
       else UI.windowKey(k, ev);
@@ -223,6 +227,7 @@
     const hard = se && (G.hasTag(se, 'stun') || G.hasTag(se, 'freeze') || G.hasTag(se, 'airborne') || G.hasTag(se, 'knockdown') || G.hasTag(se, 'root') || G.hasTag(se, 'fear'));
     if (G.autoOn() || dead || hard || G.sme.cast) { if (se) { se.moving = G.autoOn() && Math.hypot(se.tx - se.x, se.ty - se.y) > 0.05; } return; }
     let vx = 0, vy = 0;
+    if (G.joy && (G.joy.x || G.joy.y)) { vx = G.joy.x; vy = G.joy.y; }
     if (!UI.typing()) {
       if (G.keys.w || G.keys.arrowup) vy -= 1; if (G.keys.s || G.keys.arrowdown) vy += 1;
       if (G.keys.a || G.keys.arrowleft) vx -= 1; if (G.keys.d || G.keys.arrowright) vx += 1;
@@ -267,6 +272,38 @@
     for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, s = spd * (0.3 + Math.random()); G.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - (grav ? 2 : 0), life, max: life, col, size: size * (0.5 + Math.random()), grav }); }
   }
   G.burst = burst;
+  // element-flavoured particles
+  const EL_STYLE = {
+    fire: [['#ff7a2a', '#ffd34a', '#ff3a1a'], 'dot', -2.5], ice: [['#bff0ff', '#7fdcff', '#ffffff'], 'shard', 0], water: [['#3d8bff', '#8ac8ff'], 'ring', 1.5],
+    lightning: [['#fff35a', '#ffffff', '#9ad0ff'], 'spark', 0], wind: [['#9cf5b0', '#e0fff0'], 'ring', -0.5], earth: [['#c8964a', '#8a6a3a', '#e0c080'], 'shard', 5],
+    holy: [['#fff6c0', '#ffe080', '#ffffff'], 'star', -1.5], dark: [['#a15cff', '#5a2a8a', '#2a1040'], 'dot', -1], poison: [['#86e04a', '#c0ff80'], 'ring', -1.2],
+    blood: [['#ff3a4a', '#a01020'], 'dot', 4], neutral: [['#ffffff', '#dde4ec'], 'spark', 0]
+  };
+  G.elemBurst = function (x, y, el, n, spd = 4) {
+    const st = EL_STYLE[el] || EL_STYLE.neutral;
+    n = Math.round(n * (G.settings && G.settings.particles === 0 ? 0.4 : 1));
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * 6.28, s = spd * (0.3 + Math.random());
+      G.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.6, max: 0.6, col: st[0][(Math.random() * st[0].length) | 0], size: 3 + Math.random() * 3, grav: st[2], sh: st[1] });
+    }
+  };
+  // pets follow their owner (client-side only)
+  const petPos = new Map();
+  function drawPets(g, dt) {
+    for (const e of G.ents.values()) {
+      if (e.k !== 'p' || !e.pet || (e.fl & 1)) continue;
+      const pd = D.PETS && D.PETS[e.pet[0]]; if (!pd) continue;
+      let pp = petPos.get(e.id);
+      const side = Math.cos(e.dir || 0) >= 0 ? -1 : 1;
+      const tx = e.x + side * 1.1, ty = e.y + 0.4;
+      if (!pp || Math.hypot(pp.x - tx, pp.y - ty) > 8) { pp = { x: tx, y: ty }; petPos.set(e.id, pp); }
+      const d = Math.hypot(tx - pp.x, ty - pp.y);
+      if (d > 0.3) { pp.x += (tx - pp.x) * Math.min(1, dt * 4); pp.y += (ty - pp.y) * Math.min(1, dt * 4); }
+      g.save(); g.translate(pp.x, pp.y - (pd.shape === 'bird' || pd.shape === 'spirit' ? 0.5 : 0)); g.scale(1 / 32, 1 / 32);
+      ART.drawMonster(g, { sh: pd.shape, col: pd.color, sz: 0.55 + e.pet[1] * 0.006, rk: 5, id: e.id, dir: e.dir }, 0, 0, G.t);
+      g.restore();
+    }
+  }
   function onFx(f) {
     const t = G.t;
     const ent = f.t ? G.ents.get(f.t) : null;
@@ -283,19 +320,21 @@
         G.texts.push({ x: f.x + (Math.random() - 0.5) * 0.8, y: f.y - 1, txt, col, size, t0: t, d: 1.0 + (f.c ? 0.3 : 0), vy: -1.6 });
         if (f.r) { const R = D.REACTIONS[f.r]; G.texts.push({ x: f.x, y: f.y - 2, txt: R ? R.n : String(f.r).toUpperCase(), col: R ? R.color : '#fff', size: 20, t0: t, d: 1.4, vy: -0.8, stroke: 1 }); }
         if (ent) { ent.hitAt = t; }
-        if (!f.h && !f.dot) burst(f.x, f.y - 0.6, f.el ? ELC(f.el) : '#fff', f.c ? 10 : 5, 5, 0.35, 2.5);
+        if (!f.h && !f.dot) G.elemBurst(f.x, f.y - 0.6, f.el || 'neutral', f.c ? 12 : 6, 5);
+        if (window.SFX && !f.h && !f.dot) { if (f.t === G.me) SFX.hurt(); else SFX.hit(f.c, f.el, mine); }
         break;
       }
       case 'cast': {
         const col = ELC(f.el);
         const caster = G.ents.get(f.s); if (caster) caster.attackAt = t;
         const big = f.u;
+        if (window.SFX && Math.hypot(f.x - G.self.x, f.y - G.self.y) < 16) SFX.cast(f.el, big);
         if (big) { G.flash = 0.5; G.flashCol = col; G.shake = 8; if (f.s === G.me || (caster && Math.hypot(caster.x - G.self.x, caster.y - G.self.y) < 20)) UI.ultBanner(SK[f.sk] ? SK[f.sk].name : '', caster ? caster.n : '', col); }
         if (f.sh === 'buff') { burst(f.x, f.y - 0.5, '#9aff9a', 18, 2, 0.9, 3, -1); G.anims.push({ k: 'pillar', x: f.x, y: f.y, col: '#9aff9a', t0: t, d: 0.7 }); break; }
         if (f.sh === 'circle') {
           const ox = f.self ? f.x : f.tx, oy = f.self ? f.y : f.ty;
           G.anims.push({ k: 'ring', x: ox, y: oy, r: f.r || 3, col, t0: t, d: 0.55 });
-          burst(ox, oy, col, 24 + (f.r | 0) * 4, (f.r || 3) * 2.2, 0.6, 3.5);
+          G.elemBurst(ox, oy, f.el, 24 + (f.r | 0) * 4, (f.r || 3) * 2.2);
         } else if (f.sh === 'line') {
           G.anims.push({ k: 'beam', x: f.x, y: f.y, tx: f.x + (f.tx - f.x) / (Math.hypot(f.tx - f.x, f.ty - f.y) || 1) * (f.len || 8), ty: f.y + (f.ty - f.y) / (Math.hypot(f.tx - f.x, f.ty - f.y) || 1) * (f.len || 8), col, t0: t, d: 0.4 });
         } else if (f.sh === 'cone') G.anims.push({ k: 'cone', x: f.x, y: f.y, a: Math.atan2(f.ty - f.y, f.tx - f.x), r: f.r || 4, col, t0: t, d: 0.4 });
@@ -307,23 +346,25 @@
         }
         break;
       }
-      case 'swing': { const c = G.ents.get(f.s); if (c) c.attackAt = t; G.anims.push({ k: 'swipe', x: f.tx, y: f.ty - 0.5, col: '#fff', t0: t, d: 0.18, a: Math.atan2(f.ty - f.y, f.tx - f.x) }); break; }
-      case 'proj': { const c = G.ents.get(f.s); if (c) c.attackAt = t; G.anims.push({ k: 'proj', x: f.x, y: f.y - 0.6, tx: f.tx, ty: f.ty - 0.6, col: ELC(f.el), t0: t, d: 0.22 }); break; }
+      case 'swing': { const c = G.ents.get(f.s); if (c) c.attackAt = t; if (window.SFX && f.s === G.me) SFX.swing(); G.anims.push({ k: 'swipe', x: f.tx, y: f.ty - 0.5, col: '#fff', t0: t, d: 0.18, a: Math.atan2(f.ty - f.y, f.tx - f.x) }); break; }
+      case 'proj': { const c = G.ents.get(f.s); if (c) c.attackAt = t; if (window.SFX && f.s === G.me) SFX.shoot(); G.anims.push({ k: 'proj', x: f.x, y: f.y - 0.6, tx: f.tx, ty: f.ty - 0.6, col: ELC(f.el), t0: t, d: 0.22 }); break; }
       case 'dash': G.anims.push({ k: 'trail', x: f.x, y: f.y, tx: f.tx, ty: f.ty, t0: t, d: 0.35 }); burst(f.tx, f.ty, '#fff', 8, 3, 0.3); break;
-      case 'die': if (ent) { ent.dieAt = t; burst(f.x, f.y - 0.5, ent.col || '#fff', 16, 4, 0.7, 3); } if (f.t === G.target) G.target = 0; break;
+      case 'die': if (window.SFX && ent && Math.hypot(f.x - G.self.x, f.y - G.self.y) < 14) SFX.die(); if (ent) { ent.dieAt = t; burst(f.x, f.y - 0.5, ent.col || '#fff', 16, 4, 0.7, 3); } if (f.t === G.target) G.target = 0; break;
       case 'tag': { if (!ent) break; const d = D.TAGS[f.tag]; G.texts.push({ x: f.x, y: f.y - 1.6, txt: d.n.toUpperCase(), col: d.color, size: 12, t0: t, d: 0.9, vy: -0.6 }); break; }
-      case 'react': burst(f.x, f.y - 0.6, D.REACTIONS[f.r] ? D.REACTIONS[f.r].color : '#fff', 30, 7, 0.7, 4); G.shake = Math.max(G.shake, 5); G.anims.push({ k: 'ring', x: f.x, y: f.y, r: 2.2, col: D.REACTIONS[f.r] ? D.REACTIONS[f.r].color : '#fff', t0: t, d: 0.5 }); break;
+      case 'react': if (window.SFX) SFX.react(); burst(f.x, f.y - 0.6, D.REACTIONS[f.r] ? D.REACTIONS[f.r].color : '#fff', 30, 7, 0.7, 4); G.shake = Math.max(G.shake, 5); G.anims.push({ k: 'ring', x: f.x, y: f.y, r: 2.2, col: D.REACTIONS[f.r] ? D.REACTIONS[f.r].color : '#fff', t0: t, d: 0.5 }); break;
       case 'txt': G.texts.push({ x: f.x, y: f.y - 2, txt: f.m, col: f.c || '#fff', size: f.big ? 20 : 13, t0: t, d: 1.3, vy: -0.7, stroke: 1 }); break;
       case 'tele': G.tele.push({ x: f.x, y: f.y, r: f.r, t0: t, d: f.d }); break;
       case 'boom': G.anims.push({ k: 'ring', x: f.x, y: f.y, r: f.r || 2, col: ELC(f.el), t0: t, d: 0.45 }); burst(f.x, f.y, ELC(f.el), 20, (f.r || 2) * 3, 0.5, 4); G.shake = Math.max(G.shake, 3); break;
       case 'bolt': G.anims.push({ k: 'bolt', x: f.x, y: f.y - 0.6, tx: f.tx, ty: f.ty - 0.6, col: '#fff35a', t0: t, d: 0.3 }); break;
-      case 'lvup': G.anims.push({ k: 'pillar', x: f.x, y: f.y, col: '#ffd34a', t0: t, d: 1.6, big: 1 }); burst(f.x, f.y - 1, '#ffd34a', 40, 3, 1.4, 3, -1); G.texts.push({ x: f.x, y: f.y - 2.5, txt: 'LEVEL UP!', col: '#ffd34a', size: 22, t0: t, d: 2, vy: -0.4, stroke: 1 }); break;
-      case 'loot': if (f.z) G.texts.push({ x: f.x, y: f.y - 0.5, txt: '+' + f.z + 'z', col: '#ffe08a', size: 11, t0: t + 0.2, d: 1, vy: -1 }); if (f.n) burst(f.x, f.y - 0.3, '#ffe08a', 10, 2, 0.8, 2.5, -1); break;
+      case 'lvup': if (window.SFX && f.t === G.me) SFX.level(); G.anims.push({ k: 'pillar', x: f.x, y: f.y, col: '#ffd34a', t0: t, d: 1.6, big: 1 }); burst(f.x, f.y - 1, '#ffd34a', 40, 3, 1.4, 3, -1); G.texts.push({ x: f.x, y: f.y - 2.5, txt: 'LEVEL UP!', col: '#ffd34a', size: 22, t0: t, d: 2, vy: -0.4, stroke: 1 }); break;
+      case 'loot': if (window.SFX && Math.hypot(f.x - G.self.x, f.y - G.self.y) < 10) SFX.coin(); if (f.z) G.texts.push({ x: f.x, y: f.y - 0.5, txt: '+' + f.z + 'z', col: '#ffe08a', size: 11, t0: t + 0.2, d: 1, vy: -1 }); if (f.n) burst(f.x, f.y - 0.3, '#ffe08a', 10, 2, 0.8, 2.5, -1); break;
       case 'pot': burst(f.x, f.y - 0.6, f.c || '#5f5', 10, 1.5, 0.8, 2.5, -1); break;
       case 'buffed': burst(f.x, f.y - 0.6, '#aaffaa', 14, 1.5, 0.9, 2.5, -1); break;
       case 'castbar': { const c = G.ents.get(f.s); if (c) { c.castUntil = t + f.d; c.castDur = f.d; } G.anims.push({ k: 'circle', x: f.x, y: f.y, col: '#9cf', t0: t, d: f.d }); break; }
       case 'mark': G.anims.push({ k: 'mark', id: f.t, t0: t, d: f.d }); break;
       case 'poof': burst(f.x, f.y - 0.4, '#bbb', 8, 2, 0.4); break;
+      case 'emote': if (ent) { ent.emote = f.e; ent.emoteT = G.t + 3; } break;
+      case 'ach': G.anims.push({ k: 'pillar', x: f.x, y: f.y, col: '#ffcc33', t0: t, d: 1.5, big: 1 }); burst(f.x, f.y - 1, '#ffcc33', 30, 3, 1.2, 3, -1); G.texts.push({ x: f.x, y: f.y - 2.8, txt: '🏅 ' + f.m, col: '#ffcc33', size: 16, t0: t, d: 2.2, vy: -0.3, stroke: 1 }); break;
     }
   }
 
@@ -338,6 +379,7 @@
     G.cam.x += (G.self.x - G.cam.x) * Math.min(1, dt * 10);
     G.cam.y += (G.self.y - G.cam.y) * Math.min(1, dt * 10);
     let sx = 0, sy = 0;
+    if (G.settings && G.settings.shake === false) G.shake = 0;
     if (G.shake > 0.1) { sx = (Math.random() - 0.5) * G.shake; sy = (Math.random() - 0.5) * G.shake; G.shake *= 0.85; }
     g.save(); g.translate(sx, sy);
     const z = G.zoom, scale = TS * z;
@@ -381,7 +423,15 @@
     // fx in world space
     g.save(); g.translate(ox, oy); g.scale(scale, scale);
     drawAnims(g);
-    for (const p of G.parts) { const a = p.life / p.max; g.globalAlpha = a; g.fillStyle = p.col; g.beginPath(); g.arc(p.x, p.y, p.size / TS * (0.5 + a * 0.5), 0, 7); g.fill(); }
+    drawPets(g, dt);
+    for (const p of G.parts) {
+      const a = p.life / p.max; g.globalAlpha = a; g.fillStyle = p.col; const sz = p.size / TS * (0.5 + a * 0.5);
+      if (p.sh === 'shard') { g.save(); g.translate(p.x, p.y); g.rotate(Math.atan2(p.vy, p.vx)); g.fillRect(-sz * 2, -sz * 0.4, sz * 4, sz * 0.8); g.restore(); }
+      else if (p.sh === 'spark') { g.strokeStyle = p.col; g.lineWidth = sz * 0.7; g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x - p.vx * 0.05, p.y - p.vy * 0.05); g.stroke(); }
+      else if (p.sh === 'ring') { g.strokeStyle = p.col; g.lineWidth = sz * 0.4; g.beginPath(); g.arc(p.x, p.y, sz * 1.4, 0, 7); g.stroke(); }
+      else if (p.sh === 'star') { g.save(); g.translate(p.x, p.y); g.rotate(G.t * 4 + p.size); g.fillRect(-sz, -sz * 0.25, sz * 2, sz * 0.5); g.fillRect(-sz * 0.25, -sz, sz * 0.5, sz * 2); g.restore(); }
+      else { g.beginPath(); g.arc(p.x, p.y, sz, 0, 7); g.fill(); }
+    }
     g.globalAlpha = 1;
     g.restore();
     // overhead labels
@@ -444,7 +494,11 @@
     const flashHit = G.t - (e.hitAt || -9) < 0.1;
     if (e.attackAt && G.t - e.attackAt < 0.25) e.attackAnim = Math.sin((G.t - e.attackAt) / 0.25 * Math.PI); else e.attackAnim = 0;
     if (flashHit && !dead) g.filter = 'brightness(2.2)';
-    if (e.k === 'p') { const gs = e.fl & 64 ? 1.7 : 1; ART.drawPlayer(g, e, 0, 0, t + e.id, gs); }
+    if (e.k === 'p') {
+      const gs = e.fl & 64 ? 1.7 : 1;
+      if (e.mt) { ART.drawMount(g, e.mt, 0, 0, t + e.id, e.moving, Math.cos(e.dir || 0) >= 0 ? 1 : -1); g.translate(0, -14); }
+      ART.drawPlayer(g, e, 0, 0, t + e.id, gs);
+    }
     else if (e.k === 'm' || e.k === 's') ART.drawMonster(g, e, 0, 0, t);
     else if (e.k === 'n') ART.drawNpc(g, e, 0, 0, t);
     else if (e.k === 'c') ART.drawCore(g, e, 0, 0, t);
@@ -480,7 +534,8 @@
     // name
     let name = e.n;
     if (e.k === 'm' && e.lv) name = `Lv${e.lv} ${e.n}`;
-    let col = e.k === 'm' ? (e.rk >= 2 ? '#ff9a3a' : e.rk === 1 ? '#ffd34a' : '#f0f0f0') : e.k === 'p' ? (isSelf ? '#9fe8ff' : e.pt ? '#7dff9a' : enemy ? '#ff7a7a' : '#ffffff') : '#cfc';
+    let col = e.k === 'm' ? (e.rk >= 2 ? '#ff9a3a' : e.rk === 1 ? '#ffd34a' : '#f0f0f0') : e.k === 'p' ? (e.ka ? '#ff3030' : isSelf ? '#9fe8ff' : e.pt ? '#7dff9a' : enemy ? '#ff7a7a' : '#ffffff') : '#cfc';
+    if (e.k === 'p' && e.mt) top -= 14 * z;
     if (e.k === 's') name = e.n;
     g.font = `${e.k === 'm' && e.rk >= 2 ? 800 : 600} ${e.rk >= 2 ? 13 : 11}px Kanit, sans-serif`;
     if (e.title) { label(g, `「${e.title}」`, x, top - 26, '#ffcc66'); }
@@ -507,6 +562,7 @@
       const p = 1 - (e.castUntil - G.t) / e.castDur;
       g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillRect(x - 20, top + 26, 40, 4); g.fillStyle = '#9cf'; g.fillRect(x - 20, top + 26, 40 * p, 4);
     }
+    if (e.emote && e.emoteT > G.t) { const k = 1 - (e.emoteT - G.t) / 3; g.font = `${28 + (k < 0.1 ? (0.1 - k) * 120 : 0)}px sans-serif`; g.fillText(e.emote, x, top - 30 - k * 10); }
     if (e.bubble && e.bubbleT > G.t) {
       g.font = '12px Kanit, sans-serif'; const w = Math.min(220, g.measureText(e.bubble).width + 16);
       g.fillStyle = 'rgba(255,255,255,0.92)'; ART.roundRect(g, x - w / 2, top - 46, w, 22, 8); g.fill();

@@ -77,7 +77,7 @@
   <div id="chat" class="glass">
     <div id="chatTabs"><button data-tab="all" class="on">ทั้งหมด</button><button data-tab="map">แผนที่</button><button data-tab="world">โลก</button><button data-tab="party">ปาร์ตี้</button><button data-tab="guild">กิลด์</button><button data-tab="system">ระบบ</button></div>
     <div id="chatLog"></div>
-    <div class="chatIn"><select id="chatCh"><option value="map">แผนที่</option><option value="world">โลก</option><option value="party">ปาร์ตี้</option><option value="guild">กิลด์</option></select><input id="chatIn" placeholder="Enter เพื่อพิมพ์ · /w ชื่อ · @help (GM)" maxlength="200"></div>
+    <div class="chatIn"><button class="btn tiny" onclick="UI.emoteWheel()" title="อีโมต (E)">😀</button><select id="chatCh"><option value="map">แผนที่</option><option value="world">โลก</option><option value="party">ปาร์ตี้</option><option value="guild">กิลด์</option></select><input id="chatIn" placeholder="Enter เพื่อพิมพ์ · /w ชื่อ · @help (GM)" maxlength="200"></div>
   </div>
   <div id="menu"></div>
 
@@ -93,12 +93,15 @@
 
 <script src="/shared/rng.js"></script>
 <script src="/shared/data.js"></script>
+<script src="/shared/data2.js"></script>
 <script src="/shared/formulas.js"></script>
 <script src="/shared/mapgen.js"></script>
 <script src="/shared/skills.js"></script>
+<script src="/client/js/sfx.js"></script>
 <script src="/client/js/art.js"></script>
 <script src="/client/js/game.js"></script>
 <script src="/client/js/ui.js"></script>
+<script src="/client/js/ui2.js"></script>
 <script>UI.boot();</script>
 </body>
 </html>

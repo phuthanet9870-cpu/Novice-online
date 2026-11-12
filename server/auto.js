@@ -1,5 +1,5 @@
 // Server-side auto-play (PvE only): targeting rules, skill rotation with conditions, potions, buffs, supply runs.
-const D = require('../shared/data.js');
+const D = require('../shared/data2.js');
 const F = require('../shared/formulas.js');
 const { SKILLS } = require('../shared/skills.js');
 const W = require('./world');
