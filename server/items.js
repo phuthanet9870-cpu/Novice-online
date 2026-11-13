@@ -307,6 +307,7 @@ I.onMonsterKilled = function (m, killer) {
   if (rk >= 2 && roll(0.3)) give('scroll_protect');
   if (rk >= 2 && roll(0.15)) give('rune_drill');
   if (rk >= 2 && roll(0.12)) give('reroll_stone');
+  require('./chests').keyDrop(m, give); // chest keys: dungeon monsters only
   // the species' own drop table (regional materials, junk, card, named gear...) — exactly what the Monster Book lists
   const table = m.sp ? D.dropTable(m.sp) : [];
   const eliteK = rk === 1 ? 3 : 1;

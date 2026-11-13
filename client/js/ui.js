@@ -22,36 +22,43 @@
     $('#pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') auth('login'); });
     try { const u = localStorage.getItem('no_user'); if (u) $('#user').value = u; } catch (e) {}
     buildClassPicker();
-    G.connect(() => { $('#loginStatus').textContent = 'เชื่อมต่อเซิร์ฟเวอร์แล้ว ✓'; });
+    G.connect(() => {
+      $('#loginStatus').textContent = 'เชื่อมต่อเซิร์ฟเวอร์แล้ว ✓';
+      // after an online host hand-over the page reloads: log back in and re-enter with the same character automatically
+      let mig = null; try { if (sessionStorage.getItem('no_migrate')) mig = JSON.parse(sessionStorage.getItem('no_sess') || 'null'); sessionStorage.removeItem('no_migrate'); } catch (e) {}
+      if (mig && mig.user && mig.pass) { UI.autoPlay = mig.char || null; $('#loginStatus').textContent = 'ย้ายเซิร์ฟเวอร์ — กำลังเข้าเกมอีกครั้ง…'; setTimeout(() => G.send({ t: 'login', user: mig.user, pass: mig.pass }), 900); }
+    });
     G.start();
     setupTooltip();
     setupHud();
   };
   function auth(kind) {
     const user = $('#user').value.trim(), pass = $('#pass').value;
-    try { localStorage.setItem('no_user', user); } catch (e) {}
+    try { localStorage.setItem('no_user', user); sessionStorage.setItem('no_sess', JSON.stringify({ user, pass })); } catch (e) {}
     G.send({ t: kind, user, pass });
   }
   UI.onAuth = function (m) {
     if (!m.ok) { $('#loginStatus').textContent = m.m; $('#loginStatus').className = 'status bad'; return; }
     UI.gm = m.gm; UI.user = m.user;
     show('select'); UI.onChars(m);
+    if (UI.autoPlay) { const id = UI.autoPlay; UI.autoPlay = null; setTimeout(() => G.send({ t: 'play', id }), 300); }
   };
   function show(id) { for (const s of ['login', 'select']) $('#' + s).hidden = s !== id; $('#hud').hidden = id !== 'hud'; }
+  function rememberChar(id) { try { const s = JSON.parse(sessionStorage.getItem('no_sess') || '{}'); s.char = id; sessionStorage.setItem('no_sess', JSON.stringify(s)); } catch (e) {} }
   UI.onChars = function (m) {
     UI.chars = m.chars;
     const list = $('#charList');
     list.innerHTML = m.chars.map((c) => `<div class="charCard" data-id="${c.id}"><img src="${ART.portrait(c.cls, c.name, 96)}"><div><b>${esc(c.name)}</b><span>Lv ${c.lv} ${D.CLASSES[c.cls].name}</span><small>${esc(c.guild ? '<' + c.guild + '> ' : '')}${esc(mapName(c.map))}</small></div><button class="btn gold" data-play="${c.id}">เข้าเกม ▶</button><button class="btn tiny danger" data-del="${c.id}" data-name="${esc(c.name)}">ลบ</button></div>`).join('')
       + (m.chars.length < 6 ? `<div class="charCard new" id="newCharBtn"><div class="plus">＋</div><div><b>สร้างตัวละครใหม่</b><span>เลือกได้ 30 อาชีพ</span></div></div>` : '');
     list.onclick = (e) => {
-      const pl = e.target.closest('[data-play]'); if (pl) return G.send({ t: 'play', id: pl.dataset.play });
+      const pl = e.target.closest('[data-play]'); if (pl) { rememberChar(pl.dataset.play); return G.send({ t: 'play', id: pl.dataset.play }); }
       const dl = e.target.closest('[data-del]'); if (dl) { UI.ask(`พิมพ์ชื่อ "${dl.dataset.name}" เพื่อยืนยันการลบตัวละคร`, { input: true, danger: true, ok: 'ลบตัวละคร' }).then((n) => { if (n) G.send({ t: 'deleteChar', id: dl.dataset.del, confirm: n }); }); return; }
       if (e.target.closest('#newCharBtn')) { $('#createPanel').hidden = false; }
-      const card = e.target.closest('.charCard[data-id]'); if (card && e.detail === 2) G.send({ t: 'play', id: card.dataset.id });
+      const card = e.target.closest('.charCard[data-id]'); if (card && e.detail === 2) { rememberChar(card.dataset.id); G.send({ t: 'play', id: card.dataset.id }); }
     };
     $('#createPanel').hidden = m.chars.length > 0 && !m.created ? true : m.chars.length > 0;
     if (!m.chars.length) $('#createPanel').hidden = false;
-    if (m.created) G.send({ t: 'play', id: m.created });
+    if (m.created) { rememberChar(m.created); G.send({ t: 'play', id: m.created }); }
   };
   let pickCls = 'blademaster', clsPage = 0;
   const CLS_PER = 5;
@@ -307,7 +314,7 @@
       let c = null, r = 2;
       if (e.k === 'm') { c = e.rk >= 2 ? '#ff8a00' : e.rk === 1 ? '#ffd34a' : '#ff4a4a'; r = e.rk >= 2 ? 5 : 2; }
       else if (e.k === 'p' && e.id !== G.me) { c = e.pt ? '#4aff7a' : G.isEnemy(e) ? '#ff40ff' : '#ffffff'; r = 2.5; }
-      else if (e.k === 'n') { c = e.role === 'stairs' || e.role === 'portal' ? '#c08aff' : '#ffe14a'; r = 3; }
+      else if (e.k === 'n') { c = e.role === 'chest' ? (e.op & 2 ? '#555' : (D.CHESTS[e.tr] || {}).color || '#fff') : e.role === 'stairs' || e.role === 'portal' ? '#c08aff' : '#ffe14a'; r = e.role === 'chest' ? 3.5 : 3; }
       else if (e.k === 'c') { c = '#5ad0ff'; r = 5; }
       if (!c) continue;
       g.fillStyle = c; g.beginPath(); g.arc(x, y, r * k, 0, 7); g.fill();
@@ -409,7 +416,7 @@
   }
   function findItem(uid) {
     if (!G.char) return null;
-    return G.char.inv.find((x) => x.uid === uid) || Object.values(G.char.equip).find((x) => x && x.uid === uid) || null;
+    return G.char.inv.find((x) => x.uid === uid) || Object.values(G.char.equip).find((x) => x && x.uid === uid) || (UI.chest && UI.chest.items.find((x) => x.uid === uid)) || null;
   }
   UI.findItem = findItem;
   const OPT_LABEL = Object.fromEntries(D.OPTIONS.map((o) => [o[0], [o[1], o[3]]]));
@@ -515,7 +522,7 @@
     if (def.onOpen) def.onOpen(w);
     renderWin(name);
   };
-  UI.close = function (name) { const w = UI.wins[name]; if (w) w.hidden = true; UI.open = UI.open.filter((x) => x !== name); };
+  UI.close = function (name) { if (name === 'chest' && UI.chest) { G.send({ t: 'chest', id: UI.chest.id, a: 'close' }); UI.chest = null; } const w = UI.wins[name]; if (w) w.hidden = true; UI.open = UI.open.filter((x) => x !== name); };
   UI.closeTop = function () { const n = UI.open[UI.open.length - 1]; if (!n) return false; UI.close(n); return true; };
   let zTop = 100;
   function focusWin(w) { w.style.zIndex = ++zTop; const n = w.dataset.name; UI.open = UI.open.filter((x) => x !== n).concat(n); }
@@ -547,6 +554,7 @@
     else if (r === 'healer') G.send({ t: 'healer' });
     else if (r === 'training') G.send({ t: 'training' });
     else if (r === 'stairs') G.send({ t: 'stairs' });
+    else if (r === 'chest') G.send({ t: 'chest', id: n.id, a: 'open' });
     else if (r === 'portal') G.send({ t: 'portal', id: n.id });
     else if (r === 'storage') UI.show('storage'); else if (r === 'market') UI.show('market'); else if (r === 'mail') UI.show('mail'); else if (r === 'quest') UI.show('quests'); else if (r === 'craft') UI.show('craft'); else if (r === 'stable') UI.show('pets', { tab: 'shop' });
   };
@@ -637,6 +645,32 @@
       else if (a === 'combine') { const it = findItem(sel); if (it) G.send({ t: 'combine', id: it.id }); }
       else if (a === 'hot') { const it = findItem(sel); const i = G.char.hotbar.findIndex((x, k) => !x && k >= 10 && k < HB_N); const j = i >= 0 ? i : G.char.hotbar.findIndex((x, k) => !x && k < HB_N); if (it && j >= 0) { G.char.hotbar[j] = 'item:' + it.id; saveHotbar(); } }
       renderWin('inv');
+    }
+  };
+
+  // ---------------------------------------------------------------- dungeon treasure chest (shared by everyone in the dungeon)
+  UI.chestView = function (m) {
+    UI.chest = m;
+    const def = WIN.chest; def.title = `${m.name}`;
+    if (!UI.wins.chest || UI.wins.chest.hidden) UI.show('chest'); else renderWin('chest');
+    const h = UI.wins.chest && UI.wins.chest.querySelector('.whead b'); if (h) h.textContent = (D.CHESTS[m.tier] || {}).n || m.name;
+  };
+  WIN.chest = {
+    title: 'TREASURE', w: 470,
+    render() {
+      const m = UI.chest; if (!m) return '';
+      const C0 = D.CHESTS[m.tier] || D.CHESTS[0];
+      const rar = (it) => it.type === 'equip' ? ['common', 'uncommon', 'rare', 'epic', 'legendary', 'legendary'][Math.min(5, it.rarity || 0)] : 'none';
+      const cells = m.items.map((it) => `<div class="cell r-${rar(it)}" data-act="take" data-uid="${it.uid}" data-item="${it.uid}"><img src="${ART.itemIcon(it)}">${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>`).join('');
+      const empties = '<div class="cell empty"></div>'.repeat(Math.max(0, 5 - m.items.length));
+      return `<div class="chestWin" style="--cc:${C0.color}"><div class="chHead"><img src="client/assets/items/chest_w_${m.tier}.png"><div><b style="color:${C0.color}">${esc(C0.n)}</b><small>${esc(C0.th)} · ระดับ ${m.tier + 1}/6</small><small class="hint">${m.by ? `เปิดโดย ${esc(m.by)} · ` : ''}ทุกคนในดันเจี้ยนเห็นของชุดเดียวกัน — ใครหยิบก่อนได้ก่อน</small></div></div>
+        <div class="invGrid ivGrid chGrid">${cells}${empties}</div>
+        <div class="ivBtns"><span class="kh">คลิกไอเทม = เก็บเข้ากระเป๋า</span><button class="ebtn" data-act="all" ${m.items.length ? '' : 'disabled'}>เก็บทั้งหมด</button></div></div>`;
+    },
+    act(a, d) {
+      const m = UI.chest; if (!m) return;
+      if (a === 'take') G.send({ t: 'chest', id: m.id, a: 'take', uid: d.uid });
+      if (a === 'all') G.send({ t: 'chest', id: m.id, a: 'all' });
     }
   };
 

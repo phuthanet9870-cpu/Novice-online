@@ -462,7 +462,20 @@
     g.fillStyle = '#111'; g.beginPath(); g.arc(24, -23, 1.3, 0, 7); g.fill();
     g.restore();
   };
+  const chestImg = [];
   ART.drawNpc = function (g, e, x, y, t) {
+    if (e.role === 'chest') {
+      const k = e.tr | 0; let im = chestImg[k]; if (!im) { im = chestImg[k] = new Image(); im.src = 'client/assets/items/chest_w_' + k + '.png'; }
+      const opened = e.op & 1, empty = e.op & 2, col = (D.CHESTS[k] || {}).color || '#fff';
+      g.save();
+      if (!empty) { const pulse = 0.55 + Math.sin(t * 3 + e.id) * 0.2; const gr = g.createRadialGradient(x, y - 14, 2, x, y - 14, 34 + k * 3); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.globalAlpha = (opened ? 0.55 : 0.32) * pulse; g.fillStyle = gr; g.fillRect(x - 50, y - 60, 100, 80); g.globalAlpha = 1; }
+      g.fillStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.ellipse(x, y + 1, 18, 5, 0, 0, 7); g.fill();
+      if (empty) g.globalAlpha = 0.45;
+      if (im.complete && im.naturalWidth) { const s = 44 + k * 2; g.imageSmoothingEnabled = true; g.drawImage(im, x - s / 2, y - s + 4, s, s); g.imageSmoothingEnabled = false; }
+      if (opened && !empty) { g.globalCompositeOperation = 'lighter'; g.fillStyle = col; g.globalAlpha = 0.35 + Math.sin(t * 5) * 0.1; g.fillRect(x - 3, y - 70, 6, 50); g.globalCompositeOperation = 'source-over'; }
+      g.restore();
+      return;
+    }
     const bob = Math.sin(t * 2 + e.id) * 1;
     if (e.role === 'stairs' || e.role === 'portal') {
       const open = e.role === 'portal' || /→|Exit/.test(e.n);

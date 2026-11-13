@@ -10,7 +10,15 @@
   const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 60 ? m + ' นาที' : m < 1440 ? Math.round(m / 60) + ' ชม.' : Math.round(m / 1440) + ' วัน'; };
 
   // ---------------------------------------------------------------- settings
-  G.settings = Object.assign({ sfx: 0.6, music: 0.25, shake: true, particles: 1, dmg: true, names: true }, (() => { try { return JSON.parse(localStorage.getItem('no_settings') || '{}'); } catch (e) { return {}; } })());
+  G.settings = Object.assign({ sfx: 0.6, music: 0.25, shake: true, particles: 1, dmg: true, names: true, fxq: 'high', maxPlayers: 0, othersFx: true }, (() => { try { return JSON.parse(localStorage.getItem('no_settings') || '{}'); } catch (e) { return {}; } })());
+  // graphics quality presets — each one changes real rendering work:
+  //   low  : render scale 1×, no bloom pass, 25 live effects, 1/3 particles, no screen shake
+  //   med  : render scale up to 1.5×, no bloom pass, 55 live effects, 60% particles
+  //   high : render scale up to 3× (sharpest), bloom glow, 120 live effects, full particles
+  G.FXQ = { low: { dpr: 1, bloom: 0, cap: 25, part: 0.34, shake: 0 }, med: { dpr: 1.5, bloom: 0, cap: 55, part: 0.6, shake: 1 }, high: { dpr: 3, bloom: 1, cap: 120, part: 1, shake: 1 } };
+  G.fx = () => G.FXQ[G.settings.fxq] || G.FXQ.high;
+  G.applyGfx = () => { G.settings.particles = G.settings.fxq === 'low' ? 0 : 1; if (G.resize) G.resize(); };
+  setTimeout(() => G.applyGfx && G.applyGfx(), 0);
   function saveSettings() { try { localStorage.setItem('no_settings', JSON.stringify(G.settings)); } catch (e) {} if (window.SFX) { SFX.setVol(G.settings.sfx); SFX.setMusic(G.settings.music); } }
   WIN.settings = {
     title: '⚙ ตั้งค่า', w: 420,
@@ -20,12 +28,23 @@
         <label>เสียงเอฟเฟกต์ <input type="range" min="0" max="1" step="0.05" value="${s.sfx}" data-s="sfx"><b>${Math.round(s.sfx * 100)}%</b></label>
         <label>เพลงพื้นหลัง <input type="range" min="0" max="1" step="0.05" value="${s.music}" data-s="music"><b>${Math.round(s.music * 100)}%</b></label>
         <label class="ck"><input type="checkbox" data-s="shake" ${s.shake ? 'checked' : ''}> สั่นหน้าจอ</label>
-        <label class="ck"><input type="checkbox" data-s="particles" ${s.particles ? 'checked' : ''}> เอฟเฟกต์อนุภาคเต็ม (ปิด = ประหยัดเครื่อง)</label>
+        <h4>กราฟิก & เอฟเฟกต์</h4>
+        <div class="segRow"><span>คุณภาพเอฟเฟกต์</span>${[['low', 'ต่ำ'], ['med', 'กลาง'], ['high', 'สูง']].map(([k, n]) => `<button class="seg ${s.fxq === k ? 'on' : ''}" data-act="fxq" data-k="${k}">${n}</button>`).join('')}</div>
+        <small class="hint">${{ low: 'ต่ำ: ความละเอียด 1× · ไม่มีแสงเรือง · อนุภาค 1/3 · ไม่สั่นจอ — ลื่นที่สุด', med: 'กลาง: ความละเอียด 1.5× · ไม่มีแสงเรือง · อนุภาค 60%', high: 'สูง: ความละเอียดเต็มจอ (สูงสุด 3×) · แสงเรือง (bloom) · อนุภาคเต็ม' }[s.fxq] || ''}</small>
+        <div class="segRow"><span>แสดงผู้เล่นอื่น</span>${[[5, '5'], [10, '10'], [30, '30'], [0, 'ทั้งหมด']].map(([k, n]) => `<button class="seg ${(+s.maxPlayers || 0) === k ? 'on' : ''}" data-act="maxp" data-k="${k}">${n}</button>`).join('')}</div>
+        <small class="hint">แสดงเฉพาะผู้เล่นที่ใกล้ที่สุดตามจำนวนที่เลือก (สมาชิกปาร์ตี้แสดงเสมอ) · ตอนนี้มีผู้เล่นอื่นในแผนที่ ${[...G.ents.values()].filter((e) => e.k === 'p' && e.id !== G.me).length} คน</small>
+        <div class="segRow"><span>เอฟเฟกต์ผู้เล่นอื่น</span><button class="seg ${s.othersFx !== false ? 'on' : ''}" data-act="ofx" data-k="1">เปิด — เห็นทั้งหมด</button><button class="seg ${s.othersFx === false ? 'on' : ''}" data-act="ofx" data-k="0">ปิด — เห็นแค่ของตัวเอง</button></div>
         <label>ซูมกล้อง <input type="range" min="0.55" max="1.8" step="0.05" value="${G.zoom}" data-s="zoom"><b>${G.zoom.toFixed(2)}×</b></label>
         <p class="hint">ปุ่มลัดใหม่: <kbd>T</kbd> ขี่พาหนะ · <kbd>E</kbd> อีโมต · <kbd>L</kbd> ภารกิจ · <kbd>Y</kbd> ความสำเร็จ · <kbd>F</kbd> เพื่อน · <kbd>,</kbd> สัตว์เลี้ยง · <kbd>.</kbd> ตั้งค่า</p>
         <button class="btn danger" data-act="logout">ออกไปหน้าเลือกตัวละคร</button></div>`;
     },
-    act(a) { if (a === 'logout') location.reload(); },
+    act(a, d) {
+      if (a === 'logout') location.reload();
+      if (a === 'fxq') { G.settings.fxq = d.k; G.applyGfx(); }
+      if (a === 'maxp') G.settings.maxPlayers = +d.k;
+      if (a === 'ofx') { G.settings.othersFx = d.k === '1'; if (!G.settings.othersFx && window.VFX && VFX.clearOthers) VFX.clearOthers(G.me); }
+      saveSettings(); UI.renderWin('settings');
+    },
     change(t) { const k = t.dataset.s; if (!k) return; if (k === 'zoom') G.zoom = +t.value; else G.settings[k] = t.type === 'checkbox' ? (t.checked ? (k === 'particles' ? 1 : true) : (k === 'particles' ? 0 : false)) : +t.value; saveSettings(); render('settings'); },
     input(t) { if (t.type === 'range') t.nextElementSibling.textContent = t.dataset.s === 'zoom' ? (+t.value).toFixed(2) + '×' : Math.round(t.value * 100) + '%'; if (t.dataset.s === 'zoom') G.zoom = +t.value; else if (t.dataset.s) { G.settings[t.dataset.s] = +t.value; saveSettings(); } }
   };

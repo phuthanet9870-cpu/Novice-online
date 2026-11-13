@@ -10,6 +10,7 @@ const db = require('./db').load();
 const W = require('./world');
 const C = require('./combat');
 const I = require('./items');
+const CH = require('./chests'); CH.init(W, C, I);
 const A = require('./auto');
 const S = require('./social');
 const GM = require('./gm');
@@ -198,6 +199,7 @@ function handle(sess, m) {
     case 'town': if (p.dead) C.respawn(p); else if (!I.use(p, null, 'tele_scroll')) {} break;
     case 'respawn': C.respawn(p); break;
     case 'dungeon': S.enterDungeon(p, m.type, m.floor); break;
+    case 'chest': CH.handle(p, m); break;
     case 'stairs': S.useStairs(p); break;
     case 'portal': { const e = p.inst.entities.get(m.id); if (e && e.role === 'portal' && W.dist(e, p) < 4) W.enterMap(p, e.dest === 'town' ? (p.char.lastTown || 'aurelia') : e.dest); break; }
     case 'training': W.enterMap(p, 'training'); break;

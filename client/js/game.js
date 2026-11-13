@@ -41,6 +41,7 @@
     dead: (m) => UI.dead(m),
     revived: () => UI.hideDead(),
     loot: (m) => UI.loot(m),
+    chest: (m) => UI.chestView(m),
     refineRes: (m) => UI.refineResult(m),
     info: (m) => UI.info(m),
     invite: (m) => UI.invite(m),
@@ -224,8 +225,9 @@
     }
     return best;
   }
+  G.resize = () => { if (G.cv) resize(); };
   function resize() {
-    G.dpr = Math.min(3, window.devicePixelRatio || 1);
+    G.dpr = Math.min(G.fx ? G.fx().dpr : 3, window.devicePixelRatio || 1);
     G.cv.width = innerWidth * G.dpr; G.cv.height = innerHeight * G.dpr;
     G.cv.style.width = innerWidth + 'px'; G.cv.style.height = innerHeight + 'px';
   }
@@ -294,7 +296,7 @@
   };
   G.elemBurst = function (x, y, el, n, spd = 4) {
     const st = EL_STYLE[el] || EL_STYLE.neutral;
-    n = Math.round(n * (G.settings && G.settings.particles === 0 ? 0.4 : 1));
+    n = Math.round(n * (G.fx ? G.fx().part : 1));
     for (let i = 0; i < n; i++) {
       const a = Math.random() * 6.28, s = spd * (0.3 + Math.random());
       G.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.6, max: 0.6, col: st[0][(Math.random() * st[0].length) | 0], size: 3 + Math.random() * 3, grav: st[2], sh: st[1] });
@@ -304,6 +306,7 @@
   const petPos = new Map();
   function drawPets(g, dt) {
     for (const e of G.ents.values()) {
+      if (G.hiddenP && G.hiddenP.has(e.id)) continue;
       if (e.k !== 'p' || !e.pet || (e.fl & 1)) continue;
       const pd = D.PETS && D.PETS[e.pet[0]]; if (!pd) continue;
       let pp = petPos.get(e.id);
@@ -317,8 +320,17 @@
       g.restore();
     }
   }
+  const OTHER_FX = new Set(['cast', 'afx', 'echo', 'swing', 'proj', 'dash', 'boom', 'bolt', 'react', 'trait', 'pot', 'lvup']);
   function onFx(f) {
     const t = G.t;
+    // effects of other players: hidden when the setting is off, or when that player is hidden by the player limit
+    if (f.s && f.s !== G.me && f.t !== G.me) {
+      const src = G.ents.get(f.s);
+      if (src && src.k === 'p' && ((G.settings && G.settings.othersFx === false) || (G.hiddenP && G.hiddenP.has(f.s)))) {
+        if (OTHER_FX.has(f.k)) return;
+        if (f.k === 'hit') { const e2 = G.ents.get(f.t); if (e2) e2.hitAt = t; return; }
+      }
+    }
     const ent = f.t ? G.ents.get(f.t) : null;
     switch (f.k) {
       case 'hit': {
@@ -408,7 +420,7 @@
     G.cam.x += (G.self.x - G.cam.x) * Math.min(1, dt * 10);
     G.cam.y += (G.self.y - G.cam.y) * Math.min(1, dt * 10);
     let sx = 0, sy = 0;
-    if (G.settings && G.settings.shake === false) G.shake = 0;
+    if (G.settings && (G.settings.shake === false || (G.fx && !G.fx().shake))) G.shake = 0;
     if (G.shake > 0.1) { sx = (Math.random() - 0.5) * G.shake; sy = (Math.random() - 0.5) * G.shake; G.shake *= 0.85; }
     g.save(); g.translate(sx, sy);
     const z = G.zoom, scale = TS * z;
@@ -455,6 +467,14 @@
       else { e.x += (e.tx - e.x) * k; e.y += (e.ty - e.y) * k; e.moving = G.t - (e.movedAt || 0) < 0.25; }
       if (e.dieAt && G.t - e.dieAt > 1.2) continue;
       list.push(e);
+    }
+    // "show other players" limit: keep the nearest N (party members always), hide the rest (body, pet, name plate)
+    const maxP = +(G.settings && G.settings.maxPlayers) || 0;
+    G.hiddenP = null;
+    if (maxP > 0) {
+      const others = list.filter((e) => e.k === 'p' && e.id !== G.me && !e.pt).sort((a, b) => ((a.x - G.self.x) ** 2 + (a.y - G.self.y) ** 2) - ((b.x - G.self.x) ** 2 + (b.y - G.self.y) ** 2));
+      const party = list.filter((e) => e.k === 'p' && e.id !== G.me && e.pt).length;
+      if (others.length + party > maxP) { G.hiddenP = new Set(others.slice(Math.max(0, maxP - party)).map((e) => e.id)); for (let i = list.length - 1; i >= 0; i--) if (G.hiddenP.has(list[i].id)) list.splice(i, 1); }
     }
     list.sort((a, b) => a.y - b.y);
     if (window.VFX && VFX.ok) { g.save(); g.translate(ox, oy); g.scale(scale, scale); VFX.drawGround(g); g.restore(); }

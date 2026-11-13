@@ -80,9 +80,10 @@
 
   // ---------------------------------------------------------------- host side
   const conns = new Map();
+  const MAX_GUESTS = 29; // 30 players per world (host + 29)
   function hostAccept(peer) {
     let c = conns.get(peer); if (c) return c;
-    if (conns.size >= 6) return null;
+    if (conns.size >= MAX_GUESTS) return null;
     const out = makeOutbox('s2c', peer);
     const srv = { readyState: 1, h: {}, on(ev, fn) { this.h[ev] = fn; }, send(data) { if (srv.readyState === 1) out.push(data); }, close() { srv.readyState = 3; out.push(JSON.stringify({ t: '_close' })); } };
     c = { peer, srv, out, user: null };
@@ -154,7 +155,7 @@
         }
       });
       R.on('s2c', (msg) => { if (msg.data && msg.data.to === NET.me) inbox(msg.data); });
-      R.onPeers((ch) => { if (ch.left.some((p) => p.peer === NET.host)) this.close(); });
+      R.onPeers((ch) => { if (ch.left.some((p) => p.peer === NET.host)) migrate(); });
       R.emit('c2s', { to: NET.host, hello: 1 }).catch(() => {});
       this.timer = setInterval(() => out.flush(), 60);
       setTimeout(() => { if (this.readyState === 0) { NET.status = 'ติดต่อโฮสต์ไม่ได้ — เล่นคนเดียว'; tell(); this.close(); } }, 12000);
@@ -162,6 +163,20 @@
     send(d) { if (this.readyState === 1) this.out.push(d); }
     close() { if (this.readyState === 3) return; this.readyState = 3; clearInterval(this.timer); this.onclose && this.onclose({}); }
   }
+
+  // ---------------------------------------------------------------- host migration
+  // the host left: the guest that has been online longest takes over first, the others follow a moment later and join it.
+  // Characters are safe — every guest keeps a mirror of its own save (_save packets) and re-imports it into the new host.
+  let migrating = false;
+  function migrate() {
+    if (migrating) return; migrating = true;
+    const ps = R.peers().filter((p) => p.peer !== NET.host && p.presence && p.presence.g === 'novice' && p.presence.v === VER).sort((a, b) => (a.presence.t || 0) - (b.presence.t || 0));
+    const rank = Math.max(0, ps.findIndex((p) => p.sameTab));
+    NET.status = rank === 0 ? 'โฮสต์ออกจากเกม — คุณกำลังเป็นโฮสต์คนใหม่…' : 'โฮสต์ออกจากเกม — กำลังย้ายไปโลกของโฮสต์คนใหม่…'; tell();
+    try { sessionStorage.setItem('no_migrate', '1'); } catch (e) {}
+    setTimeout(() => location.reload(), 600 + rank * 1800);
+  }
+  NET.migrate = migrate;
 
   // ---------------------------------------------------------------- the socket the client uses
   const Local = window.WebSocket;
@@ -205,7 +220,12 @@
       try { await R.presence({ host: true }); } catch (e) {}
       startHost(); decide('host');
     }
-    const count = () => { NET.online = R.peers().filter((p) => p.presence && p.presence.g === 'novice' && p.presence.v === VER).length || 1; tell(); };
+    const count = () => {
+      const ps = R.peers();
+      NET.online = ps.filter((p) => p.presence && p.presence.g === 'novice' && p.presence.v === VER).length || 1; tell();
+      // two pages became host at the same moment: the one that started later steps down and joins the older world
+      if (NET.mode === 'host' && ps.some((p) => !p.sameTab && p.presence && p.presence.g === 'novice' && p.presence.v === VER && p.presence.host && (p.presence.t || 0) < started)) migrate();
+    };
     R.onPeers(count); count();
   }
   window.__NO_NET_BOOT = boot;

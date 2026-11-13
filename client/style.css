@@ -776,3 +776,15 @@ body.touch #chat { display: none; }
 /* single-row hotbar: page swap + break-free sit to the right of the 10 slots */
 #hud .hotbars { flex-direction: row !important; align-items: center; gap: 8px; }
 #hud .hotbars .hbRow2 { gap: 6px; }
+
+/* dungeon treasure chest window */
+.chestWin .chHead { display: flex; gap: 12px; align-items: center; padding-bottom: 8px; border-bottom: 1px solid rgba(255, 200, 120, .15); margin-bottom: 10px; }
+.chestWin .chHead img { width: 72px; height: 72px; filter: drop-shadow(0 0 12px var(--cc)); }
+.chestWin .chHead b { display: block; font: 700 16px Cinzel, Kanit, serif; letter-spacing: .06em; }
+.chestWin .chHead small { display: block; color: #c8b48c; font-size: 11px; }
+.chestWin .chGrid { grid-template-columns: repeat(5, 1fr); max-height: none; }
+
+.segRow { display: flex; align-items: center; gap: 6px; margin: 8px 0 2px; flex-wrap: wrap; }
+.segRow > span { min-width: 120px; color: #d9c7a3; font-size: 13px; }
+.seg { padding: 4px 12px; border: 1px solid rgba(255, 200, 120, .25); background: rgba(0, 0, 0, .35); color: #cdbf9f; font: 500 12px Kanit, sans-serif; border-radius: 6px; cursor: pointer; }
+.seg.on { background: linear-gradient(180deg, #c8621e, #7a3510); color: #fff3d6; border-color: #ffb060; box-shadow: 0 0 8px rgba(255, 140, 50, .45); }

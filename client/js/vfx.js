@@ -204,7 +204,7 @@
 
   // ------------------------------------------------------------------ live effects
   const live = VFX.live;
-  const cap = () => { const G = root.G; return G && G.settings && G.settings.particles === 0 ? 30 : 90; };
+  const cap = () => { const G = root.G; return G && G.fx ? G.fx().cap : 90; };
   function add(e) { if (live.length >= cap()) { const i = live.findIndex((q) => !q.prio); if (i < 0) return null; live.splice(i, 1); } e.t = -(e.d || 0); e.dur = e.dur || 0.5; e.seed = e.seed || ((rnd() * 1e6) | 0) + 1; e.pal = e.pal || EL_PAL.neutral; e.n = e.n || 1; e.r = e.r || 1; e.var = e.var || 0; live.push(e); return e; }
   const dirOf = (x0, y0, x1, y1) => Math.atan2(y1 - y0, x1 - x0);
 
@@ -386,7 +386,7 @@
   };
   VFX.spray = function (type, x, y, n, tint) {
     const t = DEB[type]; if (!t) return;
-    if (root.G && G.settings && G.settings.particles === 0) n = Math.ceil(n / 3);
+    if (root.G && G.fx) n = Math.max(1, Math.round(n * G.fx().part));
     for (let i = 0; i < n; i++) {
       const a = rnd() * TAU, v = t.sp[0] + rnd() * (t.sp[1] - t.sp[0]);
       debris.push({ x, y, z: 0.25 + rnd() * 0.5, vx: Math.cos(a) * v * 0.25, vy: Math.sin(a) * v * 0.14, vz: t.up[0] + rnd() * (t.up[1] - t.up[0]), t, c: tint && rnd() < 0.4 ? tint : t.c[(rnd() * t.c.length) | 0], life: t.life[0] + rnd() * (t.life[1] - t.life[0]), age: 0 });
@@ -773,12 +773,13 @@
       if (!bloom) { bloom = document.createElement('canvas'); bgc = bloom.getContext('2d'); }
       const bw = Math.max(1, Math.ceil(w / 4)), bh = Math.max(1, Math.ceil(h / 4));
       if (bloom.width !== bw || bloom.height !== bh) { bloom.width = bw; bloom.height = bh; }
-      bgc.clearRect(0, 0, bw, bh); bgc.imageSmoothingEnabled = true; bgc.drawImage(layer, 0, 0, bw, bh);
+      const doBloom = !root.G || !G.fx || G.fx().bloom;
+      if (doBloom) { bgc.clearRect(0, 0, bw, bh); bgc.imageSmoothingEnabled = true; bgc.drawImage(layer, 0, 0, bw, bh); }
       g.save(); g.setTransform(view.dpr, 0, 0, view.dpr, view.sx || 0, view.sy || 0);
       const sm = g.imageSmoothingEnabled; g.imageSmoothingEnabled = false;
       g.drawImage(layer, 0, 0, w * px, h * px);
-      g.imageSmoothingEnabled = true; g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.45;
-      g.drawImage(bloom, 0, 0, bw * 4 * px, bh * 4 * px);
+      if (!root.G || !G.fx || G.fx().bloom) { g.imageSmoothingEnabled = true; g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.45;
+      g.drawImage(bloom, 0, 0, bw * 4 * px, bh * 4 * px); }
       g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
       g.imageSmoothingEnabled = sm; g.restore();
     }
@@ -791,6 +792,7 @@
     }
     g.globalAlpha = 1;
   };
+  VFX.clearOthers = function () { live.length = 0; };
   VFX.clear = function () { live.length = 0; statusLive.clear(); zoneLive.clear(); decals.length = 0; debris.length = 0; dim = 0; hitStop = 0; };
   VFX.debris = debris; VFX.decals = decals;
 })(typeof window !== 'undefined' ? window : globalThis);

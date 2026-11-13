@@ -183,6 +183,14 @@ W.populate = function (inst) {
     return;
   }
   if (def.kind === 'dungeon') {
+    // difficulty keeps climbing with the floor even after monster level caps (320): HP / ATK / DEF multipliers,
+    // and a party-private instance is tuned to the party's size (+35% HP and +8% ATK per extra member)
+    const ptKey = /#pt(\d+)$/.exec(inst.id || inst.mapId || '');
+    const pt = ptKey && S.parties && S.parties.get(+ptKey[1]);
+    const members = pt ? Math.max(1, pt.members.size) : 1;
+    const fl = def.floor;
+    inst.diff = { hp: (1 + fl / 160) * (1 + 0.35 * (members - 1)), atk: (1 + fl / 320) * (1 + 0.08 * (members - 1)), def: 1 + fl / 400, members };
+    const spawnMonster = (i2, spec) => { const m = W.spawnMonster(i2, spec); const d = inst.diff; m.maxHp = m.hp = Math.round(m.maxHp * d.hp); m.atk = Math.round(m.atk * d.atk); m.def = Math.round(m.def * d.def); m.mdef = Math.round(m.mdef * d.def); return m; };
     const dg = D.DUNGEONS.find((d) => d.id === def.dungeon);
     const fams = famsFor(dg.biome);
     const extra = def.floor % 100 === 0 ? 'abyss' : null;
@@ -196,7 +204,7 @@ W.populate = function (inst) {
         if (!M.walkable(map, x, y)) continue;
         const fam = r.pick(extra && r() < 0.3 ? famsFor(extra) : fams);
         const elite = r() < 0.04 + Math.min(0.2, def.floor / 4000);
-        W.spawnMonster(inst, { fam, lv: def.lv, rank: elite ? 1 : 0, x, y, name: (elite ? 'Elite ' : '') + fam[0], extra: { noRespawn: true } });
+        spawnMonster(inst, { fam, lv: def.lv, rank: elite ? 1 : 0, x, y, name: (elite ? 'Elite ' : '') + fam[0], extra: { noRespawn: true } });
         n++;
       }
     }
@@ -206,11 +214,12 @@ W.populate = function (inst) {
       const title = D.BOSS_TITLES[(def.floor / 10) % D.BOSS_TITLES.length | 0];
       const big = def.floor % 100 === 0;
       const spr = D.BOSS_SPRITES.dungeon[def.dungeon];
-      W.spawnMonster(inst, { fam, lv: def.lv + (big ? 5 : 2), rank: big ? 2 : 3, x: s.x + 2, y: s.y + 2, name: spr ? `${D.BOSS_NAMES[spr]}${big ? ' (Ascended)' : ''}` : `${fam[0]} ${title}`, extra: { noRespawn: true, floorBoss: true, spr } });
+      spawnMonster(inst, { fam, lv: def.lv + (big ? 5 : 2), rank: big ? 2 : 3, x: s.x + 2, y: s.y + 2, name: spr ? `${D.BOSS_NAMES[spr]}${big ? ' (Ascended)' : ''}` : `${fam[0]} ${title}`, extra: { noRespawn: true, floorBoss: true, spr } });
       n++;
     }
     inst.mobTotal = n;
     inst.add({ id: W.nextEnt++, kind: 'n', name: 'Stairs (sealed)', role: 'stairs', color: '#a080ff', x: map.stairs.x, y: map.stairs.y, tags: new Map(), hp: 1, maxHp: 1 });
+    require('./chests').populate(inst, map);
     return;
   }
   if (def.kind === 'castle') { S.initCastle(inst); return; }
@@ -464,7 +473,7 @@ function desc(e, viewer) {
       pet: e.char.pet ? [e.char.pet.id, e.char.pet.lv] : 0, mt: e.mounted || '', ka: e.char.karma > 0 ? 1 : 0, rk: D.rankTier ? D.rankTier(e.char.mmr || 1000)[1] : '' });
   } else if (e.kind === 'm' || e.kind === 's') {
     Object.assign(base, { lv: e.lv, sh: e.shape, col: e.color, el: e.element, rk: e.kind === 's' ? 5 : e.rank, sz: e.size, mhp: e.maxHp, own: e.owner ? e.owner.id : 0, spr: e.spr || undefined, ws: e.wbm ? require('./wbmech').status(e) : e.sealOf ? (e.order ? 'ลำดับ #' + e.order : e.sealEl ? 'แตกด้วยธาตุเฉพาะ' : 'ผนึกบอส') : undefined });
-  } else if (e.kind === 'n') Object.assign(base, { role: e.role, col: e.color, th: e.th || '', dest: e.dest || '' });
+  } else if (e.kind === 'n') Object.assign(base, { role: e.role, col: e.color, th: e.th || '', dest: e.dest || '', tr: e.role === 'chest' ? e.tier : undefined, op: e.role === 'chest' ? (e.opened ? 1 : 0) + (e.items && !e.items.length ? 2 : 0) : undefined });
   else if (e.kind === 'z') Object.assign(base, { r: e.r, col: e.color, zk: e.zk, el: e.el, until: Math.round((e.until - now()) * 10), zf: e.orbit ? 'orbit' : e.wall ? 'wall' : e.trail ? 'trail' : undefined, n: e.orbit || undefined, o: e.owner ? e.owner.id : 0 });
   else if (e.kind === 'c') Object.assign(base, { mhp: e.maxHp, g: e.guildName || '' });
   else if (e.kind === 'i') { const it = e.item; Object.assign(base, { it: it.type === 'equip' ? { type: 'equip', slot: it.slot, wtype: it.wtype, rarity: it.rarity, refine: it.refine || 0 } : { id: it.id, qty: it.qty }, n: it.id === 'zeny' ? `${it.qty.toLocaleString()} Zeny` : it.type === 'equip' ? `${it.refine ? '+' + it.refine + ' ' : ''}${it.name}` : `${(D.ITEMS[it.id] || {}).n || it.id}${it.qty > 1 ? ' ×' + it.qty : ''}`, rar: it.type === 'equip' ? it.rarity : -1, mine: e.owners.includes(viewer.char.id) || now() >= e.freeAt ? 1 : 0 }); }

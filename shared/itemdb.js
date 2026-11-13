@@ -383,7 +383,26 @@
   addShop('skyreach', ['cure_all', 'pot_berserk', 'pot_wisdom', 'pot_crit', 'oil_holy', 'oil_lightning', 'smith_charm', 'anvil_2']);
   for (const s in STAT_FOOD) addShop(D.REGIONS[Object.keys(STAT_FOOD).indexOf(s) % 5].town, [`sfood_${s}_1`]);
 
+  // ------------------------------------------------------------------ dungeon treasure chests + keys (6 tiers, colour = item grade)
+  // tier: 0 iron/grey · 1 green · 2 blue · 3 purple · 4 gold/orange · 5 crimson/red (highest)
+  // minF: first dungeon floor a chest of that tier can appear on; w: relative weight among the tiers allowed on a floor
+  D.CHESTS = [
+    { n: 'Iron Chest', th: 'หีบเหล็ก', key: 'Iron Key', kth: 'กุญแจเหล็ก', color: '#c8ccd4', minF: 1, w: 46 },
+    { n: 'Verdant Chest', th: 'หีบมรกต', key: 'Verdant Key', kth: 'กุญแจมรกต', color: '#4ad86a', minF: 200, w: 26 },
+    { n: 'Azure Chest', th: 'หีบไพลิน', key: 'Azure Key', kth: 'กุญแจไพลิน', color: '#4aa8ff', minF: 400, w: 15 },
+    { n: 'Amethyst Chest', th: 'หีบอเมทิสต์', key: 'Amethyst Key', kth: 'กุญแจอเมทิสต์', color: '#c06cff', minF: 600, w: 8 },
+    { n: 'Sunforged Chest', th: 'หีบสุริยา', key: 'Sunforged Key', kth: 'กุญแจสุริยา', color: '#ff9a2a', minF: 700, w: 4 },
+    { n: 'Crimson Relic Chest', th: 'หีบโลหิตโบราณ', key: 'Crimson Relic Key', kth: 'กุญแจโลหิตโบราณ', color: '#ff3a4a', minF: 800, w: 1.6 }
+  ];
+  D.CHESTS_PER_FLOOR = 6;
+  D.chestTierAt = function (floor, rnd) {
+    const ok = D.CHESTS.map((c, i) => [i, floor >= c.minF ? c.w : 0]).filter((x) => x[1] > 0);
+    let roll = rnd() * ok.reduce((a, x) => a + x[1], 0);
+    for (const [i, w] of ok) { if ((roll -= w) < 0) return i; }
+    return ok[ok.length - 1][0];
+  };
+  D.CHESTS.forEach((c, i) => add('key_' + i, { n: c.key, th: `${c.kth} — เปิด${c.th} (หาได้จากมอนสเตอร์ในดันเจี้ยนชั้น ${c.minF}+ เท่านั้น)`, type: 'key', tier: i, icon: c.color, img: `client/assets/items/key_${i}.png`, sell: [40, 300, 1500, 6000, 20000, 60000][i], noShop: 1 }));
   // item categories for UI filters
-  D.itemCategory = (d) => ({ potion: 'support', buffitem: 'support', cure: 'support', wing: 'support', scroll: 'support', loot: 'material', mat: 'refine', anvil: 'refine', rune: 'socket', jewel: 'socket', card: 'socket', junk: 'junk', treasure: 'sell', box: 'box', currency: 'other', pet: 'other', mount: 'other', petfood: 'support', zeny: 'other' }[d.type] || 'other');
+  D.itemCategory = (d) => ({ potion: 'support', buffitem: 'support', cure: 'support', wing: 'support', scroll: 'support', loot: 'material', mat: 'refine', anvil: 'refine', rune: 'socket', jewel: 'socket', card: 'socket', junk: 'junk', treasure: 'sell', box: 'box', currency: 'other', pet: 'other', mount: 'other', petfood: 'support', zeny: 'other', key: 'box' }[d.type] || 'other');
   D.ITEM_COUNT = Object.keys(D.ITEMS).length + Object.keys(D.GEAR).length;
 });

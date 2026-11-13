@@ -49,6 +49,8 @@ S.party = function (p, m) {
   } else if (a === 'leave') {
     const pt = parties.get(p.party); p.party = null; C.sendChar(p, ['party']);
     if (!pt) return;
+    // a party dungeon is private to its party: whoever leaves (or is kicked) is sent back to town
+    if (pt.members.size > 1 && p.inst && String(p.inst.id).endsWith('#pt' + pt.id)) { note(p, 'ออกจากปาร์ตี้ — กลับเมือง (ดันเจี้ยนนี้เป็นของปาร์ตี้)'); W.enterMap(p, p.char.lastTown || 'aurelia'); }
     pt.members.delete(p.char.id);
     if (pt.members.size <= 1) { for (const cid of pt.members) { const q = W.players.get(cid); if (q) { q.party = null; C.sendChar(q, ['party']); } } parties.delete(pt.id); return; }
     if (pt.leader === p.char.id) pt.leader = [...pt.members][0];

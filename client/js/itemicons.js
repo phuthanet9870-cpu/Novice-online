@@ -58,6 +58,7 @@
     if (!it) return '';
     if (!atlas.naturalWidth) return base(it);
     const def = it.id ? D.ITEMS[it.id] : null;
+    if (def && def.img) return def.img;
     if (def && (def.type === 'card' || def.type === 'pet' || def.type === 'petfood' || def.type === 'zeny')) return base(it);
     const pool = poolOf(it, def); if (!pool || !pool.length) return base(it);
     // stable pick: the same base item always looks the same; different bases spread over the pool
