@@ -57,7 +57,7 @@
     G.map = M.getMap(m.map);
     G.mini = ART.minimap(G.map);
     ART.resetChunks();
-    G.ents.clear(); G.parts = []; G.anims = []; G.texts = []; G.tele = [];
+    G.ents.clear(); G.parts = []; G.anims = []; G.texts = []; G.tele = []; if (window.VFX && VFX.ok) VFX.clear();
     G.self.x = m.x; G.self.y = m.y; G.cam.x = m.x; G.cam.y = m.y; G.path = null; G.pending = null; G.target = 0;
     G.char = m.char; G.st = m.char.st;
     G.weather = m.info.weather || (D.BIOMES[G.map.def.biome] && G.map.def.biome === 'snow' ? 'snow' : G.map.def.biome === 'volcano' ? 'ash' : '');
@@ -334,7 +334,7 @@
         G.texts.push({ x: f.x + (Math.random() - 0.5) * 0.8, y: f.y - 1, txt, col, size, t0: t, d: 1.0 + (f.c ? 0.3 : 0), vy: -1.6 });
         if (f.r) { const R = D.REACTIONS[f.r]; G.texts.push({ x: f.x, y: f.y - 2, txt: R ? R.n : String(f.r).toUpperCase(), col: R ? R.color : '#fff', size: 20, t0: t, d: 1.4, vy: -0.8, stroke: 1 }); }
         if (ent) { ent.hitAt = t; }
-        if (!f.h && !f.dot) G.elemBurst(f.x, f.y - 0.6, f.el || 'neutral', f.c ? 12 : 6, 5);
+        if (!f.h && !f.dot && !(window.VFX && VFX.ok && VFX.hit(f, G.ents.get(f.s)))) G.elemBurst(f.x, f.y - 0.6, f.el || 'neutral', f.c ? 12 : 6, 5);
         if (window.SFX && !f.h && !f.dot) { if (f.t === G.me) SFX.hurt(); else SFX.hit(f.c, f.el, mine); }
         break;
       }
@@ -343,13 +343,15 @@
         const caster = G.ents.get(f.s); if (caster) caster.attackAt = t;
         const big = f.u;
         const sfx = SK[f.sk] && SK[f.sk].fx;
-        if (sfx) {
+        const pix = window.VFX && VFX.ok && VFX.recipes[f.sk];
+        if (sfx && !pix) {
           const ox = f.sh === 'circle' && !f.self ? f.tx : f.sh === 'single' || f.sh === 'chain' ? f.tx : f.x, oy = f.sh === 'circle' && !f.self ? f.ty : f.sh === 'single' || f.sh === 'chain' ? f.ty : f.y;
           G.anims.push({ k: 'sig', fx: sfx, x: ox, y: oy, t0: t, d: sfx.d + (big ? 0.6 : 0), big, seed: f.sk.length * 31 + f.s });
           if (window.SFX && SFX.sig && Math.hypot(f.x - G.self.x, f.y - G.self.y) < 16) SFX.sig(sfx.snd, big);
         }
         if (window.SFX && Math.hypot(f.x - G.self.x, f.y - G.self.y) < 16) SFX.cast(f.el, big);
-        if (big) { G.flash = 0.5; G.flashCol = col; G.shake = 8; if (f.s === G.me || (caster && Math.hypot(caster.x - G.self.x, caster.y - G.self.y) < 20)) UI.ultBanner(SK[f.sk] ? SK[f.sk].name : '', caster ? caster.n : '', col); }
+        if (big) { G.flash = pix ? 0.25 : 0.5; G.flashCol = col; G.shake = 8; if (f.s === G.me || (caster && Math.hypot(caster.x - G.self.x, caster.y - G.self.y) < 20)) UI.ultBanner(SK[f.sk] ? SK[f.sk].name : '', caster ? caster.n : '', col); }
+        if (pix && VFX.cast(f)) break;
         if (f.sh === 'buff') { burst(f.x, f.y - 0.5, '#9aff9a', 18, 2, 0.9, 3, -1); G.anims.push({ k: 'pillar', x: f.x, y: f.y, col: '#9aff9a', t0: t, d: 0.7 }); break; }
         if (f.sh === 'circle') {
           const ox = f.self ? f.x : f.tx, oy = f.self ? f.y : f.ty;
@@ -368,23 +370,23 @@
       }
       case 'swing': { const c = G.ents.get(f.s); if (c) c.attackAt = t; if (window.SFX && f.s === G.me) SFX.swing(); G.anims.push({ k: 'swipe', x: f.tx, y: f.ty - 0.5, col: '#fff', t0: t, d: 0.18, a: Math.atan2(f.ty - f.y, f.tx - f.x) }); break; }
       case 'proj': { const c = G.ents.get(f.s); if (c) c.attackAt = t; if (window.SFX && f.s === G.me) SFX.shoot(); G.anims.push({ k: 'proj', x: f.x, y: f.y - 0.6, tx: f.tx, ty: f.ty - 0.6, col: ELC(f.el), t0: t, d: 0.22 }); break; }
-      case 'dash': G.anims.push({ k: 'trail', x: f.x, y: f.y, tx: f.tx, ty: f.ty, t0: t, d: 0.35 }); burst(f.tx, f.ty, '#fff', 8, 3, 0.3); break;
-      case 'die': if (window.SFX && ent && Math.hypot(f.x - G.self.x, f.y - G.self.y) < 14) SFX.die(); if (ent) { ent.dieAt = t; burst(f.x, f.y - 0.5, ent.col || '#fff', 16, 4, 0.7, 3); } if (f.t === G.target) G.target = 0; break;
+      case 'dash': if (window.VFX && VFX.ok) { VFX.one('arcane/blink-out', f.x, f.y, { sp: 1.6, life: 0.8 }); VFX.one('impacts/heavy-landing', f.tx, f.ty, { sp: 1.4 }); } G.anims.push({ k: 'trail', x: f.x, y: f.y, tx: f.tx, ty: f.ty, t0: t, d: 0.35 }); burst(f.tx, f.ty, '#fff', 8, 3, 0.3); break;
+      case 'die': if (window.SFX && ent && Math.hypot(f.x - G.self.x, f.y - G.self.y) < 14) SFX.die(); if (ent && window.VFX && VFX.ok) VFX.one(ent.k === 'p' ? 'spawn/soul-rise' : (ent.rk || 0) >= 3 ? 'spawn/shatter-death' : 'spawn/poof', f.x, f.y, { sp: 1.4, life: 1.4, seed: ent.id % 30 + 1 }); if (ent) { ent.dieAt = t; burst(f.x, f.y - 0.5, ent.col || '#fff', 16, 4, 0.7, 3); } if (f.t === G.target) G.target = 0; break;
       case 'tag': { if (!ent) break; const d = D.TAGS[f.tag]; G.texts.push({ x: f.x, y: f.y - 1.6, txt: d.n.toUpperCase(), col: d.color, size: 12, t0: t, d: 0.9, vy: -0.6 }); break; }
-      case 'react': if (window.SFX) SFX.react(); burst(f.x, f.y - 0.6, D.REACTIONS[f.r] ? D.REACTIONS[f.r].color : '#fff', 30, 7, 0.7, 4); G.shake = Math.max(G.shake, 5); G.anims.push({ k: 'ring', x: f.x, y: f.y, r: 2.2, col: D.REACTIONS[f.r] ? D.REACTIONS[f.r].color : '#fff', t0: t, d: 0.5 }); break;
+      case 'react': if (window.SFX) SFX.react(); if (window.VFX && VFX.ok) { const rc = D.REACTIONS[f.r] ? D.REACTIONS[f.r].color : '#ffffff'; VFX.one('explosions/plasma-explosion', f.x, f.y, { pal: VFX.ramp(VFX.hue ? VFX.hue(rc) : 40), sp: 1.3, life: 1.3, prio: 1, size: 2.4 }); G.shake = Math.max(G.shake, 5); break; } burst(f.x, f.y - 0.6, D.REACTIONS[f.r] ? D.REACTIONS[f.r].color : '#fff', 30, 7, 0.7, 4); G.shake = Math.max(G.shake, 5); G.anims.push({ k: 'ring', x: f.x, y: f.y, r: 2.2, col: D.REACTIONS[f.r] ? D.REACTIONS[f.r].color : '#fff', t0: t, d: 0.5 }); break;
       case 'txt': G.texts.push({ x: f.x, y: f.y - 2, txt: f.m, col: f.c || '#fff', size: f.big ? 20 : 13, t0: t, d: 1.3, vy: -0.7, stroke: 1 }); break;
       case 'tele': G.tele.push({ x: f.x, y: f.y, r: f.r, t0: t, d: f.d }); break;
-      case 'boom': G.anims.push({ k: 'ring', x: f.x, y: f.y, r: f.r || 2, col: ELC(f.el), t0: t, d: 0.45 }); burst(f.x, f.y, ELC(f.el), 20, (f.r || 2) * 3, 0.5, 4); G.shake = Math.max(G.shake, 3); break;
-      case 'bolt': G.anims.push({ k: 'bolt', x: f.x, y: f.y - 0.6, tx: f.tx, ty: f.ty - 0.6, col: '#fff35a', t0: t, d: 0.3 }); break;
-      case 'lvup': if (window.SFX && f.t === G.me) SFX.level(); G.anims.push({ k: 'pillar', x: f.x, y: f.y, col: '#ffd34a', t0: t, d: 1.6, big: 1 }); burst(f.x, f.y - 1, '#ffd34a', 40, 3, 1.4, 3, -1); G.texts.push({ x: f.x, y: f.y - 2.5, txt: 'LEVEL UP!', col: '#ffd34a', size: 22, t0: t, d: 2, vy: -0.4, stroke: 1 }); break;
+      case 'boom': if (window.VFX && VFX.ok) { VFX.one('explosions/plasma-explosion', f.x, f.y, { pal: VFX.elPal(f.el), size: f.r || 2, sp: 1.4, life: 1.2 }); G.shake = Math.max(G.shake, 3); break; } G.anims.push({ k: 'ring', x: f.x, y: f.y, r: f.r || 2, col: ELC(f.el), t0: t, d: 0.45 }); burst(f.x, f.y, ELC(f.el), 20, (f.r || 2) * 3, 0.5, 4); G.shake = Math.max(G.shake, 3); break;
+      case 'bolt': if (window.VFX && VFX.ok) { VFX.one('lightning/zap-hit', f.tx, f.ty, { sp: 1.2 }); VFX.one('lightning/chain-lightning', f.x, f.y, Object.assign({ size: Math.hypot(f.tx - f.x, f.ty - f.y), life: 0.6, sp: 1.5 }, Math.cos(Math.atan2(f.ty - f.y, f.tx - f.x)) >= 0 ? { angle: Math.atan2(f.ty - f.y, f.tx - f.x) } : { flip: true, angle: Math.atan2(f.ty - f.y, f.tx - f.x) - Math.PI })); break; } G.anims.push({ k: 'bolt', x: f.x, y: f.y - 0.6, tx: f.tx, ty: f.ty - 0.6, col: '#fff35a', t0: t, d: 0.3 }); break;
+      case 'lvup': if (window.SFX && f.t === G.me) SFX.level(); if (window.VFX && VFX.ok) { VFX.one('ui/level-up', f.x, f.y, { prio: 1, follow: f.t }); VFX.one('holy/holy-pillar', f.x, f.y, { prio: 1, life: 1.8, sp: 1.5 }); break; } G.anims.push({ k: 'pillar', x: f.x, y: f.y, col: '#ffd34a', t0: t, d: 1.6, big: 1 }); burst(f.x, f.y - 1, '#ffd34a', 40, 3, 1.4, 3, -1); G.texts.push({ x: f.x, y: f.y - 2.5, txt: 'LEVEL UP!', col: '#ffd34a', size: 22, t0: t, d: 2, vy: -0.4, stroke: 1 }); break;
       case 'loot': if (window.SFX && Math.hypot(f.x - G.self.x, f.y - G.self.y) < 10) SFX.coin(); if (f.z) G.texts.push({ x: f.x, y: f.y - 0.5, txt: '+' + f.z + 'z', col: '#ffe08a', size: 11, t0: t + 0.2, d: 1, vy: -1 }); if (f.n) burst(f.x, f.y - 0.3, '#ffe08a', 10, 2, 0.8, 2.5, -1); break;
-      case 'pot': burst(f.x, f.y - 0.6, f.c || '#5f5', 10, 1.5, 0.8, 2.5, -1); break;
+      case 'pot': if (window.VFX && VFX.ok) { VFX.one('holy/heal', f.x, f.y, { follow: f.t, sp: 1.3, pal: f.c ? VFX.ramp(VFX.hue(f.c)) : undefined }); break; } burst(f.x, f.y - 0.6, f.c || '#5f5', 10, 1.5, 0.8, 2.5, -1); break;
       case 'buffed': burst(f.x, f.y - 0.6, '#aaffaa', 14, 1.5, 0.9, 2.5, -1); break;
       case 'castbar': { const c = G.ents.get(f.s); if (c) { c.castUntil = t + f.d; c.castDur = f.d; } G.anims.push({ k: 'circle', x: f.x, y: f.y, col: '#9cf', t0: t, d: f.d }); break; }
       case 'mark': G.anims.push({ k: 'mark', id: f.t, t0: t, d: f.d }); break;
       case 'poof': burst(f.x, f.y - 0.4, '#bbb', 8, 2, 0.4); break;
-      case 'trait': { const s = SK[f.sk]; const c = s && s.fx ? s.fx.c[1] : '#fff'; G.texts.push({ x: f.x, y: f.y - 2.3, txt: '✦ ' + f.m, col: c, size: 12, t0: t, d: 1.4, vy: -0.5, stroke: 1 }); if (s && s.fx) G.anims.push({ k: 'sig', fx: Object.assign({}, s.fx, { s: s.fx.s * 0.6 }), x: f.x, y: f.y, t0: t, d: 0.5, seed: 7 }); break; }
-      case 'pick': if (window.SFX && f.t === G.me) SFX.loot(); burst(f.x, f.y - 0.3, '#ffe08a', 6, 2, 0.4, 2, -1); break;
+      case 'trait': { const s = SK[f.sk]; const c = s && s.fx ? s.fx.c[1] : '#fff'; G.texts.push({ x: f.x, y: f.y - 2.3, txt: '✦ ' + f.m, col: c, size: 12, t0: t, d: 1.4, vy: -0.5, stroke: 1 }); if (window.VFX && VFX.ok && VFX.recipes[f.sk]) VFX.one('arcane/mana-burst', f.x, f.y, { pal: VFX.recipes[f.sk].pal, sp: 1.6, life: 1, seed: 7 }); else if (s && s.fx) G.anims.push({ k: 'sig', fx: Object.assign({}, s.fx, { s: s.fx.s * 0.6 }), x: f.x, y: f.y, t0: t, d: 0.5, seed: 7 }); break; }
+      case 'pick': if (window.SFX && f.t === G.me) SFX.loot(); if (window.VFX && VFX.ok) { VFX.one('pickups/collect-burst', f.x, f.y, { sp: 1.3 }); break; } burst(f.x, f.y - 0.3, '#ffe08a', 6, 2, 0.4, 2, -1); break;
       case 'emote': if (ent) { ent.emote = f.e; ent.emoteT = G.t + 3; } break;
       case 'ach': G.anims.push({ k: 'pillar', x: f.x, y: f.y, col: '#ffcc33', t0: t, d: 1.5, big: 1 }); burst(f.x, f.y - 1, '#ffcc33', 30, 3, 1.2, 3, -1); G.texts.push({ x: f.x, y: f.y - 2.8, txt: '🏅 ' + f.m, col: '#ffcc33', size: 16, t0: t, d: 2.2, vy: -0.3, stroke: 1 }); break;
     }
@@ -445,6 +447,7 @@
     // fx in world space
     g.save(); g.translate(ox, oy); g.scale(scale, scale);
     drawAnims(g);
+    if (window.VFX && VFX.ok) { if ((G._stT = (G._stT || 0) + dt) > 0.15) { G._stT = 0; VFX.syncStatus(G.ents.values(), G.tagList, (e) => Math.abs(e.x - G.cam.x) < 22 && Math.abs(e.y - G.cam.y) < 14); } VFX.draw(g, dt); }
     drawPets(g, dt);
     for (const p of G.parts) {
       const a = p.life / p.max; g.globalAlpha = a; g.fillStyle = p.col; const sz = p.size / TS * (0.5 + a * 0.5);

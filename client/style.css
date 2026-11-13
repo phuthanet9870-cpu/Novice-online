@@ -350,3 +350,9 @@ body.touch #chat { display: none; }
 .statEdit { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; } .statEdit input { width: 70px; } .rates2 { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; } .rates2 input { width: 70px; }
 #dps { position: absolute; right: 240px; top: 12px; width: 200px; padding: 8px 10px; font-size: 12px; } #dps b { color: var(--gold); display: block; } #dps div { display: flex; justify-content: space-between; } #dps em { font-style: normal; color: #ffe08a; font-variant-numeric: tabular-nums; }
 @media (max-width: 900px) { .gmSplit, .ptWrap { grid-template-columns: 1fr; } }
+
+.fxSig.px { flex-wrap: wrap; gap: 0; }
+.fxSig.px b { width: 8px; height: 12px; image-rendering: pixelated; }
+.fxSig.px b:last-of-type { margin-right: 6px; }
+.fxSig.px span { flex: 1; min-width: 0; text-transform: capitalize; }
+.fxSig.px .btn { margin-left: 4px; }

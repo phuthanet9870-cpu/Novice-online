@@ -99,3 +99,21 @@ client/               HTML5 Canvas + DOM HUD (ไม่ต้อง build)
 
 แก้ตารางใน `docs/classes/XX_<class>.md` (คำอธิบายภาษาไทยมีตัวเลขและคีย์เวิร์ด เช่น `200%`, `AoE 3×3`, `Airborne`, `ใช้ Bleed →`)
 จากนั้น `npm run build:skills` หรือ `@reload` ในเกม — ตัวคอมไพล์จะแปลงเป็นกลไกและรายงานถ้ามีสกิลที่ค่าซ้ำกัน
+
+## Pixel-art skill VFX (pixelfx)
+
+All skill effects are rendered with [pixelfx](https://github.com/patch-gg/pixelfx) (MIT). The 179 bundled effects live in `client/js/vendor/pixelfx.js`, with the license in `client/js/vendor/LICENSE-pixelfx.txt`.
+
+`client/js/vfx.js` gives each of the 500 skills a recipe: cast flourish → delivery (projectile / beam / swing) → impact → aftermath. The recipe is chosen from what the skill does:
+
+- its design (shot, rain, quake, dash, zone, pull, blink, ult type, buff mods…)
+- its element
+- its shape and radius
+- the class weapon
+- the statuses it inflicts
+
+Each recipe is recolored with a hue-shifted palette ramp unique to that skill. All 500 recipes are distinct.
+
+Status tags show as looping overlays on the target (burning, frozen, poisoned, stunned, bleeding…). Hits, crits, reactions, deaths, level-ups and pickups are pixel effects too.
+
+Effects render into small per-instance frames at 12–20 fps and are drawn with nearest-neighbour scaling (24 effect pixels per tile). To rebuild the bundle, run esbuild over pixelfx's `src/core` plus the chosen `src/fx/*` modules (iife, global `PFX`).

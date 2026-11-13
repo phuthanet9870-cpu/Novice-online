@@ -11,7 +11,7 @@ const html = read('client/index.html');
 const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('<script src='));
 const css = read('client/style.css');
 const shared = ['shared/rng.js', 'shared/data.js', 'shared/data2.js', 'shared/formulas.js', 'shared/mapgen.js', 'shared/skills.js', 'shared/passives.js'];
-const client = ['client/js/sfx.js', 'client/js/art.js', 'client/js/game.js', 'client/js/ui.js', 'client/js/ui2.js', 'client/js/ui3.js'];
+const client = ['client/js/vendor/pixelfx.js', 'client/js/vfx.js', 'client/js/sfx.js', 'client/js/art.js', 'client/js/game.js', 'client/js/ui.js', 'client/js/ui2.js', 'client/js/ui3.js'];
 const serverMods = ['world', 'combat', 'items', 'auto', 'social', 'progress', 'econ', 'gm', 'index'];
 
 const browserDb = `
