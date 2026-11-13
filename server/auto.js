@@ -166,6 +166,16 @@ A.update = function (p, dt, t) {
     const low = C.partyNear(p, 9).find((q) => q.hp / q.maxHp * 100 < a.partyHeal);
     if (low) for (const id in ch.skills) { const sk = SKILLS[id]; if (sk.heal && !sk.heal.zone && skillReady(p, id, t)) { C.useSkill(p, id); return; } }
   }
+  // pick up wanted loot before looking for the next monster
+  if (!a.target || a.target.dead) {
+    let best = null, bd = a.radius * a.radius;
+    p.inst.inRadius(p.x, p.y, a.radius, (e) => { if (e.kind === 'i' && e.skipBy !== p.char.id && I.canTake(p, e) && I.autoWants(p, e)) { const d = (e.x - p.x) ** 2 + (e.y - p.y) ** 2; if (d < bd) { bd = d; best = e; } } });
+    if (best) {
+      if (W.dist(p, best) <= 2) { if (!I.pickup(p, best.id, true)) best.skipBy = p.char.id; }
+      else { a.moveTo = { x: best.x, y: best.y, r: 1.2 }; W.stepToward(p, best.x, best.y, dt, 1.2); }
+      return;
+    }
+  }
   // stuck detection: if we have not moved for 2.5s while chasing, skip that target for a while
   a.ignore = a.ignore || {};
   if (a.lastX === undefined || Math.hypot(p.x - a.lastX, p.y - a.lastY) > 0.3) { a.lastX = p.x; a.lastY = p.y; a.stillAt = t; }

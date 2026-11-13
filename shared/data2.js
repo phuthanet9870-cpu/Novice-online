@@ -16,6 +16,9 @@
     { role: 'stable', name: 'Tamer Rook', th: 'สัตว์เลี้ยง / พาหนะ', dx: -12, dy: 7, color: '#c87a3a' },
     { role: 'storage', name: 'Keeper Ivo', th: 'คลังเก็บของ', dx: -7, dy: -11, color: '#b08a5a' }
   );
+  D.TOWN_NPCS.push({ role: 'training', name: 'Drillmaster Hugo', th: 'ลานฝึกซ้อม (ทดสอบดาเมจ)', dx: -8, dy: 11, color: '#c8a060' });
+  D.SPECIAL_MAPS.training = { id: 'training', kind: 'training', name: 'Training Grounds', th: 'ลานฝึกซ้อม', biome: 'meadow', w: 64, h: 52 };
+  D.ITEMS.zeny = { n: 'Zeny', th: 'เงิน', type: 'zeny', price: 0, icon: '#ffd34a' };
   D.SPECIAL_MAPS.duel_arena = { id: 'duel_arena', name: 'Ranked Arena', th: 'สนามจัดอันดับ', biome: 'ruins', w: 36, h: 36, pvp: true, noAuto: true };
 
   // ---------------------------------------------------------------- pets & mounts

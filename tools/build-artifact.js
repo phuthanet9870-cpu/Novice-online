@@ -10,8 +10,8 @@ const safe = (js) => js.replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<
 const html = read('client/index.html');
 const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('<script src='));
 const css = read('client/style.css');
-const shared = ['shared/rng.js', 'shared/data.js', 'shared/data2.js', 'shared/formulas.js', 'shared/mapgen.js', 'shared/skills.js'];
-const client = ['client/js/sfx.js', 'client/js/art.js', 'client/js/game.js', 'client/js/ui.js', 'client/js/ui2.js'];
+const shared = ['shared/rng.js', 'shared/data.js', 'shared/data2.js', 'shared/formulas.js', 'shared/mapgen.js', 'shared/skills.js', 'shared/passives.js'];
+const client = ['client/js/sfx.js', 'client/js/art.js', 'client/js/game.js', 'client/js/ui.js', 'client/js/ui2.js', 'client/js/ui3.js'];
 const serverMods = ['world', 'combat', 'items', 'auto', 'social', 'progress', 'econ', 'gm', 'index'];
 
 const browserDb = `
@@ -50,7 +50,7 @@ const shim = `
     http: { createServer: () => ({ listen(port, cb) { cb && setTimeout(cb, 0); }, on() {} }) },
     ws: { WebSocketServer: class { constructor() { this.h = {}; WSS = this; } on(ev, fn) { this.h[ev] = fn; } } }
   };
-  const SHARED = { 'shared/data.js': () => NO_DATA, 'shared/data2.js': () => NO_DATA, 'shared/formulas.js': () => NO_F, 'shared/mapgen.js': () => NO_MAP, 'shared/rng.js': () => NO_RNG, 'shared/skills.js': () => NO_SKILLS };
+  const SHARED = { 'shared/data.js': () => NO_DATA, 'shared/data2.js': () => NO_DATA, 'shared/formulas.js': () => NO_F, 'shared/mapgen.js': () => NO_MAP, 'shared/rng.js': () => NO_RNG, 'shared/skills.js': () => NO_SKILLS, 'shared/passives.js': () => NO_PASSIVE };
   const MODS = window.__NO_MODS = {};
   const cache = {};
   function resolve(from, name) {

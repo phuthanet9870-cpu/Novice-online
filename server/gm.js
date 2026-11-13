@@ -51,7 +51,7 @@ const CMDS = {
     ch.lv = lv; q.lv = lv; ch.exp = 0; ch.stats = Object.assign({}, D.CLASSES[ch.cls].start); ch.statPts = 5 + F.statPointsAt(lv);
     ch.skills = {}; ch.skills[CLASS_SKILLS[ch.cls][0]] = 1; ch.skillPts = F.skillPointsAt(lv) - 1; sync(q); return `${q.name} Lv${lv} (สเตตัส/สกิลรีเซ็ต)`;
   }],
-  stat: [4, '@stat <str|agi|vit|int|dex|luk> <n> [player]', 'ตั้งค่าสเตตัส', (p, a) => { const q = need(target(p, a[2]), a[2]); if (!D.STATS.includes(a[0])) return 'stat ผิด'; q.char.stats[a[0]] = Math.max(1, Math.min(F.STAT_MAX, +a[1] || 1)); sync(q); return 'ok'; }],
+  stat: [4, '@stat <str|agi|vit|int|dex|luk> <n> [player]', 'ตั้งโบนัสสเตตัส (บวกเพิ่มจากค่าอัตโนมัติ)', (p, a) => { const q = need(target(p, a[2]), a[2]); if (!D.STATS.includes(a[0])) return 'stat ผิด'; q.char.statBonus = q.char.statBonus || {}; q.char.statBonus[a[0]] = +a[1] || 0; sync(q); return `${q.name} ${a[0]} bonus ${q.char.statBonus[a[0]]}`; }],
   statpoint: [3, '@statpoint <n> [player]', 'เพิ่มแต้มสเตตัส', (p, a) => { const q = need(target(p, a[1]), a[1]); q.char.statPts += +a[0] || 0; sync(q); return 'ok'; }],
   skillpoint: [3, '@skillpoint <n> [player]', 'เพิ่มแต้มสกิล', (p, a) => { const q = need(target(p, a[1]), a[1]); q.char.skillPts += +a[0] || 0; sync(q); return 'ok'; }],
   allskills: [4, '@allskills [player]', 'เรียนทุกสกิลระดับสูงสุด', (p, a) => { const q = need(target(p, a[0]), a[0]); for (const id of CLASS_SKILLS[q.cls]) q.char.skills[id] = SKILLS[id].maxLv; sync(q); return '50 skills maxed'; }],
@@ -144,6 +144,37 @@ const CMDS = {
   sendmail: [3, '@sendmail <player> <item_id> <qty> [ข้อความ]', 'ส่งไอเทมทางจดหมาย (ผู้เล่นออฟไลน์ได้)', (p, a) => { const ch = db.charByName(a[0]); if (!ch) return 'ไม่พบ'; if (!D.ITEMS[a[1]]) return 'id ผิด'; require('./econ').mailSystem(ch.id, 'ของขวัญจาก GM', a.slice(3).join(' '), [{ id: a[1], qty: +a[2] || 1, uid: 'u' + db.nextId() }], 0, 'GM'); return 'sent'; }],
   guildlv: [4, '@guildlv <lv>', 'ตั้งเลเวลกิลด์ของตัวเอง', (p, a) => { const g = db.data.guilds[p.char.guild]; if (!g) return 'ไม่มีกิลด์'; g.lv = Math.max(1, Math.min(D.GUILD_MAX_LV, +a[0] || 1)); g.exp = 0; db.dirty = true; sync(p); return 'guild lv ' + g.lv; }],
   achieve: [4, '@achieve [player]', 'ตรวจความสำเร็จใหม่', (p, a) => { const q = need(target(p, a[0]), a[0]); require('./progress').checkAch(q); return 'checked'; }],
+  passive: [3, '@passive <points N|reset|all> [player]', 'แต้ม/รีเซ็ต Passive Tree (all = เลือกทุกโหนดที่ต่อถึงได้ตามแต้ม)', (p, a) => {
+    const q = need(target(p, a[2] || (a[0] === 'points' ? a[2] : a[1])), a[2] || a[1]); const c = q.char; const T = require('../shared/passives.js');
+    if (a[0] === 'points') c.passiveBonus = (c.passiveBonus || 0) + (+a[1] || 0);
+    else if (a[0] === 'reset') c.passives = [];
+    else if (a[0] === 'all') { c.passiveBonus = (c.passiveBonus || 0) + 1000; let added = true; while (added) { added = false; for (const nd of T.nodes) if (T.canAllocate(c.cls, c.passives, nd.id)) { c.passives.push(nd.id); added = true; } } }
+    sync(q); return `${q.name}: ${c.passives.length} nodes, bonus pts ${c.passiveBonus || 0}`;
+  }],
+  gearx: [3, '@gearx <slot> <wtype|-> <tier0-9> <rarity0-5> <refine> [player]', 'สร้างอุปกรณ์ตามระดับ (ใช้โดยหน้าต่าง GM)', (p, a) => {
+    const slot = a[0]; if (![...D.SLOTS, 'ring'].includes(slot)) return 'slot ผิด';
+    const q = need(target(p, a[5]), a[5]);
+    const tier = Math.max(0, Math.min(9, +a[2] || 0));
+    const it = F.genEquip(r, slot === 'ring' ? 'ring1' : slot, Math.max(1, tier * 25 + 1), Math.max(0, Math.min(5, +a[3] || 0)), a[1] !== '-' ? a[1] : D.CLASSES[q.cls].weapon);
+    it.refine = Math.max(0, Math.min(['necklace', 'earring', 'ring'].includes(it.slot) ? 10 : 20, +a[4] || 0));
+    I.addEquip(q.char, it); sync(q); return `${q.name} ← [${D.RARITY[it.rarity].n}] +${it.refine} ${it.name}`;
+  }],
+  spawnx: [2, '@spawnx <family> <n> <lv> <rank0-4>', 'เรียกมอนตามระดับ (0 ปกติ, 1 Elite, 2 บอส, 3 บอสดันเจี้ยน, 4 World Boss)', (p, a) => {
+    let fam = null; for (const b in D.FAMILIES) for (const f of D.FAMILIES[b]) if (f[0].toLowerCase().replace(/ /g, '') === String(a[0]).toLowerCase()) fam = f;
+    if (!fam) return 'ไม่พบ family';
+    const n = Math.min(50, +a[1] || 1), lv = Math.max(1, Math.min(320, +a[2] || p.lv)), rk = Math.max(0, Math.min(4, +a[3] || 0));
+    for (let i = 0; i < n; i++) { const pos = M.randomWalkable(p.inst.map, r, p, 6); W.spawnMonster(p.inst, { fam, lv, rank: rk, x: pos.x, y: pos.y, name: (rk === 1 ? 'Elite ' : '') + fam[0] + (rk >= 2 ? ' ' + r.pick(D.BOSS_TITLES) : ''), extra: { noRespawn: true } }); }
+    return `spawned ${n}× ${fam[0]} Lv${lv} rank${rk}`;
+  }],
+  drop: [3, '@drop <item_id> [qty]', 'วางไอเทมบนพื้นตรงตำแหน่งตัวเอง', (p, a) => { if (!D.ITEMS[a[0]]) return 'id ผิด'; W.dropItem(p.inst, p.x, p.y, { uid: 'u' + db.nextId(), id: a[0], qty: +a[1] || 1 }, []); return 'dropped'; }],
+  ent: [2, '@ent <kill|heal|hp|remove|freeze> <entityId> [value]', 'ควบคุม entity (มอน/ผู้เล่น/NPC) ด้วย id', (p, a) => {
+    const e = p.inst.entities.get(+a[1]); if (!e) return 'ไม่พบ entity ในแผนที่นี้';
+    if (a[0] === 'kill') C.onDeath(e, p); else if (a[0] === 'heal') e.hp = e.maxHp; else if (a[0] === 'hp') e.hp = Math.max(1, e.maxHp * Math.min(100, +a[2] || 100) / 100);
+    else if (a[0] === 'remove') p.inst.remove(e); else if (a[0] === 'freeze') C.applyTag(e, 'freeze', 1, +a[2] || 10, p);
+    return `${a[0]} → ${e.name || e.id}`;
+  }],
+  tp: [2, '@tp <x> <y>', 'วาร์ปในแผนที่เดิม', (p, a) => { W.enterMap(p, p.inst.id, +a[0], +a[1]); return 'ok'; }],
+  gmdata: [1, '@gmdata', 'ข้อมูลสำหรับหน้าต่าง GM', (p) => { G.data(p); return 'ok'; }],
   audit: [5, '@audit [n]', 'ดู GM audit log ล่าสุด', (p, a) => { try { const lines = require('fs').readFileSync(require('path').join(__dirname, '..', 'data', 'gm_audit.log'), 'utf8').trim().split('\n'); return lines.slice(-(+a[0] || 15)).join('\n'); } catch (e) { return 'ว่าง'; } }]
 };
 G.CMDS = CMDS;
@@ -163,4 +194,13 @@ G.run = function (p, line) {
 };
 
 // set by index.js
+G.data = function (p) {
+  const S = require('./social');
+  p.sess && p.sess.send({ t: 'gmdata', rates: db.data.settings, flags: W.flags[p.inst.mapId] || {}, map: p.inst.mapId,
+    players: [...W.players.values()].map((q) => ({ name: q.name, cls: q.cls, lv: q.lv, map: q.inst ? q.inst.mapId : '', gm: q.gm, off: q.sess ? 0 : 1, hp: Math.round(q.hp / q.maxHp * 100), id: q.id, zeny: q.char.zeny, karma: q.char.karma || 0 })),
+    accounts: Object.keys(db.data.accounts).length, chars: Object.keys(db.data.chars).length,
+    gvg: S.gvg.active, wb: S.worldBossAlive(), castles: D.CASTLES.map((c) => [c.id, (db.data.guilds[S.castleOwner(c.id)] || {}).name || '-']),
+    bosses: Object.entries(S.fieldBoss).map(([k, v]) => [k, v.alive ? -1 : Math.max(0, Math.round(v.nextAt - Date.now() / 1000))]),
+    ents: [...p.inst.entities.values()].filter((e) => e.kind === 'm' || e.kind === 'p').slice(0, 300).map((e) => [e.id, e.kind, e.name, e.lv || 0, Math.round(e.hp / e.maxHp * 100), Math.round(W.dist(p, e))]).sort((x, y) => x[5] - y[5]).slice(0, 60) });
+};
 G.persist = () => {}; G.saveAll = () => {}; G.shutdown = () => process.exit(0);

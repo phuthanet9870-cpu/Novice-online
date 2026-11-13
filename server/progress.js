@@ -5,6 +5,7 @@ const W = require('./world');
 const C = require('./combat');
 const I = require('./items');
 const S = require('./social');
+const T = require('../shared/passives.js');
 
 const P = module.exports;
 const send = (p, m) => p && p.sess && p.sess.send(m);
@@ -25,6 +26,8 @@ P.init = function (ch) {
   ch.login = ch.login || { last: '', streak: 0, claimed: '' };
   if (ch.mmr === undefined) { ch.mmr = 1000; ch.rw = 0; ch.rl = 0; }
   ch.karma = ch.karma || 0;
+  ch.passives = ch.passives || [];
+  ch.passiveBonus = ch.passiveBonus || 0;
   ensureDaily(ch);
 };
 function ensureDaily(ch) {
@@ -37,7 +40,7 @@ function ensureDaily(ch) {
 P.payload = function (p) {
   const c = p.char;
   return { quests: c.quests, ach: c.ach, titles: c.titles, title: c.title || '', friends: P.friendList(c), pets: c.pets, pet: c.pet || null, mounts: c.mounts, mount: p.mounted || '',
-    login: c.login, cnt: c.cnt, mmr: c.mmr, rw: c.rw, rl: c.rl, karma: c.karma, unread: P.unread ? P.unread(c) : 0, guildX: guildX(c.guild), queue: !!queue.find((q) => q.p === p) };
+    login: c.login, cnt: c.cnt, passives: c.passives, passivePts: P.passivePts(c), statBonus: c.statBonus || {}, mmr: c.mmr, rw: c.rw, rl: c.rl, karma: c.karma, unread: P.unread ? P.unread(c) : 0, guildX: guildX(c.guild), queue: !!queue.find((q) => q.p === p) };
 };
 P.sync = (p, keys) => C.sendChar(p, keys);
 P.onLogin = function (p) {
@@ -56,6 +59,8 @@ P.extraMods = function (p) {
   const add = (k, v) => { m[k] = (m[k] || 0) + v; };
   if (c.pet) { const pd = D.PETS[c.pet.id]; if (pd) add(pd.stat, Math.round(pd.per * c.pet.lv * 10) / 10); }
   if (p.mounted && D.MOUNTS[p.mounted]) add('movePct', D.MOUNTS[p.mounted].speed);
+  const pm = T.modsOf(c.passives);
+  for (const k in pm) add(k, pm[k]);
   for (const id of c.ach || []) { const a = D.ACHIEVEMENTS.find((x) => x.id === id); if (a && a.bonus) for (const k in a.bonus) add(k, a.bonus[k]); }
   const g = c.guild && db.data.guilds[c.guild];
   if (g && g.skills) for (const k in g.skills) { const gs = D.GUILD_SKILLS[k]; if (gs) for (const s in gs.mods) add(s, gs.mods[s] * g.skills[k]); }
@@ -392,4 +397,31 @@ P.guildStorage = function (p, a, uid, qty) {
   db.dirty = true;
   for (const q of W.players.values()) if (q.char.guild === g.id) P.sync(q, ['guildX']);
   P.sync(p, ['inv']);
+};
+
+// ------------------------------------------------------------------ passive skill tree (1000 nodes)
+P.passivePts = (c) => T.points(c.lv, c.passiveBonus || 0) - (c.passives || []).length;
+P.passive = function (p, m) {
+  const c = p.char; P.init(c);
+  if (m.a === 'alloc') {
+    const ids = Array.isArray(m.ids) ? m.ids : [m.id];
+    let n = 0;
+    for (const id of ids) {
+      if (P.passivePts(c) <= 0) { if (!n) err(p, 'แต้ม Passive ไม่พอ (ได้ 1 แต้มต่อเลเวล + โบนัสทุก 10 เลเวล)'); break; }
+      if (!T.canAllocate(c.cls, c.passives, id | 0)) { if (!n) err(p, 'ต้องต่อจากโหนดที่เลือกไว้แล้วหรือจุดเริ่มของคลาส'); break; }
+      c.passives.push(id | 0); n++;
+    }
+  } else if (m.a === 'refund') {
+    if (!T.canRefund(c.cls, c.passives, m.id | 0)) return err(p, 'คืนโหนดนี้ไม่ได้ — จะทำให้โหนดอื่นขาดการเชื่อมต่อ');
+    const cost = c.lv * 50;
+    if (c.zeny < cost && !p.gm) return err(p, `คืนแต้มต้องใช้ ${cost.toLocaleString()} Zeny`);
+    if (!p.gm) c.zeny -= cost;
+    c.passives = c.passives.filter((x) => x !== (m.id | 0));
+  } else if (m.a === 'reset') {
+    if (c.lv > 50 && !p.gm && !I.consume(c, 'stat_reset', 1)) return err(p, 'รีเซ็ตทั้งต้นต้องใช้ Rebirth Elixir (ฟรีถึงเลเวล 50)');
+    c.passives = [];
+    note(p, 'รีเซ็ต Passive Tree เรียบร้อย');
+  }
+  C.recalc(p);
+  P.sync(p, ['passives', 'passivePts', 'st', 'zeny', 'inv']);
 };

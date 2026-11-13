@@ -30,6 +30,7 @@
     chat: (m) => { UI.chat(m.ch, m.f, m.m); if (m.ch === 'map' && m.id) { const e = G.ents.get(m.id); if (e) { e.bubble = m.m; e.bubbleT = G.t + 5; } } },
     gm: (m) => UI.gmOut(m.m),
     gmlist: (m) => { G.gmList = m.list; },
+    gmdata: (m) => UI.onGmData && UI.onGmData(m),
     enter: (m) => enterMap(m),
     snap: (m) => applySnap(m),
     char: (m) => { const { t, ...rest } = m; Object.assign(G.char, rest); if (rest.st) G.st = rest.st; UI.refresh(Object.keys(rest)); },
@@ -161,6 +162,7 @@
     G.path = p && p.length ? p : null;
   };
   G.clickEntity = function (e) {
+    if (e.k === 'i') { G.stopAuto(); G.lootGoal = e.id; G.walkTo(e.x, e.y); return; }
     G.target = e.id;
     if (e.k === 'n') { G.stopAuto(); G.npcGoal = e.id; G.walkTo(e.x, e.y + 1); G.send({ t: 'stop' }); return; }
     if (G.isEnemy(e)) { G.send({ t: 'atk', id: e.id }); G.chase = e.id; }
@@ -176,7 +178,7 @@
       const hk = UI.hotkeyIndex(ev);
       if (hk >= 0) { G.useHotbar(hk); ev.preventDefault(); return; }
       if (k === 'tab') { G.cycleTarget(); ev.preventDefault(); }
-      else if (k === ' ') { const e = G.ents.get(G.target) || G.nearestEnemy(10); if (e && G.isEnemy(e)) G.clickEntity(e); ev.preventDefault(); }
+      else if (k === ' ') { const it = G.nearestLoot(4); if (it) G.clickEntity(it); else { const e = G.ents.get(G.target) || G.nearestEnemy(10); if (e && G.isEnemy(e)) G.clickEntity(e); } ev.preventDefault(); }
       else if (k === 'f1') { G.send({ t: 'use', id: bestPot('hp') }); ev.preventDefault(); }
       else if (k === 'f2') { G.send({ t: 'use', id: bestPot('sp') }); ev.preventDefault(); }
       else if (k === 'q') G.send({ t: 'breakfree' });
@@ -255,6 +257,7 @@
         if (d > need) { if (!G.path || !G.pathGoal || Math.hypot(G.pathGoal[0] - goal.x, G.pathGoal[1] - goal.y) > 1.5) { G.walkTo(goal.x, goal.y); G.pathGoal = [goal.x, goal.y]; } }
         else { G.path = null; if (pend) { G.send({ t: 'sk', id: G.pending.id, tid: G.pending.tid }); G.pending = null; } }
       } else if (ch) G.chase = null;
+      if (G.lootGoal) { const it = G.ents.get(G.lootGoal); if (!it) G.lootGoal = null; else if (Math.hypot(it.x - G.self.x, it.y - G.self.y) < 1.9) { G.path = null; G.send({ t: 'pickup', id: it.id }); G.lootGoal = null; } }
       if (G.npcGoal) { const n = G.ents.get(G.npcGoal); if (n && Math.hypot(n.x - G.self.x, n.y - G.self.y) < 2.6) { G.path = null; UI.openNpc(n); G.npcGoal = null; } }
       if (G.path && G.path.length) {
         const [px, py] = G.path[0];
@@ -320,6 +323,7 @@
     switch (f.k) {
       case 'hit': {
         const mine = f.s === G.me || f.t === G.me;
+        if (UI.onHit) UI.onHit(f);
         if (!mine && !(ent && ent.k === 'p') && !(G.ents.get(f.t) && Math.hypot(f.x - G.self.x, f.y - G.self.y) < 14)) break;
         let col = '#fff', size = 15, txt = f.d.toLocaleString();
         if (f.h) { col = '#5aff8a'; txt = '+' + txt; }
@@ -380,6 +384,7 @@
       case 'mark': G.anims.push({ k: 'mark', id: f.t, t0: t, d: f.d }); break;
       case 'poof': burst(f.x, f.y - 0.4, '#bbb', 8, 2, 0.4); break;
       case 'trait': { const s = SK[f.sk]; const c = s && s.fx ? s.fx.c[1] : '#fff'; G.texts.push({ x: f.x, y: f.y - 2.3, txt: '✦ ' + f.m, col: c, size: 12, t0: t, d: 1.4, vy: -0.5, stroke: 1 }); if (s && s.fx) G.anims.push({ k: 'sig', fx: Object.assign({}, s.fx, { s: s.fx.s * 0.6 }), x: f.x, y: f.y, t0: t, d: 0.5, seed: 7 }); break; }
+      case 'pick': if (window.SFX && f.t === G.me) SFX.loot(); burst(f.x, f.y - 0.3, '#ffe08a', 6, 2, 0.4, 2, -1); break;
       case 'emote': if (ent) { ent.emote = f.e; ent.emoteT = G.t + 3; } break;
       case 'ach': G.anims.push({ k: 'pillar', x: f.x, y: f.y, col: '#ffcc33', t0: t, d: 1.5, big: 1 }); burst(f.x, f.y - 1, '#ffcc33', 30, 3, 1.2, 3, -1); G.texts.push({ x: f.x, y: f.y - 2.8, txt: '🏅 ' + f.m, col: '#ffcc33', size: 16, t0: t, d: 2.2, vy: -0.3, stroke: 1 }); break;
     }
@@ -495,7 +500,21 @@
     g.globalAlpha = 1;
     if (Math.random() < 0.3) G.parts.push({ x: e.x + (Math.random() - 0.5) * e.r * 1.6, y: e.y + (Math.random() - 0.5) * e.r * 1.6, vx: 0, vy: -1.5, life: 0.7, max: 0.7, col, size: 3, grav: 0 });
   }
+  const iconImgs = new Map();
+  G.iconImg = (url) => { let im = iconImgs.get(url); if (!im) { im = new Image(); im.src = url; iconImgs.set(url, im); } return im; };
+  G.nearestLoot = function (r) { let best = null, bd = r * r; for (const e of G.ents.values()) if (e.k === 'i' && e.mine) { const d = (e.x - G.self.x) ** 2 + (e.y - G.self.y) ** 2; if (d < bd) { bd = d; best = e; } } return best; };
+  function drawGroundItem(g, e, x, y, z) {
+    const rc = e.rar >= 0 ? D.RARITY[e.rar].color : e.it.id === 'zeny' ? '#ffd34a' : '#e8e8f0';
+    const bob = Math.sin(G.t * 3 + e.id) * 2;
+    g.save(); g.translate(x, y); g.scale(z, z); g.globalAlpha = e.mine ? 1 : 0.55;
+    if (e.rar >= 2) { const gr = g.createLinearGradient(0, 0, 0, -70 - e.rar * 12); gr.addColorStop(0, rc); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.globalAlpha *= 0.35 + Math.sin(G.t * 4) * 0.1; g.fillStyle = gr; g.fillRect(-4 - e.rar, -70 - e.rar * 12, 8 + e.rar * 2, 70 + e.rar * 12); g.globalAlpha = e.mine ? 1 : 0.55; }
+    g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(0, 3, 10, 4, 0, 0, 7); g.fill();
+    if (e.it.id === 'zeny') { for (let i = 0; i < 5; i++) { g.fillStyle = i % 2 ? '#ffd34a' : '#e0a820'; g.beginPath(); g.ellipse(-6 + (i * 5) % 13, -2 - Math.floor(i / 2) * 3 + bob * 0.3, 5, 2.5, 0, 0, 7); g.fill(); } }
+    else { const im = G.iconImg(ART.itemIcon(e.it)); if (im.complete) g.drawImage(im, -12, -24 + bob, 24, 24); }
+    g.restore();
+  }
   function drawEntity(g, e, x, y, z) {
+    if (e.k === 'i') return drawGroundItem(g, e, x, y, z);
     const t = G.t;
     g.save(); g.translate(x, y); g.scale(z, z);
     const dead = e.fl & 1;
@@ -531,6 +550,16 @@
   }
   function drawOverhead(g, e, x, y, z) {
     if (e.k === 'z') return;
+    if (e.k === 'i') {
+      const near = Math.hypot(e.x - G.self.x, e.y - G.self.y) < 7;
+      if (!(near || e.rar >= 2 || G.keys.alt)) return;
+      g.textAlign = 'center'; g.font = `${e.rar >= 3 ? 700 : 500} 11px Kanit, sans-serif`;
+      const col = e.rar >= 0 ? D.RARITY[e.rar].color : e.it.id === 'zeny' ? '#ffd34a' : '#e8e8f0';
+      const w = g.measureText(e.n).width + 10;
+      g.globalAlpha = e.mine ? 1 : 0.6; g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillRect(x - w / 2, y - 44 * z, w, 15);
+      g.fillStyle = col; g.fillText(e.n, x, y - 33 * z); g.globalAlpha = 1;
+      return;
+    }
     const dead = e.fl & 1;
     if ((e.fl & 4) && G.isEnemy(e)) return;
     const sz = e.sz || 1;

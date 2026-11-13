@@ -183,7 +183,10 @@ function handle(sess, m) {
     case 'respawn': C.respawn(p); break;
     case 'dungeon': S.enterDungeon(p, m.type, m.floor); break;
     case 'stairs': S.useStairs(p); break;
-    case 'portal': { const e = p.inst.entities.get(m.id); if (e && e.role === 'portal' && W.dist(e, p) < 4) W.enterMap(p, e.dest); break; }
+    case 'portal': { const e = p.inst.entities.get(m.id); if (e && e.role === 'portal' && W.dist(e, p) < 4) W.enterMap(p, e.dest === 'town' ? (p.char.lastTown || 'aurelia') : e.dest); break; }
+    case 'training': W.enterMap(p, 'training'); break;
+    case 'pickup': I.pickup(p, m.id | 0); break;
+    case 'passive': P.passive(p, m); break;
     case 'healer': if (p.inst.def.kind === 'town') { p.hp = p.maxHp; p.sp = p.maxSp; C.addBuff(p, 'npc:bless', { str: 10, int: 10, dex: 10, agi: 10 }, 600, 'Blessing of Mira', '#fff'); sess.send({ t: 'notice', k: 'system', m: 'Sister Mira: ฮีลเต็ม + Blessing 10 นาที' }); } break;
     case 'auto': p.auto = Object.assign(A.sanitize(m.cfg), { on: p.auto.on, ax: p.auto.ax, ay: p.auto.ay, state: p.auto.state, startAt: p.auto.startAt, kills0: p.auto.kills0, startZeny: p.auto.startZeny, startLv: p.auto.startLv }); persist(p); C.sendChar(p, ['auto']); break;
     case 'autoOn': if (m.on) P.dismount(p); A.setOn(p, !!m.on); C.sendChar(p, ['auto']); break;

@@ -126,13 +126,25 @@
     return out;
   }
 
-  // ------------------------------------------------------------------ Player stats
+  // ------------------------------------------------------------------ Player stats (ARPG-style: grow automatically every level)
+  const GROWTH_STEPS = [0.8, 0.55, 0.45, 0.25, 0.2, 0.15];
+  function statGrowth(cls) {
+    const st = D.CLASSES[cls].start;
+    const order = [...D.STATS].sort((a, b) => st[b] - st[a] || D.STATS.indexOf(a) - D.STATS.indexOf(b));
+    const g = {}; order.forEach((k, i) => (g[k] = GROWTH_STEPS[i])); return g;
+  }
+  function autoStats(cls, lv) {
+    const st = D.CLASSES[cls].start, gr = statGrowth(cls), out = {};
+    for (const k of D.STATS) out[k] = Math.floor(st[k] + gr[k] * (Math.max(1, lv) - 1));
+    return out;
+  }
   function calcStats(ch, gear, mods) {
     const c = D.CLASSES[ch.cls];
     gear = gear || {}; mods = mods || {};
     const g = (k) => (gear[k] || 0) + (mods[k] || 0);
     const s = {};
-    for (const k of D.STATS) s[k] = (ch.stats[k] || 0) + g(k);
+    const auto = autoStats(ch.cls, ch.lv);
+    for (const k of D.STATS) s[k] = auto[k] + ((ch.statBonus && ch.statBonus[k]) || 0) + g(k);
     const L = ch.lv;
     const st = { base: s };
     st.maxHp = Math.round((c.hp0 + L * c.hpLv + s.vit * c.vitHp + g('hp')) * (1 + g('hpPct') / 100));
@@ -178,5 +190,5 @@
   function skillCd(sk, lv) { return r1((sk.cd || 0) * (lv >= 10 ? 0.9 : 1)); }
 
   return { clamp, r1, expToNext, statPointsAt, skillPointsAt, statCost, STAT_MAX, RANK, monsterStats, weaponTypeOf, classesForWeapon,
-    rollRarity, genEquip, rollOptions, refinePct, runeValue, jewelValue, itemStats, gearStats, calcStats, skillMult, skillSp, skillCd };
+    autoStats, statGrowth, rollRarity, genEquip, rollOptions, refinePct, runeValue, jewelValue, itemStats, gearStats, calcStats, skillMult, skillSp, skillCd };
 });

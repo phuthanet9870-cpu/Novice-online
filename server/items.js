@@ -88,14 +88,15 @@ I.gainExp = function (p, amt) {
   if (up) {
     p.lv = ch.lv; C.recalc(p); p.hp = p.maxHp; p.sp = p.maxSp;
     p.inst.emit({ k: 'lvup', t: p.id, x: p.x, y: p.y });
-    note(p, `เลเวลอัป! Lv ${ch.lv}  (+สเตตัส / +แต้มสกิล)`, 'level');
+    note(p, `เลเวลอัป! Lv ${ch.lv}  (+แต้มสกิล · +แต้ม Passive · ค่าสเตตัสเพิ่มอัตโนมัติ)`, 'level');
     if (ch.lv % 50 === 0 || ch.lv === D.MAX_LEVEL) S.broadcast({ t: 'notice', k: 'world', m: `🎉 ${ch.name} ถึงเลเวล ${ch.lv} แล้ว!` });
-    C.sendChar(p, ['lv', 'next', 'statPts', 'skillPts', 'stats', 'st']);
+    C.sendChar(p, ['lv', 'next', 'skillPts', 'passivePts', 'st']);
     P.event(p, 'level'); P.checkAch(p);
   }
 };
 
-I.addStat = function (p, k, n) {
+I.addStat = function (p) { return err(p, 'ค่าสเตตัสเพิ่มขึ้นอัตโนมัติทุกเลเวล — ใช้ Passive Tree เพื่อปรับแต่งตัวละคร'); };
+I._oldAddStat = function (p, k, n) {
   const ch = p.char;
   if (!D.STATS.includes(k)) return;
   n = Math.max(1, Math.min(100, n | 0));
@@ -126,7 +127,8 @@ I.resetSkills = function (p) {
   ch.hotbar = ch.hotbar.map((h) => (h && h.startsWith('item:') ? h : null)); ch.hotbar[0] = first;
   C.sendChar(p, ['skills', 'skillPts', 'hotbar', 'inv']); note(p, 'รีเซ็ตสกิลเรียบร้อย');
 };
-I.resetStats = function (p) {
+I.resetStats = function (p) { return P.passive(p, { a: 'reset' }); };
+I._oldResetStats = function (p) {
   const ch = p.char;
   if (ch.lv > 50 && !I.consume(ch, 'stat_reset', 1)) return err(p, 'ต้องใช้ Rebirth Elixir (ฟรีถึงเลเวล 50)');
   ch.stats = Object.assign({}, D.CLASSES[ch.cls].start); ch.statPts = 5 + F.statPointsAt(ch.lv);
@@ -202,7 +204,7 @@ I.sell = function (p, u, qty) {
   invSync(p);
   note(p, `ขาย ${I.itemName(it)} x${q} ได้ ${got.toLocaleString()} Zeny`);
 };
-I.drop = function (p, u, qty) { const it = I.removeUid(p.char, u, qty); if (it) { invSync(p); note(p, `ทิ้ง ${I.itemName(it)}`); } };
+I.drop = function (p, u, qty) { const it = I.removeUid(p.char, u, qty); if (it) { if (it.type !== 'equip') it.uid = uid(); W.dropItem(p.inst, p.x, p.y, it, [p.char.id]); invSync(p); note(p, `วาง ${I.itemName(it)} ลงพื้น`); } };
 I.buy = function (p, id, qty) {
   const inst = p.inst;
   if (inst.def.kind !== 'town' && !p.gm) return err(p, 'ซื้อได้เฉพาะในเมือง');
@@ -238,9 +240,10 @@ I.onMonsterKilled = function (m, killer) {
   const dropMul = (db.data.settings.drop || 1) * (1 + killer.st.dropPct / 100) * (inst.def.kind === 'dungeon' ? 1 + inst.def.floor / 400 : 1);
   const lv = m.lv, rk = m.rank;
   const got = [];
-  const give = (id, q = 1) => { if (autoSkip(killer, id)) { ch.zeny += (D.ITEMS[id].sell || 5) * q; return; } if (I.addItem(ch, id, q)) got.push(D.ITEMS[id].n + (q > 1 ? ' x' + q : '')); };
+  const owners = killer.party ? C.partyNear(killer, 30).map((q) => q.char.id) : [ch.id];
+  const give = (id, q = 1) => { W.dropItem(inst, m.x, m.y, { uid: uid(), id, qty: q }, owners); got.push(id); };
   const zen = Math.round(m.zeny * (0.8 + r() * 0.4) * (db.data.settings.drop || 1));
-  ch.zeny += zen;
+  W.dropItem(inst, m.x, m.y, { uid: uid(), id: 'zeny', qty: zen }, owners);
   const roll = (p) => r() < p * dropMul;
   if (roll(0.07)) give('pot_hp_' + potTier(lv));
   if (roll(0.035)) give('pot_sp_' + Math.min(4, potTier(lv)));
@@ -266,15 +269,10 @@ I.onMonsterKilled = function (m, killer) {
     else if (rk === 1) rar = Math.max(rar, 1);
     const slot = r.pick(D.SLOTS);
     const it = F.genEquip(r, slot === 'ring2' ? 'ring1' : slot, Math.max(1, lv + r.int(-3, 3)), rar, r() < 0.55 ? D.CLASSES[ch.cls].weapon : null);
-    if (killer.auto.on && it.rarity < (killer.auto.lootMinRarity || 0)) { ch.zeny += I.sellPrice(it); continue; }
-    if (I.addEquip(ch, it)) {
-      got.push(`[${D.RARITY[it.rarity].n}] ${it.name}`);
-      if (it.rarity >= 4) S.broadcast({ t: 'notice', k: 'loot', m: `✨ ${ch.name} ได้รับ [${D.RARITY[it.rarity].n}] ${it.name} จาก ${m.name}!` });
-    } else note(killer, 'กระเป๋าเต็ม! ไอเทมหาย', 'warn');
+    it.uid = uid(); it.src = m.name;
+    W.dropItem(inst, m.x, m.y, it, owners); got.push(it.name);
   }
-  inst.emit({ k: 'loot', t: m.id, x: m.x, y: m.y, z: zen, n: got.length });
-  if (got.length) send(killer, { t: 'loot', items: got, z: zen });
-  invSync(killer);
+  inst.emit({ k: 'loot', t: m.id, x: m.x, y: m.y, z: 0, n: got.length });
 };
 function autoSkip(p, id) {
   if (!p.auto.on) return false;
@@ -390,4 +388,40 @@ I.combine = function (p, id) {
     I.addItem(ch, `jewel_${d.kind}_${d.tier + 1}`, 1); note(p, `รวมอัญมณีสำเร็จ → ${D.ITEMS[`jewel_${d.kind}_${d.tier + 1}`].n}`);
   }
   invSync(p);
+};
+
+// ------------------------------------------------------------------ ground loot pickup
+I.canTake = function (p, e) {
+  if (!e || e.kind !== 'i' || e.dead) return false;
+  if (W.now() >= e.freeAt) return true;
+  return (e.owners || []).includes(p.char.id);
+};
+I.pickup = function (p, id, quiet) {
+  const e = p.inst.entities.get(id);
+  if (!e || e.kind !== 'i') return false;
+  if (W.dist(p, e) > 2.8) return quiet ? false : err(p, 'อยู่ไกลเกินไป');
+  if (!I.canTake(p, e)) return quiet ? false : err(p, 'ของชิ้นนี้ยังเป็นของผู้อื่น (รอ 30 วินาที)');
+  const it = e.item, ch = p.char;
+  let ok;
+  if (it.id === 'zeny') { ch.zeny += it.qty; ok = true; }
+  else if (it.type === 'equip') ok = I.addEquip(ch, it);
+  else ok = I.addItem(ch, it.id, it.qty);
+  if (!ok) return quiet ? false : err(p, 'กระเป๋าเต็ม');
+  e.dead = true; p.inst.remove(e);
+  p.inst.emit({ k: 'pick', t: p.id, x: e.x, y: e.y });
+  const name = it.id === 'zeny' ? `${it.qty.toLocaleString()} Zeny` : it.type === 'equip' ? `[${D.RARITY[it.rarity].n}] ${it.refine ? '+' + it.refine + ' ' : ''}${it.name}` : `${D.ITEMS[it.id].n}${it.qty > 1 ? ' x' + it.qty : ''}`;
+  send(p, { t: 'loot', items: [name], z: it.id === 'zeny' ? it.qty : 0 });
+  if (it.type === 'equip' && it.rarity >= 4) S.broadcast({ t: 'notice', k: 'loot', m: `✨ ${ch.name} ได้รับ [${D.RARITY[it.rarity].n}] ${it.name}${it.src ? ' จาก ' + it.src : ''}!` });
+  invSync(p);
+  return true;
+};
+// does the auto-loot filter want this ground item?
+I.autoWants = function (p, e) {
+  const a = p.auto, it = e.item;
+  if (it.id === 'zeny') return true;
+  if (it.type === 'equip') return it.rarity >= (a.lootMinRarity || 0);
+  const d = D.ITEMS[it.id]; if (!d) return false;
+  if (d.type === 'potion' && !a.lootPotions) return false;
+  if ((d.type === 'mat' || d.type === 'loot') && !a.lootMats) return false;
+  return true;
 };

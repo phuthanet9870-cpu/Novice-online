@@ -193,6 +193,20 @@ W.populate = function (inst) {
   }
   if (def.kind === 'castle') { S.initCastle(inst); return; }
   if (def.kind === 'wb') { S.initWorldBossArena(inst); return; }
+  if (def.kind === 'training') {
+    const cx = map.w / 2, cy = map.h / 2;
+    const dummies = [[1, 0, 'neutral'], [50, 0, 'neutral'], [100, 0, 'neutral'], [150, 0, 'neutral'], [200, 0, 'neutral'], [250, 0, 'neutral'], [150, 2, 'neutral'],
+      [120, 0, 'fire'], [120, 0, 'ice'], [120, 0, 'water'], [120, 0, 'lightning'], [120, 0, 'earth'], [120, 0, 'holy'], [120, 0, 'dark']];
+    dummies.forEach(([lv, rank, el], i) => {
+      const row = i < 7 ? -6 : 6, col = (i % 7) - 3;
+      const name = rank >= 2 ? `Boss Dummy Lv${lv}` : el !== 'neutral' ? `${D.ELEMENTS[el].n} Dummy Lv${lv}` : `Training Dummy Lv${lv}`;
+      const m = W.spawnMonster(inst, { fam: ['Training Dummy', 'dummy', 'none', 0, el], lv, rank, x: cx + col * 5, y: cy + row, name, color: el === 'neutral' ? '#c8a060' : D.ELEMENTS[el].color, extra: { noRespawn: true, dummy: true, aggro: false } });
+      m.maxHp = m.hp = m.maxHp * 40;
+    });
+    inst.add({ id: W.nextEnt++, kind: 'n', name: 'Waygate → เมือง', role: 'portal', dest: 'town', color: '#7fd0ff', x: cx + 0.5, y: cy + 14, tags: new Map(), hp: 1, maxHp: 1 });
+    map.spawn = { x: cx + 0.5, y: cy + 11 };
+    return;
+  }
 };
 
 // ------------------------------------------------------------------ Movement
@@ -248,6 +262,7 @@ function nearestEnemy(e, range, pred) {
 W.nearestEnemy = nearestEnemy;
 
 function updateMonster(m, dt, t) {
+  if (m.dummy) { m.target = null; if (t - (m.lastHitAt || 0) > 4 && m.hp < m.maxHp) { m.hp = m.maxHp; m.tags.clear(); } return; }
   if (m.dead || m.rank === 6) return;
   if (C.isHardCC(m)) return;
   const inst = m.inst;
@@ -325,7 +340,7 @@ W.spawnSummon = function (owner, opts) {
     id: W.nextEnt++, kind: 's', name: opts.name || 'Minion', lv, owner, shape: opts.shape || 'undead', color: opts.color || '#b0a0ff',
     x: owner.x + (W.rand() - 0.5) * 2, y: owner.y + (W.rand() - 0.5) * 2, hp: Math.round(owner.maxHp * 0.45), maxHp: Math.round(owner.maxHp * 0.45),
     atkFlat: atk, def: owner.st ? owner.st.def : 10, mdef: owner.st ? owner.st.mdef : 10, tags: new Map(), until: now() + (opts.dur || 20),
-    range: 1.6, speed: 4.6, atkReady: 0, mult: opts.mult || 0.55, element: opts.element || 'neutral', mag: opts.mag, slot: W.rand() * 6.28, size: 0.9, ccDR: {}
+    range: 1.6, speed: 4.6, atkReady: 0, mult: (opts.mult || 0.55) * (owner.flags && owner.flags.summonBuff ? 1.5 : 1), element: opts.element || 'neutral', mag: opts.mag, slot: W.rand() * 6.28, size: 0.9, ccDR: {}
   };
   if (!M.walkable(owner.inst.map, s.x, s.y)) { s.x = owner.x; s.y = owner.y; }
   owner.inst.add(s);
@@ -333,6 +348,15 @@ W.spawnSummon = function (owner, opts) {
   return s;
 };
 
+// ------------------------------------------------------------------ ground items
+W.dropItem = function (inst, x, y, item, owners) {
+  const t = now();
+  let px = x, py = y;
+  for (let k = 0; k < 8; k++) { const a = W.rand() * 6.283, d = 0.3 + W.rand() * 1.2; const nx = x + Math.cos(a) * d, ny = y + Math.sin(a) * d; if (M.walkable(inst.map, nx, ny)) { px = nx; py = ny; break; } }
+  const e = { id: W.nextEnt++, kind: 'i', item, owners: owners || [], x: px, y: py, hp: 1, maxHp: 1, tags: new Map(), until: t + (item.type === 'equip' && item.rarity >= 3 ? 300 : 120), freeAt: t + 30 };
+  inst.add(e);
+  return e;
+};
 W.killQuiet = function (e) {
   e.dead = true;
   if (e.inst) { e.inst.emit({ k: 'poof', x: e.x, y: e.y }); e.inst.remove(e); }
@@ -391,6 +415,7 @@ W.tick = function () {
       } else if (e.kind === 's') { if (secTick) C.secondTick(e, t); updateSummon(e, dt, t); }
       else if (e.kind === 'z') updateZone(e, t);
       else if (e.kind === 'c' && secTick) C.secondTick(e, t);
+      else if (e.kind === 'i' && secTick && t > e.until) inst.remove(e);
     }
     // respawns
     if (secTick && inst.respawnQ && inst.respawnQ.length) {
@@ -419,6 +444,7 @@ function desc(e, viewer) {
   } else if (e.kind === 'n') Object.assign(base, { role: e.role, col: e.color, th: e.th || '', dest: e.dest || '' });
   else if (e.kind === 'z') Object.assign(base, { r: e.r, col: e.color, zk: e.zk, el: e.el, until: Math.round((e.until - now()) * 10) });
   else if (e.kind === 'c') Object.assign(base, { mhp: e.maxHp, g: e.guildName || '' });
+  else if (e.kind === 'i') { const it = e.item; Object.assign(base, { it: it.type === 'equip' ? { type: 'equip', slot: it.slot, wtype: it.wtype, rarity: it.rarity, refine: it.refine || 0 } : { id: it.id, qty: it.qty }, n: it.id === 'zeny' ? `${it.qty.toLocaleString()} Zeny` : it.type === 'equip' ? `${it.refine ? '+' + it.refine + ' ' : ''}${it.name}` : `${(D.ITEMS[it.id] || {}).n || it.id}${it.qty > 1 ? ' ×' + it.qty : ''}`, rar: it.type === 'equip' ? it.rarity : -1, mine: e.owners.includes(viewer.char.id) || now() >= e.freeAt ? 1 : 0 }); }
   return base;
 }
 W.desc = desc;
@@ -441,7 +467,7 @@ W.sendSnapshots = function (t) {
       }
       vis.add(e.id);
       if (!p.known.has(e.id)) { a.push(desc(e, p)); p.known.add(e.id); }
-      if (e.kind === 'z' || e.kind === 'n') return;
+      if (e.kind === 'z' || e.kind === 'n' || e.kind === 'i') return;
       let fl = (e.dead ? 1 : 0) | (e.casting ? 2 : 0) | (C.stealthed(e) ? 4 : 0) | (e.brokenUntil > t ? 16 : 0) | (e.invulnUntil > t ? 32 : 0) | (e.giantUntil > t ? 64 : 0);
       u.push([e.id, Math.round(e.x * 10), Math.round(e.y * 10), Math.max(0, Math.ceil(e.hp / e.maxHp * 100)), tagBits(e), fl]);
     });

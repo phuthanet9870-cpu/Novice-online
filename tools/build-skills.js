@@ -412,6 +412,8 @@ function build() {
 }
 
 const { SKILLS, CLASS_SKILLS } = build();
+const designCount = require('./skill-design.js')(SKILLS, CLASS_SKILLS, Object.keys(D.CLASSES).filter((c) => CLASS_SKILLS[c]));
+console.log('distinct designs:', designCount);
 // uniqueness report: no two skills in a class share the exact same numeric profile
 let dup = 0;
 for (const cls in CLASS_SKILLS) {

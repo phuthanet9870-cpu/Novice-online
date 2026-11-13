@@ -349,6 +349,16 @@
         g.beginPath(); g.moveTo(-14, -10); g.quadraticCurveTo(-26, -6, -30, -14 + bob); g.lineTo(-14, -6); g.fill();
         g.fillRect(-8, -5, 4, 6); g.fillRect(5, -5, 4, 6); eye(26, -28 + bob, 1.6); break;
       }
+      case 'dummy': {
+        g.fillStyle = '#6a4a2a'; g.fillRect(-2, -30, 4, 32);
+        g.fillStyle = '#d8b878'; g.beginPath(); g.ellipse(0, -16, 10, 12, 0, 0, 7); g.fill();
+        g.strokeStyle = '#9a7a48'; g.lineWidth = 1.5; for (let i = -1; i <= 1; i++) { g.beginPath(); g.moveTo(-9, -16 + i * 6); g.lineTo(9, -16 + i * 6); g.stroke(); }
+        g.fillStyle = '#6a4a2a'; g.fillRect(-16, -22, 32, 3);
+        g.fillStyle = '#e8d098'; g.beginPath(); g.arc(0, -34, 7, 0, 7); g.fill();
+        g.strokeStyle = col; g.lineWidth = 2.5; g.beginPath(); g.arc(0, -16, 6, 0, 7); g.stroke(); g.fillStyle = col; g.beginPath(); g.arc(0, -16, 2.5, 0, 7); g.fill();
+        g.fillStyle = '#222'; g.fillRect(-3, -36, 2, 2); g.fillRect(1, -36, 2, 2);
+        break;
+      }
       case 'drone': g.fillStyle = '#9ab'; roundRect(g, -7, -22 + bob, 14, 8, 3); g.fill(); g.fillStyle = '#7df'; g.fillRect(-2, -19 + bob, 4, 2); g.strokeStyle = '#ccd'; g.beginPath(); g.moveTo(-12, -24 + bob); g.lineTo(12, -24 + bob); g.stroke(); break;
       default: g.fillStyle = col; g.beginPath(); g.arc(0, -10, 10, 0, 7); g.fill(); eye(0, -10);
     }
@@ -434,7 +444,7 @@
     bg.addColorStop(0, c[1]); bg.addColorStop(0.45, c[0]); bg.addColorStop(1, '#07070d');
     g.fillStyle = bg; roundRect(g, 1, 1, s - 2, s - 2, 9); g.fill();
     g.globalAlpha = 0.35; g.fillStyle = c[2]; g.beginPath(); g.moveTo(s, s * 0.55); g.lineTo(s, s); g.lineTo(s * 0.45, s); g.closePath(); g.fill(); g.globalAlpha = 1;
-    g.strokeStyle = sk.kind === 'ult' ? '#ffcc33' : 'rgba(255,255,255,0.45)'; g.lineWidth = sk.kind === 'ult' ? 3 : 1.5; roundRect(g, 1.5, 1.5, s - 3, s - 3, 9); g.stroke();
+    g.strokeStyle = sk.kind === 'ult' ? '#ffcc33' : sk.kind === 'buff' ? '#6af08a' : 'rgba(255,255,255,0.45)'; g.lineWidth = sk.kind === 'attack' ? 1.5 : 3; roundRect(g, 1.5, 1.5, s - 3, s - 3, 9); g.stroke();
     g.save(); g.translate(s / 2, s / 2); g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.lineWidth = 2.4; g.lineCap = 'round'; g.shadowColor = c[2]; g.shadowBlur = 5;
     const n = Math.max(5, Math.min(12, fx.n)), R = 13;
     const rot = (RNG.hashStr(sk.id) % 628) / 100;
@@ -469,7 +479,8 @@
     g.fillStyle = 'rgba(0,0,0,0.55)'; g.beginPath(); g.arc(9, s - 9, 7, 0, 7); g.fill();
     g.fillStyle = '#fff'; g.font = 'bold 10px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(fx.m === 'cw' ? '↻' : fx.m === 'ccw' ? '↺' : '◉', 9, s - 8.5);
     if (sk.role && 'SLF'.includes(sk.role)) { g.fillStyle = { S: '#3ab0ff', L: '#ffb030', F: '#ff3a5a' }[sk.role]; g.beginPath(); g.arc(s - 9, 9, 7, 0, 7); g.fill(); g.fillStyle = '#fff'; g.font = 'bold 10px sans-serif'; g.fillText(sk.role, s - 9, 9.5); }
-    if (sk.kind === 'ult') { g.fillStyle = '#ffcc33'; g.font = 'bold 9px sans-serif'; g.fillText('★', s - 9, 9.5); }
+    if (sk.kind === 'ult') { g.fillStyle = '#ffcc33'; g.beginPath(); g.arc(s - 9, 9, 7, 0, 7); g.fill(); g.fillStyle = '#3a2a00'; g.font = 'bold 10px sans-serif'; g.fillText('★', s - 9, 9.5); }
+    if (sk.kind === 'buff') { g.fillStyle = '#3ac86a'; g.beginPath(); g.arc(s - 9, 9, 7, 0, 7); g.fill(); g.fillStyle = '#fff'; g.font = 'bold 11px sans-serif'; g.fillText('+', s - 9, 9.5); }
   });
   const SLOT_ICON = { offhand: 'shield', head: 'helm', armor: 'armor', cloak: 'cloak', boots: 'boots', necklace: 'neck', earring: 'ear', ring: 'ring', ring1: 'ring', ring2: 'ring' };
   ART.itemIcon = (it) => {

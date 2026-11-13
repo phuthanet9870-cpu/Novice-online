@@ -7,7 +7,7 @@
   const fmt = (n) => Math.round(n).toLocaleString();
   const UI = window.UI = { wins: {}, open: [], chatTab: 'all', chatCh: 'map', selItem: null, skillTab: null, invTab: 'all', log: [] };
   const HOTKEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 'z', 'x', 'c', 'v', 'b', 'n'];
-  const WINKEYS = { i: 'inv', k: 'skills', u: 'char', o: 'auto', m: 'map', j: 'dungeon', g: 'guild', p: 'party', r: 'rank', h: 'help', f10: 'gm', l: 'quests', y: 'achieve', f: 'friends', ',': 'pets', '.': 'settings' };
+  const WINKEYS = { i: 'inv', k: 'skills', u: 'char', o: 'auto', m: 'map', j: 'dungeon', g: 'guild', p: 'party', r: 'rank', h: 'help', f10: 'gm', l: 'quests', y: 'achieve', f: 'friends', ',': 'pets', '.': 'settings', '[': 'passive' };
 
   // ================================================================ screens
   UI.boot = function () {
@@ -65,7 +65,7 @@
       <div class="chips"><span class="chip">อาวุธ: ${c.weapon}</span><span class="chip">พลังพิเศษ: ${c.res.name}</span><span class="chip">${c.dmg === 'mag' ? 'เวทมนตร์' : 'กายภาพ'} · ${c.scale === 'melee' ? 'ประชิด' : 'ระยะไกล'}</span></div></div></div>
       <div class="rates">${bar('atk', 'โจมตี')}${bar('def', 'ป้องกัน')}${bar('spd', 'ความเร็ว')}${bar('mag', 'เวท')}${bar('sup', 'ซัพพอร์ต')}${bar('diff', 'ความยาก')}</div>
       <div class="baseStats">${D.STATS.map((s) => `<span><b>${s.toUpperCase()}</b>${c.start[s]}</span>`).join('')}<span><b>HP</b>${c.hp0}+${c.hpLv}/lv</span><span><b>SP</b>${c.sp0}+${c.spLv}/lv</span><span><b>ASPD</b>${c.aspd}</span><span><b>MOVE</b>${c.move}</span><span><b>RANGE</b>${c.range}</span></div>
-      <div class="branches"><div><b>50 สกิล</b><small>ไม่แยกหมวดหมู่</small></div><div><b>500 คุณสมบัติเฉพาะ</b><small>ไม่ซ้ำกันทั้งเกม</small></div><div><b>เอฟเฟกต์ + เสียง</b><small>เฉพาะของแต่ละสกิล</small></div></div>
+      <div class="branches"><div><b>⚔ Active</b><small>40 สกิล</small></div><div><b>★ Ultimate</b><small>5 สกิล</small></div><div><b>✚ Buff</b><small>5 สกิล</small></div><div><b>ไม่ซ้ำกันทั้งเกม</b><small>ความสามารถ · เอฟเฟกต์ · ไอคอน · เสียง</small></div></div>
       <div class="skillPreview">${sk.filter((s) => s.kind === 'ult').map((s) => `<img src="${ART.skillIcon(s)}" data-skill="${s.id}">`).join('')}${sk.filter((s) => s.kind !== 'ult').slice(0, 12).map((s) => `<img src="${ART.skillIcon(s)}" data-skill="${s.id}">`).join('')}</div>`;
   }
   function mapName(id) { const d = NO_MAP.getMapDef(id || 'aurelia'); return d ? d.name : id; }
@@ -99,7 +99,7 @@
       el.ondragstart = (e) => { const v = G.char.hotbar[+el.dataset.i]; if (!v) return e.preventDefault(); e.dataTransfer.setData('text/plain', v); e.dataTransfer.setData('from', el.dataset.i); };
     }
     $('#bfBtn').onclick = () => G.send({ t: 'breakfree' });
-    $('#menu').innerHTML = [['char', '👤', 'ตัวละคร', 'U'], ['inv', '🎒', 'กระเป๋า', 'I'], ['skills', '📖', 'สกิล', 'K'], ['auto', '🤖', 'ออโต้', 'O'], ['quests', '📜', 'ภารกิจ', 'L'], ['map', '🗺', 'แผนที่โลก', 'M'], ['dungeon', '🗼', 'ดันเจี้ยน', 'J'], ['achieve', '🏅', 'ความสำเร็จ/ฉายา', 'Y'], ['pets', '🐾', 'สัตว์เลี้ยง/พาหนะ', ','], ['mail', '✉', 'จดหมาย', '-'], ['market', '🏛', 'ตลาดประมูล', '-'], ['craft', '⚗', 'คราฟต์/แลกโทเคน', '-'], ['guild', '🏰', 'กิลด์', 'G'], ['party', '👥', 'ปาร์ตี้', 'P'], ['friends', '💬', 'เพื่อน', 'F'], ['rank', '🏆', 'อันดับ/บอส', 'R'], ['settings', '⚙', 'ตั้งค่า', '.'], ['help', '❔', 'คู่มือ', 'H'], ['gm', '🛡', 'GM', 'F10']]
+    $('#menu').innerHTML = [['char', '👤', 'ตัวละคร', 'U'], ['inv', '🎒', 'กระเป๋า', 'I'], ['skills', '📖', 'สกิล', 'K'], ['passive', '🌌', 'Passive Tree', '['], ['auto', '🤖', 'ออโต้', 'O'], ['quests', '📜', 'ภารกิจ', 'L'], ['map', '🗺', 'แผนที่โลก', 'M'], ['dungeon', '🗼', 'ดันเจี้ยน', 'J'], ['achieve', '🏅', 'ความสำเร็จ/ฉายา', 'Y'], ['pets', '🐾', 'สัตว์เลี้ยง/พาหนะ', ','], ['mail', '✉', 'จดหมาย', '-'], ['market', '🏛', 'ตลาดประมูล', '-'], ['craft', '⚗', 'คราฟต์/แลกโทเคน', '-'], ['guild', '🏰', 'กิลด์', 'G'], ['party', '👥', 'ปาร์ตี้', 'P'], ['friends', '💬', 'เพื่อน', 'F'], ['rank', '🏆', 'อันดับ/บอส', 'R'], ['settings', '⚙', 'ตั้งค่า', '.'], ['help', '❔', 'คู่มือ', 'H'], ['gm', '🛡', 'GM', 'F10']]
       .map(([w, ic, n, k]) => `<button class="mbtn" data-win="${w}" data-tip="${n} (${k})" ${w === 'gm' ? 'id="gmBtn" hidden' : ''}><span>${ic}</span><kbd>${k}</kbd></button>`).join('');
     $('#menu').onclick = (e) => { const b = e.target.closest('[data-win]'); if (b) UI.toggle(b.dataset.win); };
     $('#autoToggle').onclick = () => G.send({ t: 'autoOn', on: !G.autoOn() });
@@ -502,6 +502,7 @@
     else if (r === 'teleport') UI.show('map'); else if (r === 'dungeon') UI.show('dungeon'); else if (r === 'guild') { UI.show('guild'); G.send({ t: 'info', what: 'gvg' }); }
     else if (r === 'arena') { UI.show('arena'); G.send({ t: 'info', what: 'wb' }); }
     else if (r === 'healer') G.send({ t: 'healer' });
+    else if (r === 'training') G.send({ t: 'training' });
     else if (r === 'stairs') G.send({ t: 'stairs' });
     else if (r === 'portal') G.send({ t: 'portal', id: n.id });
     else if (r === 'storage') UI.show('storage'); else if (r === 'market') UI.show('market'); else if (r === 'mail') UI.show('mail'); else if (r === 'quest') UI.show('quests'); else if (r === 'craft') UI.show('craft'); else if (r === 'stable') UI.show('pets', { tab: 'shop' });
@@ -519,12 +520,12 @@
       return `<div class="charWin">
         <div class="paper"><div class="pdoll"><img src="${ART.portrait(ch.cls, ch.name, 140)}"><div class="pinfo"><b>${esc(ch.name)}</b><span style="color:${c.color}">${c.name} · Lv ${ch.lv}</span><small>${ch.guild ? '&lt;' + esc(ch.guild.name) + '&gt;' : 'ไม่มีกิลด์'}</small><small>Best Combo ${ch.bestCombo || 0}</small></div></div>
         <div class="eqgrid">${['head', 'necklace', 'weapon', 'armor', 'offhand', 'earring', 'cloak', 'ring1', 'boots', 'ring2'].map(slot).join('')}</div><small class="hint">คลิกช่องเพื่อถอด · สวม ${gearN}/10 ${p_runesets()}</small></div>
-        <div class="statCol"><div class="pts">แต้มสเตตัส: <b>${ch.statPts}</b></div>
-        ${D.STATS.map((s) => `<div class="statRow" data-tip="${D.STAT_INFO[s]}"><b>${s.toUpperCase()}</b><span>${ch.stats[s]}${G.char.gear && G.char.gear[s] ? `<em>+${G.char.gear[s]}</em>` : ''}</span><small>ใช้ ${F.statCost(ch.stats[s])}</small><button class="btn tiny" data-act="stat" data-k="${s}" data-n="1">+1</button><button class="btn tiny" data-act="stat" data-k="${s}" data-n="10">+10</button></div>`).join('')}
+        <div class="statCol"><div class="pts">ค่าสเตตัสเพิ่มขึ้นอัตโนมัติทุกเลเวล · Passive คงเหลือ <b>${ch.passivePts || 0}</b> <button class="btn tiny gold" data-act="tree">🌌 Passive Tree</button></div>
+        ${(() => { const au = F.autoStats(ch.cls, ch.lv), gr = F.statGrowth(ch.cls), sb = ch.statBonus || {}, pm = (window.NO_PASSIVE ? NO_PASSIVE.modsOf(ch.passives) : {}); return D.STATS.map((s) => { const extra = (G.char.gear && G.char.gear[s] || 0) + (pm[s] || 0) + (sb[s] || 0); return `<div class="statRow auto" data-tip="${D.STAT_INFO[s]}"><b>${s.toUpperCase()}</b><span>${au[s] + extra}${extra ? `<em>(${au[s]} +${Math.round(extra)})</em>` : ''}</span><small>+${gr[s]}/เลเวล</small><i class="gbar" style="--w:${gr[s] / 0.8 * 100}%"></i></div>`; }).join(''); })()}
         <div class="derived">${derived.map(([k, v]) => `<div><small>${k}</small><b>${typeof v === 'number' ? fmt(v) : v}</b></div>`).join('')}</div>
-        <button class="btn tiny" data-act="resetStats">รีเซ็ตสเตตัส (ฟรีถึง Lv50)</button></div></div>`;
+        <button class="btn tiny" data-act="tree">ปรับแต่งด้วย Passive Tree (1000 โหนด)</button></div></div>`;
     },
-    act(a, d) { if (a === 'stat') G.send({ t: 'stat', k: d.k, n: +d.n }); if (a === 'unequip' && G.char.equip[d.slot]) G.send({ t: 'unequip', slot: d.slot }); if (a === 'resetStats') UI.ask('รีเซ็ตสเตตัสทั้งหมด?').then((y) => y && G.send({ t: 'resetStats' })); }
+    act(a, d) { if (a === 'unequip' && G.char.equip[d.slot]) G.send({ t: 'unequip', slot: d.slot }); if (a === 'tree') UI.show('passive'); }
   };
   function p_runesets() { const s = G.char.gear && G.char.gear.runeSets; return s && s.length ? '· Rune Set: ' + s.map((k) => D.RUNE_KINDS[k].n).join(', ') : ''; }
 
@@ -574,16 +575,19 @@
 
   // ---------------------------------------------------------------- skills
   WIN.skills = {
-    title: '📖 ตำราสกิล — 50 สกิล ไม่ซ้ำกันทั้งเกม', w: 780,
+    title: '📖 ตำราสกิล — Active 40 · Ultimate 5 · Buff 5', w: 800,
     render(o) {
       const ch = G.char;
-      const all = CSK()[ch.cls].map((id) => SKS()[id]).sort((a, b) => a.reqLv - b.reqLv || a.id.localeCompare(b.id));
+      const cat = o.cat || 'attack';
+      const every = CSK()[ch.cls].map((id) => SKS()[id]);
+      const all = every.filter((s) => s.kind === cat).sort((a, b) => a.reqLv - b.reqLv || a.id.localeCompare(b.id));
+      const catTabs = `<div class="tabs">${[['attack', '⚔ Active'], ['ult', '★ Ultimate'], ['buff', '✚ Buff']].map(([k, n]) => `<button class="${cat === k ? 'on' : ''}" data-act="cat" data-k="${k}">${n} <small>${every.filter((s) => s.kind === k).length}</small></button>`).join('')}</div>`;
       const q = (o.q || '').toLowerCase();
       const list = all.filter((s) => !q || s.name.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q) || (s.trait && s.trait.th.toLowerCase().includes(q)) || (s.fx && s.fx.pn.includes(q)));
       const learned = Object.keys(ch.skills).length;
       return `<div class="skHead"><span>แต้มสกิล: <b class="big">${ch.skillPts}</b></span><span>เรียนแล้ว ${learned}/50</span><span>Lv ${ch.lv}</span><input id="skQ" placeholder="ค้นหาชื่อ / ความสามารถ / เอฟเฟกต์" value="${esc(o.q || '')}"><button class="btn tiny" data-act="reset">รีเซ็ตสกิล</button></div>
       <p class="hint">ทุกสกิลมีคุณสมบัติเฉพาะ ✦ เอฟเฟกต์ และเสียงของตัวเองที่ไม่ซ้ำกับสกิลใดในเกม · ลากไอคอนไปวางที่ Hotbar · คลิกขวาที่ Hotbar เพื่อลบ</p>
-      <div class="skList scrollKeep">${list.map((s) => {
+      ${catTabs}<div class="skList scrollKeep">${list.map((s) => {
         const lv = ch.skills[s.id] || 0; const cost = s.kind === 'ult' ? 2 : 1; const can = ch.lv >= s.reqLv && lv < s.maxLv && ch.skillPts >= cost;
         const fx = s.fx || { c: ['#fff', '#fff', '#fff'], pn: '', mn: '' };
         return `<div class="skCard ${lv ? '' : 'unl'} ${ch.lv < s.reqLv ? 'lock' : ''}" style="--f1:${fx.c[0]};--f2:${fx.c[1]};--f3:${fx.c[2]}"><img src="${ART.skillIcon(s)}" draggable="true" data-skill="${s.id}" ondragstart="event.dataTransfer.setData('text/plain','${s.id}');event.dataTransfer.setData('from','')">
@@ -594,6 +598,7 @@
       }).join('') || '<p class="hint">ไม่พบสกิลที่ตรงกับคำค้นหา</p>'}</div>`;
     },
     act(a, d) {
+      if (a === 'cat') { UI.wins.skills.opts.cat = d.k; renderWin('skills'); }
       if (a === 'learn') G.send({ t: 'learn', id: d.id });
       if (a === 'reset') UI.ask('รีเซ็ตสกิลทั้งหมด? (ฟรีถึง Lv100)').then((y) => y && G.send({ t: 'resetSkills' }));
       if (a === 'slot') { if (G.char.hotbar.includes(d.id)) return UI.toast('อยู่ใน Hotbar แล้ว'); const i = G.char.hotbar.indexOf(null); if (i < 0) return UI.toast('Hotbar เต็ม', 'err'); G.char.hotbar[i] = d.id; saveHotbar(); UI.toast(`ใส่ ${SKS()[d.id].name} ที่ช่อง ${HOTKEYS[i].toUpperCase()}`); }

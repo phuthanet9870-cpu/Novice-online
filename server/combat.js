@@ -50,7 +50,7 @@ C.recalc = function (p) {
       const v = b.mods[k];
       if (k === 'element') { p.weaponEl = v === 'cycle' ? (p.cycleEl || 'fire') : v; continue; }
       if (typeof v !== 'number') continue;
-      if (['ccImmune', 'stealth', 'invuln', 'giant', 'guardAlly', 'reflect', 'blocks', 'extraStack', 'resGainPct'].includes(k)) { p.flags[k] = Math.max(p.flags[k] || 0, v); continue; }
+      if (['ccImmune', 'stealth', 'invuln', 'giant', 'guardAlly', 'reflect', 'blocks', 'extraStack', 'resGainPct', 'heatSink', 'summonBuff', 'soulSiphon'].includes(k)) { p.flags[k] = Math.max(p.flags[k] || 0, v); continue; }
       if (k === 'cdr') { cdrBonus += v; continue; }
       mods[k] = (mods[k] || 0) + v;
     }
@@ -291,6 +291,7 @@ C.heal = function (tgt, amount, src, quiet) {
 
 // ------------------------------------------------------------------ death
 C.onDeath = function (e, killer) {
+  if (e.dummy) { e.hp = e.maxHp; e.inst.emit({ k: 'txt', t: e.id, x: e.x, y: e.y, m: 'RESET', c: '#ffd34a' }); return; }
   if (e.dead) return;
   e.dead = true; e.hp = 0; e.casting = null;
   const inst = e.inst, t = now();
@@ -370,7 +371,7 @@ C.updatePlayer = function (p, dt, t, sec) {
   if (p.combo && t - p.comboT > p.st.comboWin) p.combo = 0;
   // class resource behaviours
   const cls = D.CLASSES[p.cls];
-  if (p.cls === 'gunslinger') { if (t - (p.lastShot || 0) > 1) p.res = Math.max(0, p.res - 14 * dt * (p.flags.resGainPct ? 2 : 1)); }
+  if (p.cls === 'gunslinger') { if (t - (p.lastShot || 0) > 1) p.res = Math.max(0, p.res - 14 * dt * (p.flags.resGainPct || p.flags.heatSink ? 2 : 1)); }
   else if (p.cls === 'ranger') { if (t - p.movedAt > 1 && sec) p.res = Math.min(cls.res.max, p.res + (p.flags.resGainPct ? 1 : 0.5)); }
   else if (p.cls === 'berserker' && sec && t - (p.lastHit || 0) > 6) p.res = Math.max(0, p.res - 4);
   // basic attack
@@ -655,6 +656,7 @@ const execCore = function (p, sk, lv, tgt, ax, ay) {
     const tgts = sk.transform.party ? partyNear(p, 10) : [p];
     for (const q of tgts) C.addBuff(q, 'ult:' + sk.id, mods, sk.transform.dur, sk.name, '#ffcc33');
     if (sk.invuln) for (const q of tgts) q.invulnUntil = t + Math.min(sk.transform.dur, sk.transform.party ? 3 : 10);
+    if (sk.resGain >= 99) p.res = cls.res.max;
   }
   if (sk.selfBuff) C.addBuff(p, 'sb:' + sk.id, sk.selfBuff.mods, sk.selfBuff.dur, sk.name, cls.color);
   if (sk.stealth) { p.stealthUntil = t + sk.stealth; inst.inRadius(p.x, p.y, 25, (o) => { if (o.kind === 'm' && o.target === p) o.target = null; }); }
@@ -677,6 +679,10 @@ const execCore = function (p, sk, lv, tgt, ax, ay) {
   if (sk.detonate === 'delayed') for (const d of p.delayed) if (d.at > t) { d.at = t; d.mult *= 1.5; }
 
   // ---- traps / zones placed at aim point
+  if (sk.multiTrap) {
+    for (let i = 0; i < sk.multiTrap; i++) { const a = i / sk.multiTrap * 6.283, d = 2.5 + (i % 3); const x = p.x + Math.cos(a) * d, y = p.y + Math.sin(a) * d; if (M.walkable(inst.map, x, y)) W.spawnZone(inst, { zk: 'trap', owner: p, x, y, r: 1.5, until: t + 40, armedAt: t + 0.4, sk, lv, el, color: (D.ELEMENTS[el] || D.ELEMENTS.neutral).color }); }
+    return afterCast(p, sk, false);
+  }
   if (sk.trap) {
     const tx = tgt ? tgt.x : ax, ty = tgt ? tgt.y : ay;
     const mine = [...inst.entities.values()].filter((z) => z.kind === 'z' && z.zk === 'trap' && z.owner === p);
