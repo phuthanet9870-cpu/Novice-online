@@ -426,32 +426,50 @@
     ART.drawPlayer(g, { c: cls, n: name, dir: 0, w: [0, 0] }, s / 2, s * 0.9, 0, s / 58);
   });
   const ELC = (el) => (D.ELEMENTS[el] || D.ELEMENTS.neutral).color;
+  // every skill icon is unique: its own palette + its own pattern glyph + motion mark + role badge
   ART.skillIcon = (sk) => makeIcon('sk:' + sk.id, 48, (g, s) => {
-    const col = ELC(sk.element || 'holy');
-    const cls = D.CLASSES[sk.cls];
-    const bg = g.createRadialGradient(s * 0.35, s * 0.3, 2, s / 2, s / 2, s * 0.75);
-    bg.addColorStop(0, shade(col, 0.15)); bg.addColorStop(0.6, shade(cls.color2, -0.1)); bg.addColorStop(1, '#0c0c14');
-    g.fillStyle = bg; roundRect(g, 1, 1, s - 2, s - 2, 8); g.fill();
-    g.strokeStyle = sk.kind === 'ult' ? '#ffcc33' : sk.kind === 'buff' ? '#6af08a' : 'rgba(255,255,255,0.35)'; g.lineWidth = sk.kind === 'ult' ? 3 : 1.5; roundRect(g, 1.5, 1.5, s - 3, s - 3, 8); g.stroke();
-    g.save(); g.translate(s / 2, s / 2); g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.lineWidth = 2.6; g.lineCap = 'round';
-    g.shadowColor = col; g.shadowBlur = 6;
-    const h = RNG.hashStr(sk.id);
-    const rot = ((h % 8) - 4) * 0.08;
-    g.rotate(rot);
-    if (sk.kind === 'buff') { g.beginPath(); g.moveTo(0, -14); g.lineTo(10, -2); g.lineTo(4, -2); g.lineTo(4, 12); g.lineTo(-4, 12); g.lineTo(-4, -2); g.lineTo(-10, -2); g.closePath(); g.fill(); }
-    else if (sk.kind === 'ult') { for (let i = 0; i < 8; i++) { g.rotate(Math.PI / 4); g.beginPath(); g.moveTo(0, 4); g.lineTo(0, 15); g.stroke(); } g.beginPath(); g.arc(0, 0, 5, 0, 7); g.fill(); }
-    else if (sk.summon) { g.beginPath(); g.arc(0, -3, 9, 0, 7); g.fill(); g.fillStyle = '#111'; g.fillRect(-5, -5, 3.5, 4); g.fillRect(2, -5, 3.5, 4); g.fillStyle = '#fff'; g.fillRect(-5, 6, 10, 6); }
-    else if (sk.trap) { g.beginPath(); g.arc(0, 0, 11, 0, 7); g.stroke(); g.beginPath(); g.moveTo(-11, 0); g.lineTo(11, 0); g.moveTo(0, -11); g.lineTo(0, 11); g.stroke(); }
-    else if (sk.move) { for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(-14 + i * 3, -8 + i * 8); g.lineTo(6 + i * 3, -8 + i * 8); g.stroke(); } g.beginPath(); g.moveTo(8, -12); g.lineTo(15, 0); g.lineTo(8, 12); g.stroke(); }
-    else if (sk.shape === 'circle') { g.beginPath(); g.arc(0, 0, 6, 0, 7); g.fill(); for (let i = 0; i < 8; i++) { g.rotate(Math.PI / 4); g.beginPath(); g.moveTo(9, 0); g.lineTo(15, 0); g.stroke(); } }
-    else if (sk.shape === 'line') { g.beginPath(); g.moveTo(-14, 10); g.lineTo(12, -12); g.stroke(); g.beginPath(); g.moveTo(12, -12); g.lineTo(4, -11); g.moveTo(12, -12); g.lineTo(11, -4); g.stroke(); }
-    else if (sk.shape === 'cone') { g.beginPath(); g.moveTo(-12, 0); g.arc(-12, 0, 26, -0.55, 0.55); g.closePath(); g.stroke(); }
-    else if (sk.shape === 'chain') { g.beginPath(); g.moveTo(-14, -10); g.lineTo(-4, 0); g.lineTo(-8, 2); g.lineTo(6, 12); g.lineTo(2, 2); g.lineTo(6, 0); g.lineTo(14, -10); g.stroke(); }
-    else if ((sk.hits || 1) > 2) { for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(-12, -10 + i * 9); g.lineTo(12, -14 + i * 9); g.stroke(); } }
-    else if (sk.role === 'F') { g.beginPath(); g.moveTo(0, -15); g.lineTo(5, -3); g.lineTo(15, 0); g.lineTo(5, 3); g.lineTo(0, 15); g.lineTo(-5, 3); g.lineTo(-15, 0); g.lineTo(-5, -3); g.closePath(); g.fill(); }
-    else { g.beginPath(); g.arc(-4, 4, 14, -1.2, 0.3); g.stroke(); g.beginPath(); g.moveTo(-10, 12); g.lineTo(12, -10); g.stroke(); }
+    const fx = sk.fx || { c: [ELC(sk.element || 'holy'), '#fff', '#222'], p: 'nova', m: 'cw', n: 8 };
+    const c = fx.c;
+    const bg = g.createRadialGradient(s * 0.3, s * 0.28, 2, s / 2, s / 2, s * 0.78);
+    bg.addColorStop(0, c[1]); bg.addColorStop(0.45, c[0]); bg.addColorStop(1, '#07070d');
+    g.fillStyle = bg; roundRect(g, 1, 1, s - 2, s - 2, 9); g.fill();
+    g.globalAlpha = 0.35; g.fillStyle = c[2]; g.beginPath(); g.moveTo(s, s * 0.55); g.lineTo(s, s); g.lineTo(s * 0.45, s); g.closePath(); g.fill(); g.globalAlpha = 1;
+    g.strokeStyle = sk.kind === 'ult' ? '#ffcc33' : 'rgba(255,255,255,0.45)'; g.lineWidth = sk.kind === 'ult' ? 3 : 1.5; roundRect(g, 1.5, 1.5, s - 3, s - 3, 9); g.stroke();
+    g.save(); g.translate(s / 2, s / 2); g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.lineWidth = 2.4; g.lineCap = 'round'; g.shadowColor = c[2]; g.shadowBlur = 5;
+    const n = Math.max(5, Math.min(12, fx.n)), R = 13;
+    const rot = (RNG.hashStr(sk.id) % 628) / 100;
+    switch (fx.p) {
+      case 'nova': g.beginPath(); g.arc(0, 0, R, 0, 7); g.stroke(); g.beginPath(); g.arc(0, 0, R * 0.45, 0, 7); g.fill(); break;
+      case 'spiral': g.beginPath(); for (let i = 0; i < 40; i++) { const a = i / 40 * Math.PI * 4 + rot, r = R * i / 40; i ? g.lineTo(Math.cos(a) * r, Math.sin(a) * r) : g.moveTo(0, 0); } g.stroke(); break;
+      case 'starburst': for (let i = 0; i < n; i++) { const a = i / n * 6.283 + rot; g.beginPath(); g.moveTo(Math.cos(a) * 4, Math.sin(a) * 4); g.lineTo(Math.cos(a) * R, Math.sin(a) * R); g.stroke(); } break;
+      case 'rain': for (let i = 0; i < 5; i++) { const x = -10 + i * 5, y = -10 + ((i * 7) % 9); g.beginPath(); g.moveTo(x, y); g.lineTo(x + 3, y + 10); g.stroke(); } break;
+      case 'pillar': g.fillRect(-4, -R, 8, R * 2); g.beginPath(); g.ellipse(0, R, 9, 3, 0, 0, 7); g.stroke(); break;
+      case 'crescent': g.lineWidth = 4; g.beginPath(); g.arc(0, 0, R, rot, rot + 2.6); g.stroke(); g.lineWidth = 2; g.beginPath(); g.arc(0, 0, R * 0.6, rot + 0.4, rot + 2.4); g.stroke(); break;
+      case 'cross': g.rotate(rot); g.lineWidth = 4; g.beginPath(); g.moveTo(-R, 0); g.lineTo(R, 0); g.moveTo(0, -R); g.lineTo(0, R); g.stroke(); break;
+      case 'vortex': for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(0, 0, R - i * 3, rot + i, rot + i + 2.4); g.stroke(); } break;
+      case 'fan': g.rotate(rot); for (let i = 0; i < 6; i++) { const a = -0.9 + i * 0.36; g.beginPath(); g.moveTo(-8, 0); g.lineTo(-8 + Math.cos(a) * 22, Math.sin(a) * 22); g.stroke(); } break;
+      case 'beam': g.rotate(rot); g.lineWidth = 3; g.beginPath(); g.moveTo(-R, -4); g.lineTo(R, -4); g.moveTo(-R, 4); g.lineTo(R, 4); g.stroke(); break;
+      case 'orbit': g.beginPath(); g.arc(0, 0, R * 0.7, 0, 7); g.lineWidth = 1; g.stroke(); for (let i = 0; i < 4; i++) { const a = i * 1.57 + rot; g.beginPath(); g.arc(Math.cos(a) * R * 0.7, Math.sin(a) * R * 0.7, 3.5, 0, 7); g.fill(); } break;
+      case 'shock': g.rotate(rot); g.strokeRect(-R, -R, R * 2, R * 2); g.strokeRect(-R * 0.5, -R * 0.5, R, R); break;
+      case 'petals': for (let i = 0; i < 6; i++) { g.save(); g.rotate(i * 1.047 + rot); g.beginPath(); g.ellipse(7, 0, 7, 3, 0, 0, 7); g.fill(); g.restore(); } break;
+      case 'runes': g.beginPath(); g.arc(0, 0, R, 0, 7); g.stroke(); g.beginPath(); g.moveTo(-6, -6); g.lineTo(0, 7); g.lineTo(6, -6); g.moveTo(0, -9); g.lineTo(0, 9); g.stroke(); break;
+      case 'web': for (let i = 0; i < 5; i++) { const a = i * 1.256 + rot; g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(a) * R, Math.sin(a) * R); g.stroke(); } g.beginPath(); for (let i = 0; i <= 5; i++) { const a = i * 1.256 + rot; g.lineTo(Math.cos(a) * R * 0.6, Math.sin(a) * R * 0.6); } g.stroke(); break;
+      case 'comet': g.lineWidth = 5; g.beginPath(); g.moveTo(-R, -R); g.lineTo(4, 4); g.stroke(); g.beginPath(); g.arc(5, 5, 6, 0, 7); g.fill(); break;
+      case 'geyser': for (let i = 0; i < 5; i++) { g.beginPath(); g.arc(-6 + (i % 3) * 6, R - i * 6, 2.5 + i * 0.4, 0, 7); g.fill(); } break;
+      case 'ripple': for (let i = 1; i <= 3; i++) { g.beginPath(); g.arc(0, 0, i * 4.5, 0, 7); g.stroke(); } break;
+      case 'wings': for (const k of [-1, 1]) { g.beginPath(); g.moveTo(0, 4); g.quadraticCurveTo(k * 16, -14, k * 18, 2); g.quadraticCurveTo(k * 8, -2, 0, 4); g.fill(); } break;
+      case 'chains': for (let i = 0; i < 3; i++) { g.save(); g.translate(-10 + i * 10, -6 + i * 6); g.rotate(0.8 + (i % 2) * 1.5); g.beginPath(); g.ellipse(0, 0, 6, 3, 0, 0, 7); g.stroke(); g.restore(); } break;
+      case 'hex': g.beginPath(); for (let i = 0; i <= 6; i++) { const a = i / 6 * 6.283 + rot; g.lineTo(Math.cos(a) * R, Math.sin(a) * R); } g.stroke(); g.beginPath(); g.arc(0, 0, 4, 0, 7); g.fill(); break;
+      case 'meteor': for (let i = 0; i < 3; i++) { const x = -8 + i * 8, y = 4 - i * 6; g.beginPath(); g.arc(x, y, 3.5, 0, 7); g.fill(); g.beginPath(); g.moveTo(x, y); g.lineTo(x - 7, y - 7); g.stroke(); } break;
+      case 'blades': for (let i = 0; i < 5; i++) { g.save(); g.rotate(i * 1.256 + rot); g.beginPath(); g.moveTo(R + 2, 0); g.lineTo(4, -3); g.lineTo(4, 3); g.closePath(); g.fill(); g.restore(); } break;
+      case 'sparkle': for (const [x, y, z] of [[0, 0, 9], [-9, -7, 4], [8, 8, 5], [9, -9, 3]]) { g.fillRect(x - z, y - 1, z * 2, 2); g.fillRect(x - 1, y - z, 2, z * 2); } break;
+    }
     g.restore();
-    if (sk.role && 'SLF'.includes(sk.role)) { g.fillStyle = { S: '#3ab0ff', L: '#ffb030', F: '#ff3a5a' }[sk.role]; g.beginPath(); g.arc(s - 9, 9, 7, 0, 7); g.fill(); g.fillStyle = '#fff'; g.font = 'bold 10px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(sk.role, s - 9, 9.5); }
+    // motion mark (bottom-left): ↻ ↺ or ◉
+    g.fillStyle = 'rgba(0,0,0,0.55)'; g.beginPath(); g.arc(9, s - 9, 7, 0, 7); g.fill();
+    g.fillStyle = '#fff'; g.font = 'bold 10px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(fx.m === 'cw' ? '↻' : fx.m === 'ccw' ? '↺' : '◉', 9, s - 8.5);
+    if (sk.role && 'SLF'.includes(sk.role)) { g.fillStyle = { S: '#3ab0ff', L: '#ffb030', F: '#ff3a5a' }[sk.role]; g.beginPath(); g.arc(s - 9, 9, 7, 0, 7); g.fill(); g.fillStyle = '#fff'; g.font = 'bold 10px sans-serif'; g.fillText(sk.role, s - 9, 9.5); }
+    if (sk.kind === 'ult') { g.fillStyle = '#ffcc33'; g.font = 'bold 9px sans-serif'; g.fillText('★', s - 9, 9.5); }
   });
   const SLOT_ICON = { offhand: 'shield', head: 'helm', armor: 'armor', cloak: 'cloak', boots: 'boots', necklace: 'neck', earring: 'ear', ring: 'ring', ring1: 'ring', ring2: 'ring' };
   ART.itemIcon = (it) => {

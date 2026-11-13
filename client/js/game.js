@@ -35,6 +35,7 @@
     char: (m) => { const { t, ...rest } = m; Object.assign(G.char, rest); if (rest.st) G.st = rest.st; UI.refresh(Object.keys(rest)); },
     cd: (m) => { G.cds[m.id] = performance.now() / 1000 + m.d; G.cdDur[m.id] = m.d; },
     cdreset: () => { G.cds = {}; },
+    cdshift: (m) => { for (const k in G.cds) if (k !== m.except) G.cds[k] -= m.d; },
     range: (m) => { G.pending = { id: m.id, tid: m.tgt, r: m.r, until: G.t + 4 }; },
     dead: (m) => UI.dead(m),
     revived: () => UI.hideDead(),
@@ -83,7 +84,7 @@
     if (me) {
       if (me.st) { G.st = me.st; if (G.char) G.char.st = me.st; delete me.st; }
       if (me.buffs) { G.buffs = me.buffs.map((b) => ({ k: b[0], n: b[1], until: G.t + b[2], icon: b[3], debuff: b[4] })); delete me.buffs; UI.buffs(); }
-      if (me.x !== undefined && (me.fp || me.au || me.dead)) {
+      if (me.x !== undefined && (me.fp || (me.au && !(G.autoStopAt && G.t - G.autoStopAt < 1)) || me.dead)) {
         const d = Math.hypot(me.x - G.self.x, me.y - G.self.y);
         if (me.fp || d > 3) { G.self.x = me.x; G.self.y = me.y; G.path = null; }
         else { G.self.x += (me.x - G.self.x) * 0.5; G.self.y += (me.y - G.self.y) * 0.5; }
@@ -113,7 +114,14 @@
   G.cdLeft = (id) => Math.max(0, (G.cds[id] || 0) - now());
   G.toScreen = (x, y) => [(x - G.cam.x) * TS * G.zoom + G.cv.width / 2 / G.dpr, (y - G.cam.y) * TS * G.zoom + G.cv.height / 2 / G.dpr];
   G.toWorld = (sx, sy) => [(sx - G.cv.width / 2 / G.dpr) / (TS * G.zoom) + G.cam.x, (sy - G.cv.height / 2 / G.dpr) / (TS * G.zoom) + G.cam.y];
-  G.autoOn = () => !!(G.sme && G.sme.au);
+  G.autoOn = () => !!(G.sme && G.sme.au) && !(G.autoStopAt && G.t - G.autoStopAt < 1);
+  // manual movement (click / WASD / joystick) takes control back from auto
+  G.stopAuto = function () {
+    if (!(G.sme && G.sme.au) || (G.autoStopAt && G.t - G.autoStopAt < 1)) return;
+    G.autoStopAt = G.t;
+    G.send({ t: 'autoOn', on: false });
+    UI.toast('ปิดออโต้แล้ว — กลับมาควบคุมเอง');
+  };
 
   // ------------------------------------------------------------ actions
   G.useSkill = function (id) {
@@ -154,7 +162,7 @@
   };
   G.clickEntity = function (e) {
     G.target = e.id;
-    if (e.k === 'n') { G.npcGoal = e.id; G.walkTo(e.x, e.y + 1); G.send({ t: 'stop' }); return; }
+    if (e.k === 'n') { G.stopAuto(); G.npcGoal = e.id; G.walkTo(e.x, e.y + 1); G.send({ t: 'stop' }); return; }
     if (G.isEnemy(e)) { G.send({ t: 'atk', id: e.id }); G.chase = e.id; }
   };
 
@@ -188,7 +196,8 @@
       if (ev.button === 2) { if (e && e.k === 'p' && e.id !== G.me) UI.playerMenu(e, ev.clientX, ev.clientY); return; }
       if (e && e.id !== G.me) { G.clickEntity(e); return; }
       G.chase = null; G.npcGoal = null; G.send({ t: 'stop' });
-      if (M.walkable(G.map, wx, wy) || true) G.walkTo(wx, wy);
+      G.stopAuto();
+      G.walkTo(wx, wy);
       G.anims.push({ k: 'click', x: wx, y: wy, t0: G.t, d: 0.5 });
     });
     cv.addEventListener('wheel', (ev) => { G.zoom = Math.max(0.55, Math.min(1.8, G.zoom * (ev.deltaY > 0 ? 0.9 : 1.1))); ev.preventDefault(); }, { passive: false });
@@ -225,6 +234,7 @@
     const se = G.selfEnt();
     const dead = G.sme.dead;
     const hard = se && (G.hasTag(se, 'stun') || G.hasTag(se, 'freeze') || G.hasTag(se, 'airborne') || G.hasTag(se, 'knockdown') || G.hasTag(se, 'root') || G.hasTag(se, 'fear'));
+    if (G.autoOn() && !UI.typing() && ((G.joy && (G.joy.x || G.joy.y)) || G.keys.w || G.keys.a || G.keys.s || G.keys.d || G.keys.arrowup || G.keys.arrowdown || G.keys.arrowleft || G.keys.arrowright)) G.stopAuto();
     if (G.autoOn() || dead || hard || G.sme.cast) { if (se) { se.moving = G.autoOn() && Math.hypot(se.tx - se.x, se.ty - se.y) > 0.05; } return; }
     let vx = 0, vy = 0;
     if (G.joy && (G.joy.x || G.joy.y)) { vx = G.joy.x; vy = G.joy.y; }
@@ -328,6 +338,12 @@
         const col = ELC(f.el);
         const caster = G.ents.get(f.s); if (caster) caster.attackAt = t;
         const big = f.u;
+        const sfx = SK[f.sk] && SK[f.sk].fx;
+        if (sfx) {
+          const ox = f.sh === 'circle' && !f.self ? f.tx : f.sh === 'single' || f.sh === 'chain' ? f.tx : f.x, oy = f.sh === 'circle' && !f.self ? f.ty : f.sh === 'single' || f.sh === 'chain' ? f.ty : f.y;
+          G.anims.push({ k: 'sig', fx: sfx, x: ox, y: oy, t0: t, d: sfx.d + (big ? 0.6 : 0), big, seed: f.sk.length * 31 + f.s });
+          if (window.SFX && SFX.sig && Math.hypot(f.x - G.self.x, f.y - G.self.y) < 16) SFX.sig(sfx.snd, big);
+        }
         if (window.SFX && Math.hypot(f.x - G.self.x, f.y - G.self.y) < 16) SFX.cast(f.el, big);
         if (big) { G.flash = 0.5; G.flashCol = col; G.shake = 8; if (f.s === G.me || (caster && Math.hypot(caster.x - G.self.x, caster.y - G.self.y) < 20)) UI.ultBanner(SK[f.sk] ? SK[f.sk].name : '', caster ? caster.n : '', col); }
         if (f.sh === 'buff') { burst(f.x, f.y - 0.5, '#9aff9a', 18, 2, 0.9, 3, -1); G.anims.push({ k: 'pillar', x: f.x, y: f.y, col: '#9aff9a', t0: t, d: 0.7 }); break; }
@@ -363,6 +379,7 @@
       case 'castbar': { const c = G.ents.get(f.s); if (c) { c.castUntil = t + f.d; c.castDur = f.d; } G.anims.push({ k: 'circle', x: f.x, y: f.y, col: '#9cf', t0: t, d: f.d }); break; }
       case 'mark': G.anims.push({ k: 'mark', id: f.t, t0: t, d: f.d }); break;
       case 'poof': burst(f.x, f.y - 0.4, '#bbb', 8, 2, 0.4); break;
+      case 'trait': { const s = SK[f.sk]; const c = s && s.fx ? s.fx.c[1] : '#fff'; G.texts.push({ x: f.x, y: f.y - 2.3, txt: '✦ ' + f.m, col: c, size: 12, t0: t, d: 1.4, vy: -0.5, stroke: 1 }); if (s && s.fx) G.anims.push({ k: 'sig', fx: Object.assign({}, s.fx, { s: s.fx.s * 0.6 }), x: f.x, y: f.y, t0: t, d: 0.5, seed: 7 }); break; }
       case 'emote': if (ent) { ent.emote = f.e; ent.emoteT = G.t + 3; } break;
       case 'ach': G.anims.push({ k: 'pillar', x: f.x, y: f.y, col: '#ffcc33', t0: t, d: 1.5, big: 1 }); burst(f.x, f.y - 1, '#ffcc33', 30, 3, 1.2, 3, -1); G.texts.push({ x: f.x, y: f.y - 2.8, txt: '🏅 ' + f.m, col: '#ffcc33', size: 16, t0: t, d: 2.2, vy: -0.3, stroke: 1 }); break;
     }
@@ -589,12 +606,52 @@
         case 'pillar': { const gr = g.createLinearGradient(a.x, a.y, a.x, a.y - 4); gr.addColorStop(0, a.col); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.globalAlpha = (1 - p) * 0.6; g.fillRect(a.x - (a.big ? 0.8 : 0.5), a.y - 4, a.big ? 1.6 : 1, 4); break; }
         case 'click': g.strokeStyle = '#fff'; g.lineWidth = 0.05; g.beginPath(); g.arc(a.x, a.y, 0.4 * (1 - p) + 0.1, 0, 7); g.stroke(); break;
         case 'circle': g.globalAlpha = 0.6; g.strokeStyle = a.col; g.lineWidth = 0.06; g.beginPath(); g.arc(a.x, a.y, 0.9, -Math.PI / 2, -Math.PI / 2 + p * 6.283); g.stroke(); break;
+        case 'sig': drawSig(g, a, p); break;
         case 'mark': { const e = G.ents.get(a.id); if (!e) break; g.globalAlpha = 0.9; g.strokeStyle = '#ff4060'; g.lineWidth = 0.06; g.beginPath(); g.arc(e.x, e.y - 0.7, 0.6, 0, 7); g.stroke(); g.font = '0.5px Kanit'; g.fillStyle = '#ff4060'; g.textAlign = 'center'; g.fillText(Math.ceil(a.d - (t - a.t0)), e.x, e.y - 1.6); break; }
       }
     }
     g.globalAlpha = 1;
   }
 
+  // ---- signature cast visuals: every skill has its own pattern / motion / palette
+  function drawSig(g, a, p) {
+    const fx = a.fx, c = fx.c, n = fx.n, S = fx.s * (a.big ? 2 : 1);
+    const dir = fx.m === 'cw' ? 1 : fx.m === 'ccw' ? -1 : 0;
+    const rot = dir * p * 5 + a.seed;
+    const pul = fx.m === 'pulse' ? 1 + 0.25 * Math.sin(p * 22) : 1;
+    const R = S * (0.5 + p * 1.6) * pul;
+    const col = (i) => c[i % 3];
+    g.save(); g.translate(a.x, a.y - 0.5); g.globalAlpha = Math.max(0, 1 - p); g.lineCap = 'round';
+    g.strokeStyle = c[0]; g.fillStyle = c[0]; g.lineWidth = 0.08;
+    const ring = (r, w, cc) => { g.strokeStyle = cc; g.lineWidth = w; g.beginPath(); g.arc(0, 0, Math.max(0.01, r), 0, 7); g.stroke(); };
+    switch (fx.p) {
+      case 'nova': ring(R, 0.16 * (1 - p) + 0.03, c[0]); ring(R * 0.65, 0.07, c[1]); break;
+      case 'spiral': for (let i = 0; i < n; i++) { const an = i / n * Math.PI * 3 + rot, r = R * i / n; g.fillStyle = col(i); g.beginPath(); g.arc(Math.cos(an) * r, Math.sin(an) * r, 0.07 + 0.05 * S, 0, 7); g.fill(); } break;
+      case 'starburst': for (let i = 0; i < n; i++) { const an = i / n * 6.283 + rot; g.strokeStyle = col(i); g.lineWidth = 0.07; g.beginPath(); g.moveTo(Math.cos(an) * R * 0.2, Math.sin(an) * R * 0.2); g.lineTo(Math.cos(an) * R, Math.sin(an) * R); g.stroke(); } break;
+      case 'rain': for (let i = 0; i < n; i++) { const x = Math.cos(i * 2.39 + a.seed) * S * 1.6 * ((i % 4) / 4 + 0.3), y0 = -3 + ((p * 4 + i * 0.37) % 3); g.strokeStyle = col(i); g.lineWidth = 0.06; g.beginPath(); g.moveTo(x, y0); g.lineTo(x + 0.15, y0 + 0.6); g.stroke(); } break;
+      case 'pillar': { const gr = g.createLinearGradient(0, 0, 0, -4 * S); gr.addColorStop(0, c[0]); gr.addColorStop(0.6, c[1]); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; const w = 0.5 * S * pul; g.fillRect(-w / 2, -4 * S * Math.min(1, p * 3), w, 4 * S * Math.min(1, p * 3)); ring(w, 0.05, c[2]); break; }
+      case 'crescent': for (let i = 0; i < 3; i++) { g.strokeStyle = col(i); g.lineWidth = 0.22 - i * 0.06; g.beginPath(); g.arc(0, 0, R * (1 - i * 0.15), rot + i * 0.3, rot + i * 0.3 + Math.PI * 0.85); g.stroke(); } break;
+      case 'cross': g.rotate(rot); for (let k = 0; k < 2; k++) { g.strokeStyle = col(k); g.lineWidth = 0.14; g.beginPath(); g.moveTo(-R, 0); g.lineTo(R, 0); g.stroke(); g.rotate(Math.PI / 2); } break;
+      case 'vortex': for (let i = 0; i < Math.min(n, 10); i++) { const r = R * (1 - p) * (1 - i / 12) + 0.1; g.strokeStyle = col(i); g.lineWidth = 0.05; g.beginPath(); g.arc(0, 0, r, rot + i, rot + i + 2.2); g.stroke(); } break;
+      case 'fan': g.rotate(rot * 0.3); for (let i = 0; i < n; i++) { const an = -1 + 2 * i / Math.max(1, n - 1); g.strokeStyle = col(i); g.lineWidth = 0.05; g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(an) * R, Math.sin(an) * R); g.stroke(); } break;
+      case 'beam': g.rotate(rot * 0.5); for (const s2 of [-1, 1]) { g.strokeStyle = col(s2 + 1); g.lineWidth = 0.18 * (1 - p) + 0.03; g.beginPath(); g.moveTo(-R * 1.4, s2 * 0.25 * S); g.lineTo(R * 1.4, s2 * 0.25 * S); g.stroke(); } break;
+      case 'orbit': for (let i = 0; i < Math.min(n, 9); i++) { const an = i / Math.min(n, 9) * 6.283 + rot; g.fillStyle = col(i); g.beginPath(); g.arc(Math.cos(an) * R * 0.75, Math.sin(an) * R * 0.75, 0.12 * S, 0, 7); g.fill(); } break;
+      case 'shock': g.rotate(rot * 0.4); for (let i = 0; i < 2; i++) { g.strokeStyle = col(i); g.lineWidth = 0.07; const r = R * (1 - i * 0.35); g.strokeRect(-r, -r, r * 2, r * 2); } break;
+      case 'petals': for (let i = 0; i < Math.min(n, 10); i++) { const an = i / Math.min(n, 10) * 6.283 + rot; g.save(); g.rotate(an); g.fillStyle = col(i); g.beginPath(); g.ellipse(R * 0.6, 0, 0.35 * S, 0.12 * S, 0, 0, 7); g.fill(); g.restore(); } break;
+      case 'runes': ring(R, 0.05, c[0]); ring(R * 0.8, 0.03, c[1]); for (let i = 0; i < Math.min(n, 12); i++) { const an = i / Math.min(n, 12) * 6.283 + rot; g.save(); g.translate(Math.cos(an) * R * 0.9, Math.sin(an) * R * 0.9); g.rotate(an); g.strokeStyle = col(i); g.lineWidth = 0.04; g.beginPath(); g.moveTo(-0.08, -0.1); g.lineTo(0, 0.1); g.lineTo(0.08, -0.1); g.stroke(); g.restore(); } break;
+      case 'web': for (let i = 0; i < Math.min(n, 10); i++) { const a1 = i * 2.4 + a.seed, a2 = i * 1.3 + 2 + a.seed; g.strokeStyle = col(i); g.lineWidth = 0.04; g.beginPath(); g.moveTo(Math.cos(a1) * R, Math.sin(a1) * R); g.lineTo((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4); g.lineTo(Math.cos(a2) * R, Math.sin(a2) * R); g.stroke(); } break;
+      case 'comet': { const k = Math.min(1, p * 2.2); const x = -3 * (1 - k) * S, y = -3 * (1 - k) * S; g.strokeStyle = c[1]; g.lineWidth = 0.25 * S; g.beginPath(); g.moveTo(x - 1.2 * S, y - 1.2 * S); g.lineTo(x, y); g.stroke(); g.fillStyle = c[0]; g.beginPath(); g.arc(x, y, 0.25 * S, 0, 7); g.fill(); if (k >= 1) ring(R, 0.08, c[2]); break; }
+      case 'geyser': for (let i = 0; i < n; i++) { const x = ((i * 0.618 + a.seed) % 1 - 0.5) * 0.8 * S, h = (p * 4 + i * 0.21) % 1 * 3 * S; g.fillStyle = col(i); g.beginPath(); g.arc(x, -h, 0.07 * S, 0, 7); g.fill(); } break;
+      case 'ripple': for (let i = 0; i < 3; i++) { const q = (p + i / 3) % 1; ring(S * 2 * q, 0.06 * (1 - q), col(i)); } break;
+      case 'wings': for (const s2 of [-1, 1]) { g.fillStyle = col(s2 + 1); g.beginPath(); g.moveTo(0, -0.2); g.quadraticCurveTo(s2 * R * 1.2, -R * 1.2, s2 * R * 1.4, -0.1); g.quadraticCurveTo(s2 * R * 0.8, -0.2, 0, 0.1); g.fill(); } break;
+      case 'chains': for (let i = 0; i < Math.min(n, 14); i++) { const an = i / Math.min(n, 14) * 6.283 + rot; g.save(); g.translate(Math.cos(an) * R, Math.sin(an) * R); g.rotate(an + Math.PI / 2 * (i % 2)); g.strokeStyle = col(i); g.lineWidth = 0.04; g.beginPath(); g.ellipse(0, 0, 0.14 * S, 0.07 * S, 0, 0, 7); g.stroke(); g.restore(); } break;
+      case 'hex': g.rotate(rot * 0.5); for (let k = 0; k < 2; k++) { g.strokeStyle = col(k); g.lineWidth = 0.07; g.beginPath(); for (let i = 0; i <= 6; i++) { const an = i / 6 * 6.283, r = R * (1 - k * 0.4); i ? g.lineTo(Math.cos(an) * r, Math.sin(an) * r) : g.moveTo(Math.cos(an) * r, Math.sin(an) * r); } g.stroke(); } break;
+      case 'meteor': for (let i = 0; i < Math.min(n, 8); i++) { const k = Math.min(1, p * 2 + i * 0.07); const sx = Math.cos(i * 2.1 + a.seed) * S * 1.5, sy = Math.sin(i * 2.1 + a.seed) * S * 0.8; const x = sx + 2 * (1 - k), y = sy - 3 * (1 - k); g.fillStyle = col(i); g.beginPath(); g.arc(x, y, 0.1 * S, 0, 7); g.fill(); g.strokeStyle = col(i + 1); g.lineWidth = 0.04; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 0.5, y - 0.7); g.stroke(); } break;
+      case 'blades': for (let i = 0; i < Math.min(n, 10); i++) { const an = i / Math.min(n, 10) * 6.283 + rot; g.save(); g.rotate(an); g.translate(R * 0.8, 0); g.fillStyle = col(i); g.beginPath(); g.moveTo(0.35 * S, 0); g.lineTo(-0.1, -0.06 * S); g.lineTo(-0.1, 0.06 * S); g.closePath(); g.fill(); g.restore(); } break;
+      case 'sparkle': for (let i = 0; i < n; i++) { const x = Math.cos(i * 2.4 + a.seed) * S * 1.5 * ((i * 0.37) % 1), y = Math.sin(i * 2.4 + a.seed) * S * 1.2 * ((i * 0.53) % 1); const tw = Math.abs(Math.sin(p * 18 + i)); g.fillStyle = col(i); g.save(); g.translate(x, y); g.rotate(rot); g.fillRect(-0.15 * tw * S, -0.025, 0.3 * tw * S, 0.05); g.fillRect(-0.025, -0.15 * tw * S, 0.05, 0.3 * tw * S); g.restore(); } break;
+    }
+    g.restore();
+  }
   const weatherParts = [];
   function drawWeather(g, W, H, dt) {
     const w = G.weather; if (!w) { weatherParts.length = 0; return; }

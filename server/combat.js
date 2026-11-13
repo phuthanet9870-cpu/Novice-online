@@ -219,9 +219,11 @@ C.dealDamage = function (src, tgt, o) {
   }
   let crit = false;
   if (o.kind !== 'dot' && o.kind !== 'true') {
-    if (srcP && src.kind === 'p') { if (W.rand() * 100 < src.st.crit + (o.critBonus || 0)) { crit = true; dmg *= 1 + src.st.critDmg / 100; } }
+    if (srcP && src.kind === 'p') { if (src.nextCrit || W.rand() * 100 < src.st.crit + (o.critBonus || 0)) { src.nextCrit = false; crit = true; dmg *= 1 + src.st.critDmg / 100; } }
     else if (src.kind === 'm' && W.rand() < 0.05) { crit = true; dmg *= 1.5; }
     dmg *= elementMod(o.el, tgt.element);
+    if (tgt.exposeUntil > t) dmg *= 1 + tgt.exposePct / 100;
+    if (src.weakUntil > t) dmg *= 1 - src.weakPct / 100;
     if (tgt.tags.has('knockdown')) dmg *= 1.1;
     if (o.el === 'holy' && tgt.tags.has('holybrand')) dmg *= 1.25;
     if (o.el === 'lightning' && tgt.tags.has('wet')) dmg *= 1.5;
@@ -249,6 +251,7 @@ C.dealDamage = function (src, tgt, o) {
   }
   if (tgt.shield > 0) { const ab = Math.min(tgt.shield, dmg); tgt.shield -= ab; dmg -= ab; if (dmg <= 0) { inst.emit({ k: 'hit', t: tgt.id, x: tgt.x, y: tgt.y, d: ab, sh: 1 }); return 0; } }
   tgt.hp -= dmg;
+  if (src.kind === 'p') { src._dealt = (src._dealt || 0) + dmg; if (crit) src._crits = (src._crits || 0) + 1; }
   inst.emit({ k: 'hit', t: tgt.id, x: tgt.x, y: tgt.y, d: dmg, c: crit ? 1 : 0, r: o.reaction || undefined, el: o.el, dot: o.kind === 'dot' ? 1 : undefined, s: srcP ? srcP.id : 0 });
   // reflect
   if (tgt.kind === 'p' && tgt.flags.reflect && o.kind !== 'reflect' && o.kind !== 'dot' && !src.dead && src.inst === inst) {
@@ -606,7 +609,7 @@ function reactionFor(sk, el, tgt) {
   return null;
 }
 
-C.exec = function (p, sk, lv, tgt, ax, ay) {
+const execCore = function (p, sk, lv, tgt, ax, ay) {
   const t = now();
   const inst = p.inst;
   const cls = D.CLASSES[p.cls];
@@ -691,6 +694,7 @@ C.exec = function (p, sk, lv, tgt, ax, ay) {
   // ---- direct hits
   let anyHit = false;
   const targets = sk.dmg || sk.perUnit || sk.applies ? targetsFor(p, sk, tgt, ax, ay) : [];
+  p._lastTargets = targets;
   const nb = p.nextBonus && sk.dmg ? 1 + p.nextBonus / 100 : 1;
   if (nb > 1) p.nextBonus = 0;
   let totalDealt = 0;
@@ -856,4 +860,84 @@ C.clientMove = function (p, x, y) {
   p.inst.moveTo(p, x, y);
   p.movedAt = t;
   if (p.cls === 'ranger' && p.res > 0 && !p.flags.resGainPct) p.res = Math.max(0, p.res - dt * 0.5);
+};
+
+
+// ------------------------------------------------------------------ signature traits (every skill has its own)
+C.exec = function (p, sk, lv, tgt, ax, ay) {
+  const t = now();
+  const ctx = { t0: tgt, tags: tgt ? new Set(tgt.tags.keys()) : new Set(), hp: tgt ? tgt.hp / tgt.maxHp : 1, res: p.res, moved: t - (p.movedAt || 0), selfHp: p.hp / p.maxHp };
+  p._dealt = 0; p._crits = 0; p._lastTargets = [];
+  p.castN = p.castN || {}; p.castN[sk.id] = (p.castN[sk.id] || 0) + 1;
+  execCore(p, sk, lv, tgt, ax, ay);
+  try { C.trait(p, sk, lv, ctx); } catch (e) { console.error('trait error', sk.id, e); }
+};
+function traitTriggered(p, sk, ctx) {
+  const tr = sk.trait, v = tr.tv, t0 = ctx.t0, list = p._lastTargets || [];
+  switch (tr.tr) {
+    case 'cast': return true;
+    case 'crit': return p._crits > 0;
+    case 'kill': return list.some((o) => o.dead) || !!(t0 && t0.dead);
+    case 'tag': return ctx.tags.has(v);
+    case 'clean': return !!t0 && ctx.tags.size === 0;
+    case 'lowhp': return ctx.selfHp * 100 < v;
+    case 'fullhp': return ctx.selfHp >= 0.99;
+    case 'combo': return p.combo >= v;
+    case 'nth': return p.castN[sk.id] % v === 0;
+    case 'boss': return !!t0 && t0.kind === 'm' && t0.rank >= 1;
+    case 'multi': return list.length >= v;
+    case 'fullres': return ctx.res >= D.CLASSES[p.cls].res.max;
+    case 'fresh': return !!t0 && ctx.hp >= 0.99;
+    case 'finish': return !!t0 && ctx.hp * 100 < v;
+    case 'moving': return ctx.moved < 1;
+    case 'still': return ctx.moved > 2;
+  }
+  return false;
+}
+C.trait = function (p, sk, lv, ctx) {
+  const tr = sk.trait; if (!tr || p.dead) return;
+  if (!traitTriggered(p, sk, ctx)) return;
+  const inst = p.inst, t = now(), n = tr.n;
+  const list = (p._lastTargets || []).filter((o) => o.inst === inst);
+  const tt = ctx.t0 && ctx.t0.inst === inst ? ctx.t0 : list[0] || null;
+  const live = tt && !tt.dead ? tt : list.find((o) => !o.dead) || null;
+  const pos = tt || p;
+  const needs = ['tag', 'echo', 'nova', 'spread', 'pull', 'true', 'execute', 'vamp', 'chain', 'blink', 'expose', 'zeny', 'partyheal', 'weaken'];
+  if (needs.includes(tr.ef) && !tt) return;
+  const enemiesNear = (x, y, r) => { const o = []; inst.inRadius(x, y, r, (e) => { if (!e.dead && (e.kind === 'm' || e.kind === 'p' || e.kind === 's') && C.isEnemy(p, e)) o.push(e); }); return o; };
+  const el = sk.element || 'neutral';
+  const label = (sk.trait.th.split('→')[1] || '').trim();
+  inst.emit({ k: 'trait', s: p.id, sk: sk.id, x: pos.x, y: pos.y, m: label });
+  switch (tr.ef) {
+    case 'tag': if (live) C.applyTag(live, tr.ev, 1, D.TAGS[tr.ev].dur, p); break;
+    case 'heal': C.heal(p, p.maxHp * n / 100, p); break;
+    case 'shield': p.shield = Math.max(p.shield, p.maxHp * n / 100); break;
+    case 'cdr': for (const k in p.cds) if (k !== sk.id) p.cds[k] -= n; p.sess && p.sess.send({ t: 'cdshift', d: n, except: sk.id }); break;
+    case 'sp': p.sp = Math.min(p.maxSp, p.sp + p.maxSp * n / 100); break;
+    case 'res': p.res = Math.min(D.CLASSES[p.cls].res.max, p.res + n); break;
+    case 'ult': p.ult = Math.min(100, p.ult + n); break;
+    case 'echo': if (live) C.dealDamage(p, live, { mult: n / 100, el: tr.ev, kind: 'skill' }); break;
+    case 'nova': inst.emit({ k: 'boom', x: pos.x, y: pos.y, r: 3, el }); for (const e of enemiesNear(pos.x, pos.y, 3)) C.dealDamage(p, e, { mult: n / 100, el, kind: 'skill' }); break;
+    case 'spread': { const src = tt.tags; for (const e of enemiesNear(pos.x, pos.y, 4)) if (e !== tt) for (const [k, v] of src) if (!D.TAGS[k].cc) C.applyTag(e, k, v.stacks, Math.max(1, v.until - t), p, { quiet: true }); break; }
+    case 'pull': for (const e of enemiesNear(pos.x, pos.y, 5)) if (e !== tt && !(e.kind === 'm' && e.rank >= 2)) pullTo(e, pos.x, pos.y, 4); break;
+    case 'haste': C.addBuff(p, 'trait:' + sk.id, { movePct: n }, 4, sk.name, sk.fx.c[0]); break;
+    case 'fury': C.addBuff(p, 'trait:' + sk.id, { dmgPct: n }, 5, sk.name, sk.fx.c[0]); break;
+    case 'ward': C.addBuff(p, 'trait:' + sk.id, { dmgReduce: n }, 3, sk.name, sk.fx.c[0]); break;
+    case 'cleanse': p.tags.clear(); break;
+    case 'true': if (live) C.dealDamage(p, live, { flat: Math.round(live.maxHp * n / 100 * ((live.kind === 'm' && live.rank >= 2) || live.kind === 'p' ? 0.2 : 1)), kind: 'true', reaction: 'true' }); break;
+    case 'execute': if (live && live.kind === 'm' && live.rank < 2 && live.hp / live.maxHp * 100 < n) C.dealDamage(p, live, { flat: live.hp + 1, kind: 'true', reaction: 'execute' }); break;
+    case 'vamp': if (p._dealt) C.heal(p, p._dealt * n / 100, p); break;
+    case 'zone': W.spawnZone(inst, { zk: 'zone', owner: p, x: pos.x, y: pos.y, r: 2.5, until: t + 3, tick: 1, mult: 0.45, sk: { applies: [], dmg: 0 }, lv, el: tr.ev, color: (D.ELEMENTS[tr.ev] || D.ELEMENTS.neutral).color }); break;
+    case 'chain': { let cur = tt; const hit = new Set([tt]); for (let i = 0; i < tr.ev; i++) { const nx = enemiesNear(cur.x, cur.y, 5).filter((e) => !hit.has(e)).sort((a, b) => W.dist(a, cur) - W.dist(b, cur))[0]; if (!nx) break; inst.emit({ k: 'bolt', x: cur.x, y: cur.y, tx: nx.x, ty: nx.y }); C.dealDamage(p, nx, { mult: n / 100, el, kind: 'skill' }); hit.add(nx); cur = nx; } break; }
+    case 'blink': { const a = Math.atan2(tt.y - p.y, tt.x - p.x); const bx = tt.x + Math.cos(a) * 1.2, by = tt.y + Math.sin(a) * 1.2; if (M.walkable(inst.map, bx, by)) { inst.emit({ k: 'dash', s: p.id, x: p.x, y: p.y, tx: bx, ty: by, mt: 'blink' }); inst.moveTo(p, bx, by); p.forcePos = true; } break; }
+    case 'reset': p.cds[sk.id] = 0; p.sess && p.sess.send({ t: 'cd', id: sk.id, d: 0 }); break;
+    case 'expose': if (live) { live.exposeUntil = t + 4; live.exposePct = n; } break;
+    case 'summon': W.spawnSummon(p, { name: 'ภูต ' + sk.name, dur: 6, shape: 'spirit', color: sk.fx.c[0], mult: 0.5, element: el, mag: p.st.dmgType === 'mag' }); break;
+    case 'knock': for (const e of enemiesNear(p.x, p.y, 3)) if (!(e.kind === 'm' && e.rank >= 2)) pushAway(e, p.x, p.y, 3); break;
+    case 'nextcrit': p.nextCrit = true; break;
+    case 'zeny': if (tt.kind === 'm') { p.char.zeny += n * tt.lv; C.sendChar(p, ['zeny']); } break;
+    case 'partyheal': if (p._dealt) for (const q of C.partyNear(p, 8)) C.heal(q, p._dealt * n / 100, p); break;
+    case 'stealth': p.stealthUntil = t + 2; inst.inRadius(p.x, p.y, 25, (o) => { if (o.kind === 'm' && o.target === p) o.target = null; }); break;
+    case 'weaken': if (live) { live.weakUntil = t + 5; live.weakPct = n; } break;
+  }
 };

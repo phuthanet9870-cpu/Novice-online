@@ -312,3 +312,9 @@ body.touch #chat { display: none; }
 .askBack { position: fixed; inset: 0; z-index: 2000; background: rgba(0, 0, 0, .55); display: flex; align-items: center; justify-content: center; padding: 16px; }
 .askBox { background: var(--panel2); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; width: min(380px, 100%); box-shadow: 0 16px 60px rgba(0, 0, 0, .7); }
 .askBox p { margin: 0 0 10px; font-size: 14px; } .askBox input { width: 100%; margin-bottom: 4px; }
+.trait { margin: 4px 0; padding: 3px 8px; border-radius: 6px; font-size: 12px; color: #fff; background: linear-gradient(90deg, color-mix(in srgb, var(--f1, #ffd34a) 35%, transparent), transparent); border-left: 3px solid var(--f1, #ffd34a); }
+.tt .trait { background: rgba(255, 211, 74, .12); border-left-color: #ffd34a; }
+.fxSig { display: flex; gap: 4px; align-items: center; margin-top: 4px; font-size: 11px; color: var(--dim); }
+.fxSig i { width: 12px; height: 12px; border-radius: 50%; background: var(--f1); box-shadow: 0 0 6px var(--f1); } .fxSig i:nth-child(2) { background: var(--f2); box-shadow: 0 0 6px var(--f2); } .fxSig i:nth-child(3) { background: var(--f3); box-shadow: 0 0 6px var(--f3); }
+.skHead input { flex: 1; min-width: 160px; }
+.skCard { border-left: 3px solid var(--f1, transparent); }

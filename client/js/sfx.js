@@ -95,3 +95,19 @@
   }
   S.startMusic = () => { if (musicTimer) return; musicTimer = setInterval(playChord, 6000); setTimeout(playChord, 500); };
 })();
+// per-skill signature sound: [waveform, base frequency, pitch slide]
+(function () {
+  const S = window.SFX;
+  S.sig = function (snd, big) {
+    if (!S.ctx || !S.vol || !snd) return;
+    const t = S.ctx.currentTime;
+    for (const [mul, vol, del] of [[1, 0.1, 0], [1.5, 0.05, 0.05], [2, 0.03, 0.09]]) {
+      const o = S.ctx.createOscillator(), g = S.ctx.createGain();
+      o.type = snd[0]; o.frequency.setValueAtTime(snd[1] * mul, t + del);
+      o.frequency.exponentialRampToValueAtTime(Math.max(40, snd[1] * mul * snd[2]), t + del + (big ? 0.9 : 0.35));
+      g.gain.setValueAtTime(0.0001, t + del); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, S.vol * vol * (big ? 1.6 : 1) * (snd[0] === 'square' || snd[0] === 'sawtooth' ? 0.5 : 1)), t + del + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + del + (big ? 1 : 0.4));
+      o.connect(g); g.connect(S.ctx.destination); o.start(t + del); o.stop(t + del + 1.1);
+    }
+  };
+})();
