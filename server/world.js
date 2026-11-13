@@ -125,6 +125,7 @@ W.spawnMonster = function (inst, spec) {
   };
   if (spec.rank === 4) m.speed = 2.0;
   if (spec.extra) Object.assign(m, spec.extra);
+  if (!m.spr && D.MON_SPRITES && D.MON_SPRITES[fam[0]]) m.spr = D.MON_SPRITES[fam[0]];
   m.sp = spec.sp || W.speciesFor(inst, m, fam);
   inst.add(m);
   return m;

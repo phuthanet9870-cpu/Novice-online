@@ -114,11 +114,12 @@ function handle(sess, m) {
       const ch = db.data.chars[m.id]; if (!ch || !acc.chars.includes(m.id)) return;
       for (const q of W.players.values()) if (q.char.acc === ch.acc && q.sess && q.char.id !== ch.id) q.sess.kick('ล็อกอินตัวละครอื่นจากบัญชีเดียวกัน');
       // classes were replaced by the Ashfall roster: old characters move to the closest new class and get every skill point back
-      if (!D.CLASSES[ch.cls] || ch.kitVer !== 2) {
+      if (ch.kitVer === 2 && D.CLASSES[ch.cls]) { ch.hotbar = new Array(50).fill(null); I.defaultHotbar(ch); ch.kitVer = 3; }
+      if (!D.CLASSES[ch.cls] || ch.kitVer !== 3) {
         const MAP = { blade_knight: 'blademaster', guardian: 'guardian', berserker: 'berserker', shadow_assassin: 'assassin', ranger: 'ranger', elementalist: 'stormcaller', cleric: 'cleric', monk: 'monk', warlock: 'warlock', gunslinger: 'marksman', chrono_stalker: 'chronomancer', divine_sovereign: 'deity', hellfiend: 'demon', void_walker: 'shadowmancer', lightbringer: 'lightbringer' };
         const old = ch.cls; if (!D.CLASSES[ch.cls]) ch.cls = MAP[ch.cls] || 'blademaster';
         const first = require('../shared/skills.js').CLASS_SKILLS[ch.cls][0];
-        ch.skills = { [first]: 1 }; ch.skillPts = F.skillPointsAt(ch.lv) - 1; ch.hotbar = new Array(50).fill(null); I.defaultHotbar(ch); ch.hotbar[28] = 'item:pot_hp_1'; ch.hotbar[29] = 'item:pot_sp_1'; ch.passives = []; ch.kitVer = 2;
+        ch.skills = { [first]: 1 }; ch.skillPts = F.skillPointsAt(ch.lv) - 1; ch.hotbar = new Array(50).fill(null); I.defaultHotbar(ch); ch.passives = []; ch.kitVer = 3;
         if (ch.equip && ch.equip.weapon && ch.equip.weapon.wtype !== D.CLASSES[ch.cls].weapon) { ch.inv = ch.inv || []; ch.inv.push(ch.equip.weapon); ch.equip.weapon = null; }
         ch._kitMsg = old !== ch.cls ? `⚔ ระบบคลาสใหม่: ${old} → ${D.CLASSES[ch.cls].name} · คืนแต้มสกิลทั้งหมดแล้ว` : '⚔ ระบบสกิลใหม่ทั้งหมด — คืนแต้มสกิลแล้ว เรียนสกิลใหม่ได้ที่หน้าต่างสกิล (K)';
       }

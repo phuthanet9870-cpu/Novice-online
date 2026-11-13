@@ -11,7 +11,7 @@
   const base = 'client/assets/';
   let pending = 0;
   const load = (key, src) => { pending++; const im = new Image(); im.onload = im.onerror = () => { if (--pending === 0) { TER.ready = true; ART.resetChunks(); } }; im.src = src; TER.img[key] = im; };
-  TER.load = () => { if (pending || TER.ready) return; for (const s of SHEETS) load('t:' + s, base + 'terrain/' + s + '.png'); for (const a of ATLAS) load('n:' + a, base + 'nature/' + a + '.png'); for (const b of BUILD) load('b:' + b, base + 'buildings/' + b + '.png'); load('deco', base + 'deco/deco.png'); };
+  TER.load = () => { if (pending || TER.ready) return; for (const s of SHEETS) load('t:' + s, base + 'terrain/' + s + '.png'); for (const a of ATLAS) load('n:' + a, base + 'nature/' + a + '.png'); for (const b of BUILD) load('b:' + b, base + 'buildings/' + b + '.png'); load('deco', base + 'deco/deco.png'); if (window.WORLD_ART) load('world', WORLD_ART.src); };
   const M = (b, p) => ({ b, p });
   // our biomes → ground materials, scatter props, tree kinds and season
   const TH = {
@@ -132,6 +132,91 @@
       g.drawImage(im, px, py, dw, dh);
     }
     return true;
+  };
+
+  // ------------------------------------------------------------ world atlas (Brimspire demo · roboden CC0 · Dungeon tileset)
+  const WA = (window.WORLD_ART || { r: {} }).r;
+  function wa(g, name, cx, by, scale, shadow) {
+    const e = WA[name], im = TER.img.world; if (!e || !im || !im.naturalWidth) return false;
+    const w = e[2] * scale, h = e[3] * scale;
+    if (shadow) { g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.ellipse(cx, by - 2, w * 0.38, Math.max(3, h * 0.08), 0, 0, 7); g.fill(); }
+    g.drawImage(im, e[0], e[1], e[2], e[3], Math.round(cx - w / 2), Math.round(by - h), Math.round(w), Math.round(h));
+    return true;
+  }
+  function waTile(g, name, px, py) { const e = WA[name], im = TER.img.world; if (!e || !im || !im.naturalWidth) return false; g.drawImage(im, e[0], e[1], e[2], e[3], px, py, TS, TS); return true; }
+  const seq = (pre, a, b) => Array.from({ length: b - a + 1 }, (_, i) => pre + (a + i));
+  // per-biome scatter for outdoor maps: roboden (CC0) props only — Dungeon tileset ('d:') and Brimspire ('b:') are dungeon-only packs: [name, scale] lists for decoration tiles, plus optional tree / rock replacements
+  const WTH = {
+    forest: { deco: [['r:organic_1', 1.6], ['r:organic_3', 1.6], ['r:organic_5', 1.8], ], trees: seq('r:ftree', 0, 5), treeScale: 2.2, rock: ['r:forestmt_small', 'r:forestmt_wide'], rockScale: 0.8 },
+    snow: { deco: [['r:snow1_0', 0.55], ['r:snow2_1', 0.55], ['r:snow3_2', 0.55], ['r:snow4_0', 0.55], ['r:snowy_1', 1.4], ['r:snowy_2', 1.4], ['r:tundracrack5', 1], ['r:tundracrack0', 1]], trees: seq('r:ttree', 0, 11), treeScale: 2.2, rock: ['r:tundramt_small', 'r:tundramt_wide', 'r:tundramt_tall'], rockScale: 0.75 },
+    crystal: { deco: [['r:gcry0', 1.8], ['r:gcry1', 1.8], ['r:gcry2', 1.8], ['r:rcry0', 1.8], ['r:rcry1', 1.8], ['r:mooncrack5', 1]], rock: ['r:moonmt_small', 'r:moonmt_wide'], rockScale: 0.75 },
+    desert: { deco: [['r:sulfur_0', 1.4], ['r:sulfur_1', 1.4], ['r:gold_1', 1.4], ['r:gold_3', 1.4], ], rock: ['r:infernomt_wide', 'r:forestmt_small'], rockScale: 0.7 },
+    ruins: { deco: [['r:mooncrack5', 1], ['r:tundracrack0', 1], ] },
+    swamp: { deco: [['r:organic_0', 1.8], ['r:organic_2', 1.8], ['r:organic_4', 1.8], ] },
+    beach: { deco: [['r:organic_6', 1.6]] },
+    volcano: { deco: [['r:infernomt_small', 0.5], ['r:geyser', 1.4], ['r:magma_0', 1.6], ['r:magma_1', 1.6], ], rock: ['r:infernomt_small', 'r:infernomt_wide'], rockScale: 0.6 },
+    abyss: { deco: [['r:rcry0', 1.8], ['r:rcry1', 1.8], ['r:mooncrack9', 1], ], rock: ['r:moonmt_small', 'r:moonmt_wide', 'r:moonmt_tall'], rockScale: 0.7 }
+  };
+  // Brimspire (a dungeon pack) dresses the fire / abyss dungeons: big set pieces + small props
+  const LANDMARK = { volcano: ['b:war-machines-02', 'b:war-machines-05', 'b:shrines-huts-04', 'b:spire-towers-03', 'b:set-pieces-01', 'b:gongs-horns-drums-20', 'b:war-banners-15', 'b:weapon-racks-16'], abyss: ['b:gateway-skull-2x1', 'b:set-pieces-02', 'b:spire-towers-03', 'b:shrines-huts-08', 'b:spire-towers-09', 'b:set-pieces-01'] };
+  const WANG = ['00_bbbb', '01_bbbc', '02_bbcb', '03_bbcc', '04_bcbb', '05_bcbc', '06_bccb', '07_bccc', '08_cbbb', '09_cbbc', '10_cbcb', '11_cbcc', '12_ccbb', '13_ccbc', '14_cccb', '15_cccc'];
+  const FLAG = ['b:flagstone-01', 'b:flagstone-01', 'b:flagstone-02', 'b:flagstone-01', 'b:flagstone-03'], FLAG_RARE = ['b:flagstone-09', 'b:flagstone-10', 'b:flagstone-13'];
+  const isDg = (map) => map.def.kind === 'dungeon' || map.def.kind === 'jail';
+  const BRIM_DG = { inferno_depths: 'volcano', abyss_tower: 'abyss' };
+  const brimOf = (map) => map.def.kind === 'dungeon' && BRIM_DG[map.def.dungeon];
+  const BRIM_PROPS = { volcano: [['b:braziers-fire-pits-09', 1.1], ['b:braziers-fire-pits-12', 1.2], ['b:ground-hazards-03', 1.1], ['b:ground-hazards-07', 1.1], ['b:ground-hazards-12', 1.1], ['b:charred-trees-spires-13', 1], ['b:bones-trophies-06', 1], ['b:hellforge-09', 1], ['b:hellforge-11', 1], ['b:war-banners-03', 1], ['b:weapon-racks-01', 1], ['b:coffers-urns-13', 1], ['b:scatter-debris-01', 1.3], ['b:scatter-debris-03', 1.3]],
+    abyss: [['b:chains-soul-cages-06', 1], ['b:chains-soul-cages-09', 1], ['b:obelisks-effigies-05', 1], ['b:obelisks-effigies-20', 1], ['b:ground-marks-01', 1], ['b:ground-marks-03', 1], ['b:ground-marks-09', 1], ['b:coffers-urns-09', 1], ['b:gongs-horns-drums-09', 1], ['b:bones-trophies-02', 1], ['b:charred-trees-spires-21', 1], ['b:scatter-debris-02', 1.3], ['b:scatter-debris-04', 1.3]] };
+  const groundBase = TER.ground, objectBase = TER.object;
+  TER.ground = function (g, map, t, tx, ty, px, py, tileAt) {
+    const im = TER.img.world, okW = TER.ready && im && im.naturalWidth;
+    if (okW && isDg(map)) {
+      // Dungeon tileset: stone floors (mostly plain, a few cracked / mossy), wall faces with banners / torches, wall tops
+      if (t === T.WALL) {
+        const below = tileAt(map, tx, ty + 1);
+        // wall face toward the room: plain brick most of the time, sometimes a banner, grate or lit torch
+        if (below !== T.WALL) { const q = h2(tx, ty, 5); return waTile(g, 'd:wall' + (q < 0.8 ? [2, 3, 7, 3, 7][Math.floor(h2(tx, ty, 6) * 5)] : [0, 5, 6, 1, 4, 8, 9][Math.floor(h2(tx, ty, 7) * 7)]), px, py); }
+        waTile(g, 'd:wallin' + Math.floor(h2(tx, ty, 8) * 6), px, py); g.fillStyle = 'rgba(8,4,16,0.55)'; g.fillRect(px, py, TS, TS); return true;
+      }
+      if (t === T.WATER || t === T.LAVA) return false;
+      const bk = brimOf(map);
+      if (bk) {
+        const c = (x, y) => (vn(x, y, 41, 4) > 0.52 ? 1 : 0);
+        waTile(g, 'b:' + WANG[c(tx, ty) * 8 + c(tx + 1, ty) * 4 + c(tx, ty + 1) * 2 + c(tx + 1, ty + 1)], px, py);
+        if (vn(tx, ty, 57, 6) > 0.62) { const q = h2(tx, ty, 12); waTile(g, q < 0.02 ? FLAG_RARE[Math.floor(h2(tx, ty, 13) * 3)] : FLAG[Math.floor(q * FLAG.length)], px, py); }
+        if (bk === 'abyss') { g.fillStyle = 'rgba(60,20,110,0.3)'; g.fillRect(px, py, TS, TS); }
+        if (tileAt(map, tx, ty - 1) === T.WALL) { g.fillStyle = 'rgba(0,0,0,0.28)'; g.fillRect(px, py, TS, 8); }
+        return t !== T.STAIRS;
+      }
+      const r = h2(tx, ty, 9);
+      waTile(g, 'd:floor' + Math.floor(h2(tx, ty, 10) * 10), px, py);
+      if (tileAt(map, tx, ty - 1) === T.WALL) { g.fillStyle = 'rgba(0,0,0,0.28)'; g.fillRect(px, py, TS, 8); }
+      if (t === T.STAIRS) return false;
+      return true;
+    }
+    return groundBase(g, map, t, tx, ty, px, py, tileAt);
+  };
+  const DG_PROPS = [['d:barrel0', 1.5], ['d:barrel1', 1.5], ['d:barrels', 1.3], ['d:pot', 1.6], ['d:jar', 1.6], ['d:bones', 1.6], ['d:rubble', 1.2], ['d:torch', 1.8], ['d:pillar0', 1.3], ['d:pillar2', 1.3], ['d:spikes', 0.5]];
+  TER.object = function (g, map, t, tx, ty, px, py) {
+    const im = TER.img.world, okW = TER.ready && im && im.naturalWidth;
+    const r = h2(tx, ty, 77), r2 = h2(tx, ty, 91), cx = px + TS / 2, by = py + TS;
+    if (okW && isDg(map)) {
+      if (t === T.WALL) return true; // already painted in the ground pass
+      const bk = brimOf(map);
+      if (bk && (t === T.DECO || t === T.ROCK)) { if (h2(tx, ty, 133) < 0.08) return wa(g, LANDMARK[bk][Math.floor(r * LANDMARK[bk].length)], cx, by, 0.75, true); const L = BRIM_PROPS[bk]; const [n, k] = L[Math.floor(r * L.length)]; return wa(g, n, cx, by - 2, k, true); }
+      if (t === T.DECO || t === T.ROCK) { const [n, k] = DG_PROPS[Math.floor(r * DG_PROPS.length)]; return wa(g, n, cx, by - 2, k, true); }
+      if (t === T.TREE) return brimOf(map) ? wa(g, r < 0.5 ? 'b:obelisks-effigies-20' : 'b:charred-trees-spires-13', cx, by - 2, 1.1, true) : wa(g, r < 0.5 ? 'd:pillar1' : 'd:pillar0', cx, by - 2, 1.4, true);
+      return false;
+    }
+    if (t === T.WALL) return false;
+    const th = themeOf(map), w = th && !th.town && WTH[map.def.biome];
+    if (okW && w) {
+      if (t === T.TREE && w.trees && r2 < 0.45) return wa(g, w.trees[Math.floor(r * w.trees.length)], cx, by + 2, (w.treeScale || 1) * (0.9 + r2 * 0.25), true);
+      if (t === T.ROCK && w.rock && r2 < 0.5) return wa(g, w.rock[Math.floor(r * w.rock.length)], cx, by, (w.rockScale || 1) * (0.85 + r * 0.3), true);
+      if (t === T.DECO) {
+        if (r2 < 0.4) { const [n, k] = w.deco[Math.floor(r * w.deco.length)]; return wa(g, n, cx, by - 1, k, k > 1.2); }
+      }
+    }
+    return objectBase(g, map, t, tx, ty, px, py);
   };
   TER.load();
 })();

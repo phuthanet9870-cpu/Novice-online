@@ -24,7 +24,7 @@ I.newChar = function (acc, name, cls) {
   const ch = {
     id, acc: acc.user.toLowerCase(), name, cls, lv: 1, exp: 0, statPts: 5, stats: Object.assign({}, c.start), skillPts: 3, skills: {},
     hotbar: new Array(50).fill(null), inv: [], equip: {}, zeny: 2500, map: 'aurelia', lastTown: 'aurelia', x: undefined, y: undefined,
-    dungeonBest: {}, created: Date.now(), ult: 0, pity: 0, kills: 0, pvpKills: 0, kitVer: 2
+    dungeonBest: {}, created: Date.now(), ult: 0, pity: 0, kills: 0, pvpKills: 0, kitVer: 3
   };
   const first = CLASS_SKILLS[cls][0];
   ch.skills[first] = 1; ch.hotbar[0] = first;
@@ -32,13 +32,16 @@ I.newChar = function (acc, name, cls) {
   const a = F.genEquip(r, 'armor', 1, 0); a.uid = uid(); ch.equip.armor = a;
   const b = F.genEquip(r, 'boots', 1, 0); b.uid = uid(); ch.equip.boots = b;
   I.addItem(ch, 'pot_hp_1', 30); I.addItem(ch, 'pot_sp_1', 10); I.addItem(ch, 'tele_scroll', 5); I.addItem(ch, 'ore_refine', 5);
-  I.defaultHotbar(ch); ch.hotbar[28] = 'item:pot_hp_1'; ch.hotbar[29] = 'item:pot_sp_1';
+  I.defaultHotbar(ch);
   P.init(ch);
   return ch;
 };
 
-// Ashfall layout: 1–0 = attack 1–10 · Shift+1–5 = attack 11–15 · Shift+6–0 = buffs · Alt+1–5 = ultimates
-I.defaultHotbar = function (ch) { const L = CLASS_SKILLS[ch.cls] || []; for (let i = 0; i < Math.min(25, L.length); i++) ch.hotbar[i] = L[i]; };
+// hotbar = 2 pages of 10 (slots 0-19). Page 1: attacks 1-10. Page 2: attacks 11-12, buffs 1-3, ultimates 1-3, HP / SP potions.
+// The remaining skills sit in the skill window (K) and can be dragged onto any slot.
+I.defaultHotbar = function (ch) { const L = CLASS_SKILLS[ch.cls] || []; const pick = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 15, 16, 17, 20, 21, 22]; pick.forEach((k, i) => { if (L[k]) ch.hotbar[i] = L[k]; }); ch.hotbar[18] = 'item:pot_hp_1'; ch.hotbar[19] = 'item:pot_sp_1'; };
+// older 50-slot bars: pull anything parked in slots 20+ into free slots of the two pages
+I.compactHotbar = function (ch) { const h = ch.hotbar || []; for (let i = 20; i < h.length; i++) { if (!h[i]) continue; const j = h.findIndex((x, k) => k < 20 && !x); if (j >= 0 && !h.slice(0, 20).includes(h[i])) h[j] = h[i]; h[i] = null; } };
 // ------------------------------------------------------------------ inventory primitives
 I.count = (ch, id) => ch.inv.reduce((a, it) => a + (it.id === id ? it.qty : 0), 0);
 I.find = (ch, u) => ch.inv.find((it) => it.uid === u);

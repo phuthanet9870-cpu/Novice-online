@@ -54,6 +54,23 @@
     abyss: [['Void Slime', 'slime', 'melee', 1, 'dark'], ['Bone Dragon', 'dragon', 'ranged', 1, 'dark'], ['Abyss Imp', 'imp', 'caster', 1, 'dark'], ['Nightmare', 'beast', 'melee', 1, 'dark'], ['Soul Eater', 'eye', 'caster', 1, 'dark'], ['Void Golem', 'golem', 'melee', 1, 'dark']]
   };
   for (const b in MORE_FAM) if (D.FAMILIES[b]) for (const f of MORE_FAM[b]) if (!D.FAMILIES[b].some((x) => x[0] === f[0])) D.FAMILIES[b].push(f);
+  // Topdown Monsters pack: brand-new families for the sheets that had no matching monster
+  const NEW_FAM = { forest: [['Goblin Raider', 'imp', 'melee', 1, 'earth']], swamp: [['Swamp Ogre', 'golem', 'melee', 1, 'poison']], snow: [['Ice Werewolf', 'beast', 'melee', 1, 'ice']], volcano: [['Inferno Fiend', 'imp', 'caster', 1, 'fire']], abyss: [['Ghoul Stalker', 'undead', 'melee', 1, 'dark']] };
+  for (const b in NEW_FAM) for (const f of NEW_FAM[b]) if (!D.FAMILIES[b].some((x) => x[0] === f[0])) D.FAMILIES[b].push(f);
+  // animated sprite sheet per family (client/assets/monsters/tmNN.png, packed by tools/build-world-art.py)
+  D.MON_SPRITES = {
+    'Shadow Beast': 'tm00', 'Lich Acolyte': 'tm00', 'Ash Ghoul': 'tm00', 'Ghoul Stalker': 'tm00',
+    Gargoyle: 'tm01', 'Anubis Guard': 'tm01', Nightmare: 'tm01',
+    'Cactus Brute': 'tm02', 'Mire Golem': 'tm02', 'Swamp Ogre': 'tm02',
+    Skeleton: 'tm03', 'Rot Zombie': 'tm03', Drowned: 'tm03',
+    'Sky Knight': 'tm04', 'Valkyrie': 'tm04',
+    Gull: 'tm05',
+    'Woodland Imp': 'tm06', 'Goblin Raider': 'tm06',
+    'Frost Wolf': 'tm07', 'Ice Werewolf': 'tm07',
+    Harpy: 'tm08', Vulture: 'tm08',
+    Imp: 'tm09', 'Abyss Imp': 'tm09', 'Inferno Fiend': 'tm09',
+    'Pirate Skeleton': 'tm10', 'Flame Knight': 'tm10', 'Fallen Knight': 'tm10'
+  };
   D.FAMILY_COUNT = new Set(Object.values(D.FAMILIES).flat().map((f) => f[0])).size;
 
   // ---------------------------------------------------------------- regions
@@ -125,6 +142,7 @@
     ];
     o.junk = add(`junk_${id}`, { n: `${base} ${P[3][0]}`, th: 'ไอเทมขยะ (ขายร้านค้า)', type: 'junk', ic: P[3][1], icon: '#8a8070', sell: sell(1.6), tier, sp: id });
     o.card = add(`card_${id}`, { n: `${base} Card`, th: 'การ์ดมอนสเตอร์ (ฝังในช่องรูน)', type: 'card', mods: cardMods(id, tier), ic: 'card', icon: o.color, sell: 500 + o.lv * 40, tier, sp: id, shape: o.shape, el: o.element });
+    if (!o.spr && o.fam && D.MON_SPRITES[o.fam[0]]) o.spr = D.MON_SPRITES[o.fam[0]];
     D.SPECIES[id] = o;
     return o;
   }

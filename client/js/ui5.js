@@ -46,7 +46,7 @@
     ['#miniWrap', 'แผนที่ย่อ', 'จุดแดง = มอน · ส้ม = บอส · SAFE/AUTO บอกว่าแผนที่นี้ PvP / ออโต้ได้ไหม'],
     ['#tracker', 'ภารกิจที่ติดตาม', 'ความคืบหน้าภารกิจ ฆ่าครบแล้วกดรับรางวัลในหน้าต่างภารกิจ (L)'],
     ['#cmgauge', 'กลไกประจำคลาส', 'แต้มพิเศษของคลาส สะสมตามเงื่อนไขของคลาส แล้วสกิลแต่ละช่องจะใช้แต้มต่างกัน (◆ ในคำอธิบายสกิล)'],
-    ['#hotbar1', 'Hotbar สกิล', '1–0 = สกิลโจมตี 1–10 · Shift+1–5 = โจมตี 11–15 · Shift+6–0 = บัฟ (กรอบฟ้า) · Alt+1–5 = อัลติเมต (กรอบทอง)'],
+    ['#hotbar1', 'Hotbar สกิล', 'แสดง 10 ช่อง · กดปุ่ม ⇄ เพื่อสลับชุด 1/2 (รวม 20 ช่อง) · 1–0 = ชุดที่แสดงอยู่ · Shift+1–0 = อีกชุด · บัฟกรอบฟ้า · อัลติเมตกรอบทอง'],
     ['#autoToggle', 'ออโต้', 'เปิดให้ตัวละครล่ามอนเอง · ตั้งค่าโหมด PvE/PvP ที่หน้าต่างออโต้ (O)'],
     ['#menu', 'เมนูหลัก', 'ปุ่มที่ใช้บ่อย · กด ☰ เมนู เพื่อเปิดทุกระบบแบบจัดหมวด · ตัวอักษรมุมปุ่ม = คีย์ลัด'],
     ['#chat', 'แชท', 'Enter เพื่อพิมพ์ · เลือกช่องแชทด้านซ้ายของช่องพิมพ์ · /w ชื่อ = กระซิบ'],
@@ -121,8 +121,9 @@
     };
     N.listeners.push(draw); draw();
   }
-  const lg = $('#login'); if (lg) lg.style.background = "linear-gradient(180deg, rgba(10,8,16,0) 55%, rgba(10,8,16,.97) 80%), radial-gradient(ellipse at center, rgba(10,8,16,.25), rgba(10,8,16,.8)), url('client/assets/ui/login.webp') center top / cover no-repeat";
-  const sel = document.querySelector('#select, #charSelect, .screen#chars'); if (sel) sel.style.background = "linear-gradient(rgba(10,8,16,.86), rgba(10,8,16,.92)), url('client/assets/ui/login.webp') center top / cover no-repeat";
+  // our own backdrop: forged-plate texture, ember glow and a dark vignette from the UI kit (no third-party key art)
+  const BG = "url('client/assets/ui/cinder/vignette_dark.png') center / 100% 100% no-repeat, radial-gradient(ellipse at 50% 38%, rgba(255,120,40,.22), rgba(0,0,0,0) 55%), url('client/assets/ui/cinder/tex_ember_tile.png') center / 512px repeat, #0c0a10";
+  for (const id of ['#login', '#select']) { const el = $(id); if (el) el.style.background = BG; }
   // CinderUI pieces: gold glyphs on the menu, a ring around the minimap, HP/SP orbs beside the skill bar
   const GLYPH = { inv: 'bag', char: 'person', skills: 'book', passive: 'star', map: 'map', dungeon: 'skull', more: 'menu', settings: 'gear', auto: 'refresh', pets: 'paw', quests: 'quest', book: 'scroll', achieve: 'trophy', rank: 'crown', party: 'group', friends: 'chat', guild: 'flag', mail: 'mail', market: 'coin', craft: 'anvil', help: 'question', guide: 'compass', gm: 'shield' };
   function glyphs() { if (!ART.glyph) return; for (const b of document.querySelectorAll('#menu .mbtn[data-win]')) { const u = ART.glyph(GLYPH[b.dataset.win] || 'star', 48); const sp = b.querySelector('span'); if (u && sp && !sp.querySelector('img')) sp.innerHTML = `<img src="${u}" alt="">`; } }

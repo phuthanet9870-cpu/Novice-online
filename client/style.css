@@ -696,3 +696,83 @@ body.touch #chat { display: none; }
 #hud.c8 #netPill { margin-top: 2px; }
 @media (max-width: 1100px) { #hud.c8 #chat { width: 260px; } }
 #hud.c8 #chatTabs button { padding: 0 3px; font-size: 11px; }
+
+/* ===== hotbar v9: 10 visible slots, ⇄ swaps page 1/2 (20 slots total) ===== */
+#hotbar1 .hbrow .slot { width: 48px; height: 48px; }
+#hotbar1 .hbrow.pg1 .slot { box-shadow: inset 0 0 0 1px rgba(110, 170, 255, 0.45); }
+.hbToggle { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-width: 44px; height: 44px; padding: 2px 6px; line-height: 1; }
+.hbToggle b { font-size: 18px; }
+.hbToggle span { font-size: 11px; color: #f6e2b0; }
+/* sharp rendering: no frosted-glass blur over the map, pixel art scaled with nearest-neighbour */
+.glass, .glass * { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+
+#minicv { image-rendering: pixelated; }
+
+/* ===== inventory v9 (CinderUI): equipment doll + attributes | tabbed bag | item card ===== */
+.win[data-name="inv"] { width: min(1010px, calc(100vw - 20px)) !important; }
+.inv9 { display: grid; grid-template-columns: 236px 1fr 250px; gap: 14px; font-family: Kanit, sans-serif; }
+.inv9 h5 { margin: 2px 0 6px; font: 600 10px Cinzel, Kanit, serif; letter-spacing: .22em; color: #c9a56a; }
+.ivLeft { display: flex; flex-direction: column; }
+.ivDoll { position: relative; display: grid; grid-template-columns: 44px 1fr 44px; grid-template-rows: auto auto; gap: 6px; padding: 10px; border-style: solid; border-width: 10px; border-image: url(assets/ui/cinder/panel_inset.png) 24 fill / 10px stretch; }
+.ivDoll .col { display: flex; flex-direction: column; gap: 6px; }
+.ivDoll .bot { grid-column: 1 / 4; display: flex; justify-content: center; gap: 10px; }
+.ivDoll .fig { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: radial-gradient(circle at 50% 42%, rgba(255, 170, 70, .18), transparent 62%); }
+.ivDoll .fig .sil { width: 84px; height: 120px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 84 120'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23f1e2bd'/%3E%3Cstop offset='1' stop-color='%23a77836'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='42' cy='26' r='17' fill='url(%23g)'/%3E%3Cpath d='M6 118 C6 74 20 52 42 52 C64 52 78 74 78 118 Z' fill='url(%23g)'/%3E%3Cpath d='M42 2 L50 14 L42 10 L34 14 Z' fill='%23ffb35a' opacity='.7'/%3E%3C/svg%3E") center / contain no-repeat; opacity: .9; filter: drop-shadow(0 0 12px rgba(255, 150, 60, .45)); }
+.ivDoll .fig small { text-align: center; color: #d9c08a; font-size: 11px; line-height: 1.2; }
+.eqs { position: relative; width: 44px; height: 44px; cursor: pointer; background: url(assets/ui/cinder/slot_empty.png) center / 100% 100% no-repeat; }
+.eqs.emp::before { content: ''; position: absolute; inset: 0; background: var(--ei) center / 100% 100% no-repeat; opacity: .55; }
+.eqs img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.eqs i { display: none; }
+.eqs em { position: absolute; right: 2px; top: 0; font-style: normal; font-size: 10px; font-weight: 800; color: #ffd34a; text-shadow: 0 1px 2px #000; }
+.eqs:hover { filter: brightness(1.25); }
+.ivAttr { display: flex; flex-direction: column; }
+.ivAttr div { display: flex; justify-content: space-between; padding: 4px 10px; font-size: 12px; color: #d8cbb0; border-bottom: 1px solid rgba(255, 200, 120, .08); }
+.ivAttr div b { color: #f3e3bd; font-weight: 600; }
+.ivAttr div.hl { background: linear-gradient(90deg, rgba(220, 110, 40, .55), rgba(220, 110, 40, 0)); box-shadow: inset 3px 0 0 #ff9a3a; }
+.ivMid { display: flex; flex-direction: column; min-width: 0; }
+.ivTabs { display: flex; gap: 4px; margin-bottom: -2px; position: relative; z-index: 1; padding-left: 6px; }
+.ivTabs button { flex: 1; white-space: nowrap; overflow: hidden; padding: 4px 2px 5px; font: 600 11px Kanit, sans-serif; letter-spacing: .06em; color: #b49a74; cursor: pointer; background: none; border-style: solid; border-width: 8px 10px 4px; border-image: url(assets/ui/cinder/tab_inactive.png) 24 22 8 fill / 8px 10px 4px stretch; }
+.ivTabs button:hover { border-image-source: url(assets/ui/cinder/tab_hover.png); color: #e9d3a6; }
+.ivTabs button.on { border-image-source: url(assets/ui/cinder/tab_active.png); color: #fff1cf; }
+.ivBag { border-style: solid; border-width: 12px; border-image: url(assets/ui/cinder/panel_gold.png) 28 fill / 12px stretch; padding: 4px; }
+.ivGrid.invGrid { grid-template-columns: repeat(8, 1fr); gap: 7px; max-height: 330px; padding: 2px 6px 2px 2px; }
+.ivGrid .cell { border-radius: 4px; }
+.ivGrid .cell:not(.empty):not(.lock) { background-image: none !important; }
+.ivGrid .cell.lock { background-image: url(assets/ui/cinder/slot_locked.png) !important; cursor: default; opacity: .9; }
+.ivGrid .cell.sel { outline: 0; box-shadow: 0 0 0 2px #ffcf6a, 0 0 12px rgba(255, 170, 60, .7); }
+.ivGrid .cell:not(.empty):not(.lock):hover { filter: brightness(1.2); }
+.ivGrid .cell .q { font: 600 10px Kanit, sans-serif; color: #fff; right: 3px; bottom: 1px; }
+.ivMeta { display: flex; align-items: center; gap: 14px; padding: 8px 4px 0; border-top: 1px solid rgba(255, 200, 120, .12); margin-top: 8px; font-size: 11px; color: #a99677; }
+.inv9 .coin { display: inline-flex; align-items: center; gap: 5px; padding: 3px 14px 3px 8px; color: #f6dc9a; font-weight: 600; font-size: 12px; border-style: solid; border-width: 4px 12px; border-image: url(assets/ui/cinder/currency_plate.png) 10 26 fill / 4px 12px stretch; }
+.inv9 .coin::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ffe9a0, #c8862a); box-shadow: 0 0 4px #ffb84a; }
+.ivBtns { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.ivBtns .kh { margin-right: auto; font-size: 11px; color: #8d7c62; display: flex; align-items: center; gap: 6px; }
+.inv9 kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; font: 600 10px Kanit, sans-serif; color: #f1dfb8; background: url(assets/ui/cinder/key_blank.png) center / 100% 100%; border: 0; padding: 0 4px; }
+.ibtn, .ebtn { min-width: 92px; height: 32px; font: 600 12px Kanit, sans-serif; letter-spacing: .14em; cursor: pointer; color: #e0cfae; background: none; border-style: solid; border-width: 8px 14px; border-image: url(assets/ui/cinder/btn_iron_m_normal.png) 25 fill / 8px 12px stretch; padding: 0; }
+.ibtn:hover { border-image-source: url(assets/ui/cinder/btn_iron_m_hover.png); color: #fff; }
+.ebtn { min-width: 112px; color: #fff3d6; border-width: 9px 14px; border-image: url(assets/ui/cinder/btn_ember_m_normal.png) 33 44 fill / 9px 14px stretch; }
+.ebtn:hover { border-image-source: url(assets/ui/cinder/btn_ember_m_hover.png); }
+.ibtn[disabled], .ebtn[disabled] { opacity: .45; cursor: default; filter: grayscale(.6); }
+.ivRight { display: flex; }
+.ivCard { flex: 1; display: flex; flex-direction: column; border-style: solid; border-width: 14px; border-image: url(assets/ui/cinder/tooltip.png) 20 fill / 14px stretch; padding: 4px; max-height: 520px; }
+.ivCard.empty { align-items: center; justify-content: center; text-align: center; }
+.ivcHint { color: #9d8a6a; font-size: 12px; line-height: 1.6; } .ivcHint small { color: #7d6d55; }
+.ivcHead { display: flex; gap: 10px; align-items: center; padding-bottom: 8px; border-bottom: 1px solid rgba(255, 200, 120, .15); }
+.ivcHead .cell { width: 44px; height: 44px; flex: none; background-image: none !important; }
+.ivcHead b { display: block; font-size: 13px; line-height: 1.25; }
+.ivcHead small { display: block; font: 600 9px Cinzel, Kanit, serif; letter-spacing: .16em; color: #b39467; text-transform: uppercase; margin-top: 2px; }
+.ivcBody { flex: 1; overflow-y: auto; padding: 8px 2px; font-size: 12px; }
+.ivcBody .tt > b:first-child { display: none; }
+.ivcBody .tt { background: none; border: 0; padding: 0; box-shadow: none; }
+.ivcFoot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 8px; border-top: 1px solid rgba(255, 200, 120, .15); }
+.kbtn { display: inline-flex; align-items: center; gap: 5px; background: none; border: 0; color: #d9c7a3; font: 500 11px Kanit, sans-serif; cursor: pointer; padding: 2px 4px; }
+.kbtn:hover { color: #ffd98a; }
+@media (max-width: 900px) {
+  .inv9 { grid-template-columns: 1fr; }
+  .ivLeft { order: 2; } .ivRight { order: 3; } .ivMid { order: 1; }
+  .ivGrid.invGrid { grid-template-columns: repeat(6, 1fr); max-height: 300px; }
+  .ivDoll { grid-template-columns: 44px 1fr 44px; }
+}
+/* single-row hotbar: page swap + break-free sit to the right of the 10 slots */
+#hud .hotbars { flex-direction: row !important; align-items: center; gap: 8px; }
+#hud .hotbars .hbRow2 { gap: 6px; }

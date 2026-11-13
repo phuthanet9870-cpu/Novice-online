@@ -225,7 +225,7 @@
     return best;
   }
   function resize() {
-    G.dpr = Math.min(2, window.devicePixelRatio || 1);
+    G.dpr = Math.min(3, window.devicePixelRatio || 1);
     G.cv.width = innerWidth * G.dpr; G.cv.height = innerHeight * G.dpr;
     G.cv.style.width = innerWidth + 'px'; G.cv.style.height = innerHeight + 'px';
   }
@@ -417,7 +417,7 @@
     const CHN = 16;
     const x0 = Math.floor((G.cam.x - W / 2 / scale) / CHN) - 1, x1 = Math.floor((G.cam.x + W / 2 / scale) / CHN) + 1;
     const y0 = Math.floor((G.cam.y - H / 2 / scale) / CHN) - 1, y1 = Math.floor((G.cam.y + H / 2 / scale) / CHN) + 1;
-    g.imageSmoothingEnabled = z < 1;
+    g.imageSmoothingEnabled = false; // crisp pixel-art terrain at every zoom
     for (let cy = Math.max(0, y0); cy <= Math.min(Math.ceil(G.map.h / CHN), y1); cy++) for (let cx = Math.max(0, x0); cx <= Math.min(Math.ceil(G.map.w / CHN), x1); cx++) {
       const c = ART.chunk(G.map, cx, cy);
       g.drawImage(c, ox + (cx * CHN - c.pad) * scale, oy + (cy * CHN - c.pad) * scale, c.width * z, c.height * z);

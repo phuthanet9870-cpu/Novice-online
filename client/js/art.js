@@ -46,7 +46,7 @@
     for (let ty = y0; ty < y0 + CH + PAD * 2; ty++) for (let tx = x0; tx < x0 + CH + PAD * 2; tx++) {
       const t = tileAt(map, tx, ty);
       if (t === T.HOUSE && builtSprites) continue;
-      if ((t === T.TREE || t === T.ROCK || t === T.DECO) && window.TER && TER.object(g, map, t, tx, ty, (tx - x0) * TS, (ty - y0) * TS)) continue;
+      if ((t === T.TREE || t === T.ROCK || t === T.DECO || t === T.WALL) && window.TER && TER.object(g, map, t, tx, ty, (tx - x0) * TS, (ty - y0) * TS)) continue;
       if (t === T.TREE || t === T.ROCK || t === T.DECO || t === T.WALL || t === T.HOUSE) drawObject(g, map, B, t, tx, ty, (tx - x0) * TS, (ty - y0) * TS);
     }
     c.pad = PAD;

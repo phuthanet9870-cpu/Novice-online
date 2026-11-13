@@ -6,12 +6,13 @@
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmt = (n) => Math.round(n).toLocaleString();
   const UI = window.UI = { wins: {}, open: [], chatTab: 'all', chatCh: 'map', selItem: null, skillTab: null, invTab: 'all', log: [] };
-  // 50 slots in 5 rows of 10: row 1 = 1..0, row 2 = Shift+1..0 (Z X C V B N also reach slots 13-18), row 3 = Alt+1..0, rows 4-5 by click
-  const HB_N = 50, HB_ROW = 10;
+  // one bar of 10 slots with 2 pages (20 slots): 1..0 fire the page on screen, Shift+1..0 fire the other page, the ⇄ button swaps pages
+  const HB_N = 20, HB_ROW = 10;
   const DIG = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
-  const HOTKEYS = Array.from({ length: HB_N }, (_, i) => { const r = (i / HB_ROW) | 0, c = DIG[i % HB_ROW]; return r === 0 ? c : r === 1 ? '⇧' + c : r === 2 ? 'Alt' + c : ''; });
-  const LEGACY = { z: 12, x: 13, c: 14, v: 15, b: 16, n: 17 };
-  UI.hbCollapsed = (() => { try { return localStorage.getItem('no_hb_full') !== '1'; } catch (e) { return true; } })();
+  const HOTKEYS = Array.from({ length: HB_N }, (_, i) => DIG[i % HB_ROW]);
+  UI.hbPage = (() => { try { return +localStorage.getItem('no_hb_page') === 1 ? 1 : 0; } catch (e) { return 0; } })();
+  UI.swapHotbar = (pg) => { UI.hbPage = pg === undefined ? 1 - UI.hbPage : pg; try { localStorage.setItem('no_hb_page', UI.hbPage); } catch (e) {} buildHotbar(); renderHotbar(); const b = $('#hbToggle'); if (b) b.innerHTML = hbBtn(); };
+  const hbBtn = () => `<b>⇄</b><span>${UI.hbPage + 1}/2</span>`;
   const WINKEYS = { i: 'inv', k: 'skills', u: 'char', o: 'auto', m: 'map', j: 'dungeon', g: 'guild', p: 'party', r: 'rank', h: 'help', f10: 'gm', l: 'quests', y: 'achieve', f: 'friends', ',': 'pets', '.': 'settings', '[': 'passive', ']': 'book' };
 
   // ================================================================ screens
@@ -106,9 +107,9 @@
   // ================================================================ HUD
   function setupHud() {
     buildHotbar();
-    $('#hotbar2').innerHTML = `<button class="hbToggle" id="hbToggle" data-tip="ขยาย/ย่อ Hotbar (50 ↔ 20 ช่อง)">${UI.hbCollapsed ? '▲ 50' : '▼ 20'}</button>` + `<div class="slot bf" id="bfBtn" data-tip="Break Free (Q): หลุดสถานะควบคุม · CD 25s · ใช้ SP 15%"><span class="glyph">⛓</span><kbd>Q</kbd><div class="cd"></div></div>`;
+    $('#hotbar2').innerHTML = `<button class="hbToggle" id="hbToggle" data-tip="สลับชุด Hotbar (ชุด 1 ↔ ชุด 2) · Shift+1..0 ใช้ช่องของอีกชุดได้เลย">${hbBtn()}</button>` + `<div class="slot bf" id="bfBtn" data-tip="Break Free (Q): หลุดสถานะควบคุม · CD 25s · ใช้ SP 15%"><span class="glyph">⛓</span><kbd>Q</kbd><div class="cd"></div></div>`;
     $('#bfBtn').onclick = () => G.send({ t: 'breakfree' });
-    $('#hbToggle').onclick = () => { UI.hbCollapsed = !UI.hbCollapsed; try { localStorage.setItem('no_hb_full', UI.hbCollapsed ? '0' : '1'); } catch (e) {} $('#hbToggle').textContent = UI.hbCollapsed ? '▲ 50' : '▼ 20'; buildHotbar(); renderHotbar(); };
+    $('#hbToggle').onclick = () => UI.swapHotbar();
     if (UI.buildMenu) UI.buildMenu();
     $('#autoToggle').onclick = () => G.send({ t: 'autoOn', on: !G.autoOn() });
     $('#chatTabs').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (!b) return; UI.chatTab = b.dataset.tab; for (const x of document.querySelectorAll('#chatTabs [data-tab]')) x.classList.toggle('on', x === b); if (['map', 'world', 'party', 'guild'].includes(b.dataset.tab)) { UI.chatCh = b.dataset.tab; $('#chatCh').value = UI.chatCh; } renderChat(); };
@@ -124,8 +125,8 @@
     $('#zoomOut').onclick = () => { G.zoom = Math.max(0.55, G.zoom / 1.15); };
   }
   function buildHotbar() {
-    const rows = UI.hbCollapsed ? 2 : HB_N / HB_ROW;
-    $('#hotbar1').innerHTML = Array.from({ length: rows }, (_, r) => `<div class="hotbar hbrow">${Array.from({ length: HB_ROW }, (_, c) => slotHtml(r * HB_ROW + c, HOTKEYS[r * HB_ROW + c])).join('')}</div>`).join('');
+    const b = UI.hbPage * HB_ROW;
+    $('#hotbar1').innerHTML = `<div class="hotbar hbrow pg${UI.hbPage}">${Array.from({ length: HB_ROW }, (_, c) => slotHtml(b + c, HOTKEYS[b + c])).join('')}</div>`;
     for (const el of document.querySelectorAll('#hotbar1 .slot[data-i]')) {
       el.onclick = () => G.useHotbar(+el.dataset.i);
       el.oncontextmenu = (e) => { e.preventDefault(); G.char.hotbar[+el.dataset.i] = null; saveHotbar(); };
@@ -140,11 +141,10 @@
   UI.hotkeyIndex = function (ev) {
     if (ev.ctrlKey || ev.metaKey) return -1;
     const m = /^Digit(\d)$/.exec(ev.code || '');
-    if (m) { const d = (+m[1] + 9) % 10; return (ev.altKey ? 20 : ev.shiftKey ? 10 : 0) + d; }
-    if (!ev.altKey && !ev.shiftKey && LEGACY[ev.key.toLowerCase()] !== undefined) return LEGACY[ev.key.toLowerCase()];
+    if (m && !ev.altKey) { const d = (+m[1] + 9) % 10; return (ev.shiftKey ? 1 - UI.hbPage : UI.hbPage) * HB_ROW + d; }
     return -1;
   };
-  UI.hotkeyLabel = (i) => HOTKEYS[i] || `#${i + 1}`;
+  UI.hotkeyLabel = (i) => i < HB_N ? `ชุด${(i / HB_ROW | 0) + 1}·${HOTKEYS[i]}` : `#${i + 1}`;
   UI.typing = () => { const a = document.activeElement; return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT'); };
   UI.focusChat = () => $('#chatIn').focus();
   UI.blurChat = () => { if (UI.typing()) document.activeElement.blur(); };
@@ -291,7 +291,10 @@
   };
   function drawMini() {
     const cv = $('#minicv'), g = cv.getContext('2d');
-    const S = cv.width, R = 70; // tiles radius
+    // backing store follows the on-screen size × device pixel ratio so the minimap stays sharp on phones / hi-dpi screens
+    const want = Math.round((cv.clientWidth || 190) * Math.min(3, window.devicePixelRatio || 1));
+    if (want > 0 && cv.width !== want) { cv.width = cv.height = want; }
+    const S = cv.width, R = 70, k = S / 190; // tiles radius, dot scale
     g.fillStyle = '#000'; g.fillRect(0, 0, S, S);
     if (!G.mini) return;
     const sc = S / (R * 2);
@@ -307,9 +310,9 @@
       else if (e.k === 'n') { c = e.role === 'stairs' || e.role === 'portal' ? '#c08aff' : '#ffe14a'; r = 3; }
       else if (e.k === 'c') { c = '#5ad0ff'; r = 5; }
       if (!c) continue;
-      g.fillStyle = c; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+      g.fillStyle = c; g.beginPath(); g.arc(x, y, r * k, 0, 7); g.fill();
     }
-    g.save(); g.translate(S / 2, S / 2); const se = G.selfEnt(); g.rotate((se ? se.dir : 0) + Math.PI / 2);
+    g.save(); g.translate(S / 2, S / 2); g.scale(k, k); const se = G.selfEnt(); g.rotate((se ? se.dir : 0) + Math.PI / 2);
     g.fillStyle = '#5ad0ff'; g.strokeStyle = '#000'; g.beginPath(); g.moveTo(0, -6); g.lineTo(4, 4); g.lineTo(-4, 4); g.closePath(); g.fill(); g.stroke(); g.restore();
   }
 
@@ -570,7 +573,7 @@
   function p_runesets() { const s = G.char.gear && G.char.gear.runeSets; return s && s.length ? '· Rune Set: ' + s.map((k) => D.RUNE_KINDS[k].n).join(', ') : ''; }
 
   // ---------------------------------------------------------------- inventory
-  const INV_TABS = [['all', 'ทั้งหมด'], ['equip', 'อุปกรณ์'], ['use', 'ใช้ได้'], ['mat', 'วัตถุดิบ'], ['rune', 'รูน/การ์ด'], ['etc', 'ขยะ/ของขาย']];
+  const INV_TABS = [['all', 'ทั้งหมด'], ['equip', 'อุปกรณ์'], ['use', 'ใช้ได้'], ['mat', 'วัตถุดิบ'], ['rune', 'รูน/การ์ด'], ['etc', 'ของขาย']];
   function invFilter(it, tab) {
     if (tab === 'all') return true;
     if (tab === 'equip') return it.type === 'equip';
@@ -581,36 +584,58 @@
     if (tab === 'rune') return cat === 'socket';
     if (tab === 'etc') return cat === 'junk' || cat === 'sell' || cat === 'other';
   }
+  // inventory v9: CinderUI layout — equipment doll + attributes (left), tabbed 8-column bag (centre), item card (right)
+  const EQ_ICON = { head: 'head', armor: 'chest', boots: 'feet', necklace: 'amulet', earring: 'trinket', ring1: 'ring', ring2: 'ring', weapon: 'weapon', offhand: 'offhand', cloak: 'chest', gloves: 'trinket', belt: 'trinket' };
+  const INV_CAP = 150;
   WIN.inv = {
-    title: '🎒 กระเป๋า', w: 520,
+    title: 'INVENTORY · กระเป๋า', w: 1010,
     render() {
-      const ch = G.char;
-      const items = ch.inv.filter((it) => invFilter(it, UI.invTab));
+      const ch = G.char, st = G.st || {};
+      let items = ch.inv.filter((it) => invFilter(it, UI.invTab));
+      if (UI.invSort) items = items.slice().sort((x, y) => ((y.type === 'equip') - (x.type === 'equip')) || ((y.rarity || 0) - (x.rarity || 0)) || String(x.id || x.base).localeCompare(String(y.id || y.base)));
       const sel = findItem(UI.selItem);
-      const cells = items.map((it) => `<div class="cell ${UI.selItem === it.uid ? 'sel' : ''}" data-act="sel" data-uid="${it.uid}" data-item="${it.uid}" draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${it.type === 'equip' ? '' : 'item:' + it.id}');event.dataTransfer.setData('from','')"><img src="${ART.itemIcon(it)}">${it.qty > 1 ? `<span class="q">${it.qty > 999 ? '999+' : it.qty}</span>` : ''}${it.refine ? `<em>+${it.refine}</em>` : ''}</div>`).join('');
-      let actions = '<small class="hint">คลิกไอเทมเพื่อเลือก · ลากยา/ม้วนไปวางที่ Hotbar ได้ · ดับเบิลคลิก = ใช้/สวม</small>';
+      const rar = (it) => it.type === 'equip' ? ['common', 'uncommon', 'rare', 'epic', 'legendary', 'legendary'][Math.min(5, it.rarity || 0)] : 'none';
+      const cells = items.map((it) => `<div class="cell r-${rar(it)} ${UI.selItem === it.uid ? 'sel' : ''}" data-act="sel" data-uid="${it.uid}" data-item="${it.uid}" draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${it.type === 'equip' ? '' : 'item:' + it.id}');event.dataTransfer.setData('from','')"><img src="${ART.itemIcon(it)}">${it.qty > 1 ? `<span class="q">${it.qty > 999 ? '999+' : it.qty}</span>` : ''}${it.refine ? `<em>+${it.refine}</em>` : ''}</div>`).join('');
+      const shown = Math.max(40, Math.ceil((items.length + 1) / 8) * 8);
+      const empties = '<div class="cell empty"></div>'.repeat(shown - items.length);
+      const locked = ch.inv.length >= INV_CAP - 8 ? '' : '<div class="cell lock"></div>'.repeat(8);
+      const slot = (s) => { const it = ch.equip[s]; return `<div class="eqs ${it ? 'r-' + rar(it) : 'emp'}" style="--ei:url(${new URL('client/assets/ui/cinder/', location.href).href}slot_equip_${EQ_ICON[s]}.png)" data-act="unequip" data-slot="${s}" data-tip="${D.SLOT_TH[s]}${it ? ' · คลิกเพื่อถอด' : ''}" ${it ? `data-item="${it.uid}"` : ''}>${it ? `<img src="${ART.itemIcon(it)}">${it.refine ? `<em>+${it.refine}</em>` : ''}` : ''}<i>${D.SLOT_TH[s]}</i></div>`; };
+      const attrs = [['HP', st.maxHp], ['SP', st.maxSp], ['ATK', st.atk], ['MATK', st.matk], ['DEF', st.def], ['MDEF', st.mdef], ['Crit', (st.crit || 0) + '%'], ['ASPD', (Math.round((st.aspd || 0) * 100) / 100) + '/s']];
+      const isUse = (it) => { const d = it && it.type !== 'equip' && D.ITEMS[it.id]; return d && ['potion', 'scroll', 'buffitem', 'cure', 'wing', 'box', 'pet', 'mount', 'petfood'].includes(d.type); };
+      const main = sel ? (sel.type === 'equip' ? ['equip', 'สวมใส่'] : isUse(sel) ? ['use', 'ใช้'] : null) : null;
+      let card = '<div class="ivCard empty"><div class="ivcHint">เลือกไอเทมเพื่อดูรายละเอียด<br><small>ดับเบิลคลิก = ใช้ / สวม · ลากยาไปวางที่ Hotbar ได้</small></div></div>';
       if (sel) {
         const d = sel.type === 'equip' ? null : D.ITEMS[sel.id];
-        actions = `<div class="selName">${sel.type === 'equip' ? `<b style="color:${D.RARITY[sel.rarity].color}">${sel.refine ? '+' + sel.refine + ' ' : ''}${esc(sel.name)}</b>` : `<b>${esc(d.n)}</b> ×${sel.qty}`}</div><div class="acts">
-          ${sel.type === 'equip' ? '<button class="btn gold" data-act="equip">สวมใส่</button>' : ''}
-          ${d && ['potion', 'scroll', 'buffitem', 'cure', 'wing'].includes(d.type) ? '<button class="btn gold" data-act="use">ใช้</button><button class="btn" data-act="hot">ใส่ Hotbar</button>' : ''}${d && ['box', 'pet', 'mount', 'petfood'].includes(d.type) ? '<button class="btn gold" data-act="use">ใช้ / เปิด</button>' : ''}
-          ${d && (d.type === 'rune' && d.tier < 5 || d && d.type === 'jewel' && d.tier < 10) ? `<button class="btn" data-act="combine">รวม (${d.type === 'rune' ? 3 : 5}→1)</button>` : ''}
-          <button class="btn" data-act="sell">ขาย (${fmt(sellPrice(sel) * (sel.qty || 1))}z)</button><button class="btn danger" data-act="drop">ทิ้ง</button></div>`;
+        const nm = sel.type === 'equip' ? `${sel.refine ? '+' + sel.refine + ' ' : ''}${esc(sel.name)}` : esc(d.n);
+        const sub = sel.type === 'equip' ? `${(D.RARITY[sel.rarity] || {}).n || ''} ${D.SLOT_TH[sel.slot] || ''}` : (d.th || d.type || '');
+        card = `<div class="ivCard"><div class="ivcHead"><div class="cell r-${rar(sel)}"><img src="${ART.itemIcon(sel)}"></div><div><b style="color:${sel.type === 'equip' ? D.RARITY[sel.rarity].color : '#f6dc9a'}">${nm}</b><small>${esc(sub)}</small></div></div><div class="ivcBody scrollKeep2">${itemTip(sel)}</div>
+          <div class="ivcFoot"><span class="coin">${fmt(sellPrice(sel) * (sel.qty || 1))}</span>
+          ${d && (d.type === 'rune' && d.tier < 5 || d.type === 'jewel' && d.tier < 10) ? `<button class="kbtn" data-act="combine"><kbd>C</kbd>รวม ${d.type === 'rune' ? 3 : 5}→1</button>` : ''}
+          ${d && ['potion', 'scroll', 'buffitem', 'cure', 'wing'].includes(d.type) ? '<button class="kbtn" data-act="hot"><kbd>H</kbd>ใส่ Hotbar</button>' : ''}
+          <button class="kbtn" data-act="sell"><kbd>S</kbd>ขาย</button></div></div>`;
       }
-      return `<div class="tabs">${INV_TABS.map(([k, n]) => `<button class="${UI.invTab === k ? 'on' : ''}" data-act="tab" data-k="${k}">${n}</button>`).join('')}</div>
-        <div class="invGrid scrollKeep" ondblclick="(function(e){const c=e.target.closest('[data-uid]');if(c)G.send({t:'use',uid:c.dataset.uid});})(event)">${cells}${'<div class="cell empty"></div>'.repeat(Math.max(0, 40 - items.length))}</div>
-        <div class="invFoot"><span class="zeny">💰 ${fmt(ch.zeny)} Zeny</span><span>${ch.inv.length}/150</span></div><div class="invAct">${actions}</div>`;
+      return `<div class="inv9">
+        <div class="ivLeft"><h5>EQUIPMENT · อุปกรณ์</h5>
+          <div class="ivDoll"><div class="col">${['head', 'armor', 'cloak', 'gloves', 'boots'].map(slot).join('')}</div><div class="fig"><div class="sil"></div><small>${esc(ch.name)}<br>Lv ${ch.lv}</small></div><div class="col">${['necklace', 'earring', 'ring1', 'ring2', 'belt'].map(slot).join('')}</div><div class="bot">${['weapon', 'offhand'].map(slot).join('')}</div></div>
+          <h5>ATTRIBUTES · ค่าสถานะ</h5><div class="ivAttr">${attrs.map(([k, v], i) => `<div class="${i === 2 ? 'hl' : ''}"><span>${k}</span><b>${typeof v === 'number' ? fmt(v) : v || 0}</b></div>`).join('')}</div></div>
+        <div class="ivMid"><div class="ivTabs">${INV_TABS.map(([k, n]) => `<button class="${UI.invTab === k ? 'on' : ''}" data-act="tab" data-k="${k}">${n}</button>`).join('')}</div>
+          <div class="ivBag"><div class="invGrid ivGrid scrollKeep" ondblclick="(function(e){const c=e.target.closest('[data-uid]');if(c)G.send({t:'use',uid:c.dataset.uid});})(event)">${cells}${empties}${locked}</div>
+          <div class="ivMeta"><span class="coin">${fmt(ch.zeny)}</span><span>ช่อง ${ch.inv.length} / ${INV_CAP}</span></div></div>
+          <div class="ivBtns"><span class="kh"><kbd>I</kbd>ปิด</span><button class="ibtn" data-act="sort">${UI.invSort ? 'ไม่เรียง' : 'เรียง'}</button><button class="ibtn" data-act="drop" ${sel ? '' : 'disabled'}>ทิ้ง</button><button class="ebtn" data-act="${main ? main[0] : 'none'}" ${main ? '' : 'disabled'}>${main ? main[1] : 'สวมใส่'}</button></div></div>
+        <div class="ivRight">${card}</div></div>`;
     },
     act(a, d) {
       const sel = UI.selItem;
       if (a === 'tab') UI.invTab = d.k;
+      else if (a === 'sort') UI.invSort = !UI.invSort;
+      else if (a === 'unequip') { if (G.char.equip[d.slot]) G.send({ t: 'unequip', slot: d.slot }); }
       else if (a === 'sel') UI.selItem = d.uid;
       else if (a === 'equip') G.send({ t: 'equip', uid: sel });
       else if (a === 'use') G.send({ t: 'use', uid: sel });
       else if (a === 'sell') { const it = findItem(sel); if (it) (it.type !== 'equip' || it.rarity < 3 ? Promise.resolve(true) : UI.ask('ขายของหายากชิ้นนี้?')).then((y) => y && G.send({ t: 'sell', uid: sel, qty: it.qty })); UI.selItem = null; }
-      else if (a === 'drop') { UI.ask('ทิ้งไอเทมนี้?', { danger: true, ok: 'ทิ้ง' }).then((y) => y && G.send({ t: 'drop', uid: sel })); UI.selItem = null; }
+      else if (a === 'drop' && sel) { UI.ask('ทิ้งไอเทมนี้?', { danger: true, ok: 'ทิ้ง' }).then((y) => y && G.send({ t: 'drop', uid: sel })); UI.selItem = null; }
       else if (a === 'combine') { const it = findItem(sel); if (it) G.send({ t: 'combine', id: it.id }); }
-      else if (a === 'hot') { const it = findItem(sel); const i = G.char.hotbar.findIndex((x, k) => !x && k >= 10); const j = i >= 0 ? i : G.char.hotbar.indexOf(null); if (it && j >= 0) { G.char.hotbar[j] = 'item:' + it.id; saveHotbar(); } }
+      else if (a === 'hot') { const it = findItem(sel); const i = G.char.hotbar.findIndex((x, k) => !x && k >= 10 && k < HB_N); const j = i >= 0 ? i : G.char.hotbar.findIndex((x, k) => !x && k < HB_N); if (it && j >= 0) { G.char.hotbar[j] = 'item:' + it.id; saveHotbar(); } }
       renderWin('inv');
     }
   };
@@ -657,7 +682,7 @@
       if (a === 'learn') G.send({ t: 'learn', id: d.id });
       if (a === 'vfx' && window.VFX && VFX.ok) { const sk = SKS()[d.id], me = G.self, dir = Math.cos(G.ents.get(G.me) && G.ents.get(G.me).dir || 0) >= 0 ? 1 : -1; const reach = sk.shape === 'circle' && sk.self ? 0 : Math.min(6, sk.range || 4); VFX.cast({ s: G.me, sk: d.id, x: me.x, y: me.y, tx: me.x + dir * Math.max(1.5, reach), ty: me.y, sh: sk.shape, r: sk.radius || 0, self: sk.self ? 1 : 0, u: sk.kind === 'ult' ? 1 : 0 }); }
       if (a === 'reset') UI.ask('รีเซ็ตสกิลทั้งหมด? (ฟรีถึง Lv100)').then((y) => y && G.send({ t: 'resetSkills' }));
-      if (a === 'slot') { if (G.char.hotbar.includes(d.id)) return UI.toast('อยู่ใน Hotbar แล้ว'); const i = G.char.hotbar.indexOf(null); if (i < 0) return UI.toast('Hotbar เต็ม', 'err'); G.char.hotbar[i] = d.id; saveHotbar(); UI.toast(`ใส่ ${SKS()[d.id].name} ที่ช่อง ${UI.hotkeyLabel(i)}`); }
+      if (a === 'slot') { if (G.char.hotbar.includes(d.id)) return UI.toast('อยู่ใน Hotbar แล้ว'); const i = G.char.hotbar.findIndex((x, k) => !x && k < HB_N); if (i < 0) return UI.toast('Hotbar เต็ม (20 ช่อง)', 'err'); G.char.hotbar[i] = d.id; saveHotbar(); UI.toast(`ใส่ ${SKS()[d.id].name} ที่ช่อง ${UI.hotkeyLabel(i)}`); }
     },
     input(t) { if (t.id === 'skQ') { const w = UI.wins.skills; w.opts.q = t.value; const pos = t.selectionStart; renderWin('skills'); const n = document.getElementById('skQ'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } } }
   };
@@ -996,9 +1021,10 @@
   WIN.help = {
     title: '❔ คู่มือ & ปุ่มลัด', w: 760,
     render() {
-      return `<div class="help scrollKeep"><h4>ปุ่มควบคุม</h4><div class="keys">
+      const CREDITS = '<h4>เครดิตงานภาพ</h4><p class="credits">Terrain: Pixel Fantasy Terrain Pack 4 by Laphkal · Ashen props &amp; ground: Brimspire by PixLog · Tundra / forest / moon props: roboden tileset (CC0) · Dungeon tileset · Monsters: Topdown Monsters Part 1 · UI: CinderUI kit</p>';
+      return CREDITS + `<div class="help scrollKeep"><h4>ปุ่มควบคุม</h4><div class="keys">
         <span><kbd>WASD</kbd>/<kbd>คลิกพื้น</kbd> เดิน</span><span><kbd>คลิกมอน</kbd> โจมตีปกติ</span><span><kbd>Tab</kbd> สลับเป้า</span><span><kbd>Space</kbd> ตีเป้าใกล้สุด</span>
-        <span><kbd>1</kbd>–<kbd>=</kbd> Hotbar แถว 1</span><span><kbd>Z X C V B N</kbd> Hotbar แถว 2</span><span><kbd>Q</kbd> Break Free</span><span><kbd>F1</kbd>/<kbd>F2</kbd> ยา HP/SP</span>
+        <span><kbd>1</kbd>–<kbd>0</kbd> Hotbar ชุดที่แสดง</span><span><kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>0</kbd> Hotbar อีกชุด</span><span><kbd>⇄</kbd> สลับชุด Hotbar 1/2</span><span><kbd>Q</kbd> Break Free</span><span><kbd>F1</kbd>/<kbd>F2</kbd> ยา HP/SP</span>
         <span><kbd>U</kbd> ตัวละคร</span><span><kbd>I</kbd> กระเป๋า</span><span><kbd>K</kbd> สกิล</span><span><kbd>O</kbd> ออโต้</span><span><kbd>\`</kbd> เปิด/ปิดออโต้</span><span><kbd>M</kbd> แผนที่</span><span><kbd>J</kbd> ดันเจี้ยน</span><span><kbd>G</kbd> กิลด์</span><span><kbd>P</kbd> ปาร์ตี้</span><span><kbd>R</kbd> อันดับ</span><span><kbd>Enter</kbd> แชท</span><span><kbd>ล้อเมาส์</kbd> ซูม</span><span><kbd>คลิกขวาผู้เล่น</kbd> เมนู</span><span><kbd>F10</kbd> GM</span></div>
         <h4>ระบบคอมโบ</h4><p>สกิลแบ่งเป็น <b class="rS">STARTER</b> (เปิด/ใส่แท็ก) → <b class="rL">LINKER</b> (โบนัสเมื่อเป้ามีแท็ก) → <b class="rF">FINISHER</b> (ใช้แท็กทิ้ง แลกดาเมจมหาศาล — ถ้าไม่มีแท็กดาเมจเหลือครึ่งเดียว) · ใช้สกิลต่างกันติดกันภายใน 2.5 วินาที = Combo +1 · ดาเมจ +3% ต่อ Combo (สูงสุด +60%) · Combo 5/10/15/20 เติมเกจ Ultimate</p>
         <div class="chips">${D.TAG_IDS.map((t) => `${ART.tagChip(t)}<small>${D.TAGS[t].th}</small>`).join(' ')}</div>
