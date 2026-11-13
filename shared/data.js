@@ -87,6 +87,46 @@
       dmg: 'phys', scale: 'ranged', res: { name: 'Heat', max: 100, gain: 7 }, element: 'neutral',
       start: { str: 4, agi: 9, vit: 4, int: 2, dex: 11, luk: 7 }, rating: { atk: 5, def: 1, spd: 5, mag: 0, sup: 1, diff: 4 },
       branches: { 'พื้นฐาน': 'Basic', Dual: 'Dual Gun', Marks: 'Marksman', Demo: 'Demolition' }
+    },
+    chrono_stalker: {
+      name: 'Chrono Stalker', th: 'นักล่าเวลา', weapon: 'chakram', color: '#3ad6c8', color2: '#124a5a',
+      role: 'Tempo DPS / ควบคุมเวลา', desc: 'นักล่าที่บิดกาลเวลา หยุดศัตรูไว้กลางอากาศ ย้อนคูลดาวน์ และฝังระเบิดเวลาที่ระเบิดในอนาคต',
+      hp0: 128, hpLv: 29, vitHp: 11, sp0: 60, spLv: 4.0, intSp: 6, aspd: 1.3, move: 5.6, range: 6.5,
+      dmg: 'phys', scale: 'ranged', res: { name: 'Chrono Charge', max: 5, gain: 1 }, element: 'neutral',
+      start: { str: 4, agi: 10, vit: 4, int: 6, dex: 10, luk: 4 }, rating: { atk: 4, def: 2, spd: 5, mag: 2, sup: 2, diff: 5 },
+      branches: { 'พื้นฐาน': 'Basic', Rewind: 'Rewind', Stasis: 'Stasis', Paradox: 'Paradox' }
+    },
+    divine_sovereign: {
+      name: 'Divine Sovereign', th: 'เทพผู้ครองฟ้า', weapon: 'orb', color: '#ffe08a', color2: '#7a5a12',
+      role: 'Judgement Caster / Support', desc: 'เทพผู้ลงทัณฑ์ด้วยสายฟ้าสวรรค์ สร้างโล่และชีวิต และเรียกดวงดาวถล่มทั้งสนามรบ',
+      hp0: 135, hpLv: 30, vitHp: 12, sp0: 95, spLv: 6.0, intSp: 8, aspd: 0.85, move: 5.0, range: 9,
+      dmg: 'mag', scale: 'magic', res: { name: 'Divinity', max: 100, gain: 6 }, element: 'holy',
+      start: { str: 2, agi: 3, vit: 7, int: 13, dex: 6, luk: 5 }, rating: { atk: 4, def: 3, spd: 2, mag: 5, sup: 4, diff: 3 },
+      branches: { 'พื้นฐาน': 'Basic', Judgement: 'Judgement', Creation: 'Creation', Celestial: 'Celestial' }
+    },
+    hellfiend: {
+      name: 'Hellfiend', th: 'ปีศาจนรก', weapon: 'claw', color: '#ff4a2a', color2: '#4a0a10',
+      role: 'Brawler / ไฟนรก / ดูดเลือด', desc: 'ปีศาจจากขุมนรก ฉีกศัตรูด้วยกรงเล็บเพลิง ยิ่งบาดเจ็บยิ่งคลั่ง และปลุกความกลัวด้วยปีกปีศาจ',
+      hp0: 210, hpLv: 45, vitHp: 16, sp0: 35, spLv: 2.6, intSp: 4, aspd: 1.15, move: 5.3, range: 2.1,
+      dmg: 'phys', scale: 'melee', res: { name: 'Hellfire', max: 100, gain: 8 }, element: 'fire',
+      start: { str: 11, agi: 7, vit: 9, int: 2, dex: 3, luk: 3 }, rating: { atk: 5, def: 3, spd: 3, mag: 1, sup: 0, diff: 2 },
+      branches: { 'พื้นฐาน': 'Basic', Inferno: 'Inferno', Carnage: 'Carnage', Dread: 'Dread' }
+    },
+    void_walker: {
+      name: 'Void Walker', th: 'ผู้เดินในความมืด', weapon: 'katana', color: '#7a5aff', color2: '#120828',
+      role: 'Assassin / ช่องว่างมิติ', desc: 'นักดาบแห่งความมืดที่เปิดช่องว่างมิติ ดูดศัตรูเข้ามา ทำให้ตาบอด แล้วลบทิ้งด้วยดาบเดียว',
+      hp0: 140, hpLv: 32, vitHp: 12, sp0: 50, spLv: 3.6, intSp: 5, aspd: 1.35, move: 5.7, range: 2.0,
+      dmg: 'phys', scale: 'melee', res: { name: 'Void Essence', max: 5, gain: 1 }, element: 'dark',
+      start: { str: 8, agi: 11, vit: 5, int: 3, dex: 5, luk: 6 }, rating: { atk: 5, def: 2, spd: 5, mag: 1, sup: 0, diff: 4 },
+      branches: { 'พื้นฐาน': 'Basic', Abyss: 'Abyss', Eclipse: 'Eclipse', Oblivion: 'Oblivion' }
+    },
+    lightbringer: {
+      name: 'Lightbringer', th: 'ผู้นำแสง', weapon: 'prism', color: '#fff6b0', color2: '#3a6ab8',
+      role: 'Beam Caster / ชำระล้าง', desc: 'ผู้ถือปริซึมที่หักเหแสงเป็นลำแสงเจ็ดสี ชำระล้างความมืด ฮีลเพื่อน และระเบิดดวงอาทิตย์จนศัตรูตาบอด',
+      hp0: 115, hpLv: 27, vitHp: 10, sp0: 85, spLv: 5.8, intSp: 8, aspd: 1.0, move: 5.2, range: 9,
+      dmg: 'mag', scale: 'magic', res: { name: 'Radiance', max: 3, gain: 1 }, element: 'holy',
+      start: { str: 1, agi: 6, vit: 4, int: 12, dex: 10, luk: 3 }, rating: { atk: 5, def: 1, spd: 3, mag: 5, sup: 3, diff: 3 },
+      branches: { 'พื้นฐาน': 'Basic', Prism: 'Prism', Dawn: 'Dawn', Solar: 'Solar' }
     }
   };
   const CLASS_IDS = Object.keys(CLASSES);
@@ -262,7 +302,12 @@
     mace: ['Club', 'Morning Star', 'Holy Mace', 'Rune Mace', 'Saint Hammer', 'Prayer Book', 'Divine Scepter', 'Seraph Mace', 'Archangel Codex', 'Miracle Hammer'],
     knuckle: ['Wraps', 'Iron Knuckle', 'Tiger Claw', 'Rune Fist', 'Dragon Gauntlet', 'Chi Gloves', 'Asura Fist', 'Heaven Knuckle', 'Bodhi Gauntlet', 'Fist of Eternity'],
     scythe: ['Dark Tome', 'Bone Sickle', 'Grimoire', 'Rune Scythe', 'Necronomicon', 'Soul Reaper', 'Lich Codex', 'Abyss Scythe', 'Eclipse Grimoire', 'Death\'s Embrace'],
-    gun: ['Flintlock', 'Revolver', 'Twin Pistols', 'Rune Rifle', 'Hand Cannon', 'Storm Rifle', 'Dragon Musket', 'Railcaster', 'Star Blaster', 'Infinite Arsenal']
+    gun: ['Flintlock', 'Revolver', 'Twin Pistols', 'Rune Rifle', 'Hand Cannon', 'Storm Rifle', 'Dragon Musket', 'Railcaster', 'Star Blaster', 'Infinite Arsenal'],
+    chakram: ['Tin Chakram', 'Clock Ring', 'Gear Disc', 'Rune Chakram', 'Hourglass Wheel', 'Tempo Halo', 'Epoch Disc', 'Paradox Ring', 'Aeon Wheel', 'Chronos Halo'],
+    orb: ['Glass Orb', 'Prayer Sphere', 'Sun Orb', 'Rune Orb', 'Seraph Globe', 'Heaven Sphere', 'Throne Orb', 'Astral Globe', 'Genesis Orb', 'Eye of God'],
+    claw: ['Iron Claws', 'Imp Talons', 'Brimstone Claws', 'Rune Talons', 'Hellhound Claws', 'Fiend Rippers', 'Pit Lord Talons', 'Inferno Claws', 'Abaddon Claws', 'Claws of Ruin'],
+    katana: ['Wakizashi', 'Night Katana', 'Moonless Blade', 'Rune Katana', 'Umbra Edge', 'Eclipse Katana', 'Void Fang', 'Abyss Edge', 'Oblivion Blade', 'Murasame of Night'],
+    prism: ['Glass Prism', 'Crystal Prism', 'Dawn Prism', 'Rune Prism', 'Spectrum Shard', 'Aurora Prism', 'Solar Prism', 'Zenith Crystal', 'Helios Prism', 'Heart of Light']
   };
   const ARMOR_NAMES = {
     offhand: ['Buckler', 'Kite Shield', 'Tower Shield', 'Rune Shield', 'Aegis', 'Dragon Shield', 'Holy Bulwark', 'Sky Ward', 'Celestial Guard', 'Eternal Aegis'],

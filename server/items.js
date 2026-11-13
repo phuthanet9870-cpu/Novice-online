@@ -23,7 +23,7 @@ I.newChar = function (acc, name, cls) {
   const id = 'c' + db.nextId();
   const ch = {
     id, acc: acc.user.toLowerCase(), name, cls, lv: 1, exp: 0, statPts: 5, stats: Object.assign({}, c.start), skillPts: 3, skills: {},
-    hotbar: new Array(18).fill(null), inv: [], equip: {}, zeny: 2500, map: 'aurelia', lastTown: 'aurelia', x: undefined, y: undefined,
+    hotbar: new Array(50).fill(null), inv: [], equip: {}, zeny: 2500, map: 'aurelia', lastTown: 'aurelia', x: undefined, y: undefined,
     dungeonBest: {}, created: Date.now(), ult: 0, pity: 0, kills: 0, pvpKills: 0
   };
   const first = CLASS_SKILLS[cls][0];
@@ -136,7 +136,7 @@ I._oldResetStats = function (p) {
 };
 I.setHotbar = function (p, slots) {
   if (!Array.isArray(slots)) return;
-  p.char.hotbar = new Array(18).fill(null).map((_, i) => {
+  p.char.hotbar = new Array(50).fill(null).map((_, i) => {
     const v = slots[i];
     if (typeof v !== 'string') return null;
     if (v.startsWith('item:') && D.ITEMS[v.slice(5)]) return v;

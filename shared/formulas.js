@@ -23,14 +23,19 @@
     { n: 'summon', hp: 0.6, atk: 0.6, def: 0.6, exp: 0, size: 0.85 },
     { n: 'core', hp: 1, atk: 0, def: 3, exp: 0, size: 2 }
   ];
+  // balance v2: monsters get tougher and hit harder as levels climb, so a same-level normal takes ~2-3 skills or
+  // ~8 basic attacks, hits for ~5-7% of a geared player's HP, and a field boss lasts 1-2 minutes solo
+  const MON_HP = (lv) => 1.3 + Math.min(lv, 250) / 250 * 0.9 + Math.max(0, lv - 250) / 100;
+  const MON_ATK = (lv) => 2 + lv * 0.06;
+  const SKILL_DMG = 0.45; // every skill's listed % is scaled by this in combat (keeps skills ~4× a basic hit, not ~9×)
   function monsterStats(lv, rank) {
     const R = RANK[rank] || RANK[0];
     return {
-      maxHp: Math.round((60 + lv * 28) * (1 + lv / 40) * R.hp),
-      atk: Math.round((10 + lv * 6.5) * R.atk),
+      maxHp: Math.round((60 + lv * 28) * (1 + lv / 40) * MON_HP(lv) * R.hp),
+      atk: Math.round((10 + lv * 6.5) * MON_ATK(lv) * R.atk),
       def: Math.round(lv * 1.6 * R.def),
       mdef: Math.round(lv * 1.2 * R.def),
-      exp: Math.round((Math.pow(lv, 1.45) * 4 + 10) * R.exp),
+      exp: Math.round((Math.pow(lv, 1.45) * 4 + 10) * R.exp * (0.6 + MON_HP(lv) * 0.55)),
       zeny: Math.round((5 + lv * 3) * (rank ? R.exp / 2 : 1)),
       size: R.size
     };
@@ -39,7 +44,7 @@
   // ------------------------------------------------------------------ Items
   function weaponTypeOf(cls) { return D.CLASSES[cls].weapon; }
   function classesForWeapon(w) { return D.CLASS_IDS.filter((c) => D.CLASSES[c].weapon === w); }
-  const MAGIC_WEAPONS = { staff: 1, mace: 1, scythe: 1 };
+  const MAGIC_WEAPONS = { staff: 1, mace: 1, scythe: 1, orb: 1, prism: 1 };
 
   function rollRarity(r, luckBonus = 0) {
     const x = r() * 100 / (1 + luckBonus);
@@ -261,6 +266,6 @@
   function skillSp(sk, lv) { return Math.round((sk.sp || 0) * (1 + 0.06 * (Math.max(1, lv) - 1))); }
   function skillCd(sk, lv) { return r1((sk.cd || 0) * (lv >= 10 ? 0.9 : 1)); }
 
-  return { clamp, r1, expToNext, statPointsAt, skillPointsAt, statCost, STAT_MAX, RANK, monsterStats, weaponTypeOf, classesForWeapon,
+  return { SKILL_DMG, MON_HP, MON_ATK, clamp, r1, expToNext, statPointsAt, skillPointsAt, statCost, STAT_MAX, RANK, monsterStats, weaponTypeOf, classesForWeapon,
     autoStats, statGrowth, rollRarity, genEquip, genFromBase, affixName, autoPlan, rollOptions, refinePct, runeValue, jewelValue, itemStats, gearStats, calcStats, skillMult, skillSp, skillCd };
 });

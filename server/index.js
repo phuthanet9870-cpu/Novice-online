@@ -120,6 +120,8 @@ function handle(sess, m) {
         W.players.set(ch.id, p);
       }
       sess.p = p;
+      // the passive tree was re-laid out for 15 classes: old allocations are refunded once
+      { const T = require('../shared/passives.js'); if ((ch.passiveVer || 1) !== T.VERSION) { if ((ch.passives || []).length) sess.send({ t: 'notice', k: 'system', m: '🌌 Passive Tree ถูกปรับใหม่สำหรับ 15 คลาส — คืนแต้มทั้งหมดแล้ว กรุณาเลือกใหม่' }); ch.passives = []; ch.passiveVer = T.VERSION; } }
       // GM-only character modes (immortal / no cooldown / ...) never carry over to non-GM accounts
       if (p.gm > 0) { p.gmf = Object.assign({}, ch.gmf || {}); p.god = !!p.gmf.god; } else { p.gmf = {}; p.god = false; delete ch.gmf; }
       let map = ch.map || 'aurelia';

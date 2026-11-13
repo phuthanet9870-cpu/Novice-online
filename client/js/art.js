@@ -209,7 +209,14 @@
     g.fillRect(-5 + step * 0.3, -4, 4, 9); g.fillRect(1 - step * 0.3, -4, 4, 9);
     g.fillStyle = '#3a2a1a'; g.fillRect(-6 + step * 0.3, 4, 5, 3); g.fillRect(1 - step * 0.3, 4, 5, 3);
     // cloak (for some classes)
-    if (['shadow_assassin', 'warlock', 'ranger', 'elementalist', 'cleric'].includes(e.c)) {
+    // demon wings / divine & light wings behind the body
+    if (e.c === 'hellfiend' || e.c === 'divine_sovereign' || e.c === 'lightbringer') {
+      const flap = Math.sin(t * (e.c === 'hellfiend' ? 5 : 3)) * 3;
+      g.fillStyle = e.c === 'hellfiend' ? '#3a0a10' : e.c === 'lightbringer' ? 'rgba(255,250,210,0.75)' : 'rgba(255,236,160,0.85)';
+      for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(sd * 3, -16 + bob); g.quadraticCurveTo(sd * 22, -34 + bob - flap, sd * 20, -8 + bob); g.quadraticCurveTo(sd * 12, -14 + bob, sd * 3, -8 + bob); g.fill(); }
+      if (e.c === 'hellfiend') { g.strokeStyle = '#ff5a2a'; g.lineWidth = 1; for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(sd * 3, -16 + bob); g.quadraticCurveTo(sd * 22, -34 + bob - flap, sd * 20, -8 + bob); g.stroke(); } }
+    }
+    if (['shadow_assassin', 'warlock', 'ranger', 'elementalist', 'cleric', 'void_walker', 'chrono_stalker'].includes(e.c)) {
       g.fillStyle = shade(cls.color2, -0.1); g.beginPath(); g.moveTo(-7, -18 + bob); g.lineTo(-9 - (moving ? 3 : 0), 4); g.lineTo(5, 4); g.lineTo(6, -18 + bob); g.fill();
     }
     // torso
@@ -229,6 +236,11 @@
     else if (e.c === 'cleric') { g.fillStyle = '#f8f0d0'; g.beginPath(); g.arc(0, -29 + bob, 9.5, Math.PI, 0); g.fill(); g.fillStyle = '#f2e27a'; g.fillRect(-1, -40 + bob, 2, 6); g.fillRect(-3, -38 + bob, 6, 2); }
     else if (e.c === 'monk') { g.fillStyle = '#7a3c10'; g.fillRect(-9, -30 + bob, 18, 3); g.fillStyle = hair; g.fillRect(-2, -38 + bob, 4, 4); }
     else if (e.c === 'ranger') { g.fillStyle = '#22572b'; g.beginPath(); g.arc(0, -29 + bob, 9.5, Math.PI, 0); g.fill(); g.fillStyle = '#e8d070'; g.beginPath(); g.moveTo(-6, -36 + bob); g.lineTo(-14, -44 + bob); g.lineTo(-4, -38 + bob); g.fill(); }
+    else if (e.c === 'chrono_stalker') { g.fillStyle = '#124a5a'; g.beginPath(); g.arc(0, -29 + bob, 9.5, Math.PI, 0); g.fill(); g.fillStyle = '#3ad6c8'; g.fillRect(-9, -30 + bob, 18, 3); g.strokeStyle = '#3ad6c8'; g.lineWidth = 1.2; g.beginPath(); g.arc(0, -27 + bob, 14, -2.6, -0.5); g.stroke(); g.fillStyle = '#fff'; g.fillRect(-0.5, -41 + bob, 1, 4); g.fillRect(-0.5, -41 + bob, 3, 1); }
+    else if (e.c === 'divine_sovereign') { g.fillStyle = '#f8f0d0'; g.beginPath(); g.arc(0, -29 + bob, 9.5, Math.PI, 0); g.fill(); g.fillStyle = '#ffd34a'; g.beginPath(); g.moveTo(-7, -35 + bob); g.lineTo(-5, -41 + bob); g.lineTo(-2, -36 + bob); g.lineTo(0, -42 + bob); g.lineTo(2, -36 + bob); g.lineTo(5, -41 + bob); g.lineTo(7, -35 + bob); g.fill(); g.strokeStyle = `rgba(255,224,120,${0.7 + Math.sin(t * 3) * 0.2})`; g.lineWidth = 1.5; g.beginPath(); g.ellipse(0, -46 + bob, 8, 2.5, 0, 0, 7); g.stroke(); }
+    else if (e.c === 'hellfiend') { g.fillStyle = '#2a0a0a'; g.beginPath(); g.arc(0, -29 + bob, 9.5, Math.PI, 0); g.fill(); g.fillStyle = '#e8d8c0'; for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(sd * 4, -34 + bob); g.quadraticCurveTo(sd * 12, -40 + bob, sd * 9, -48 + bob); g.lineTo(sd * 7, -37 + bob); g.fill(); } g.fillStyle = '#ff5a2a'; g.fillRect(3, -28 + bob, 2, 2); }
+    else if (e.c === 'void_walker') { g.fillStyle = '#120828'; g.beginPath(); g.arc(0, -28 + bob, 10, Math.PI * 0.85, Math.PI * 2.15); g.fill(); g.fillRect(-3, -25 + bob, 12, 4); g.fillStyle = '#b08aff'; g.fillRect(3, -28 + bob, 3, 1.5); }
+    else if (e.c === 'lightbringer') { g.fillStyle = '#fff8d8'; g.beginPath(); g.arc(0, -29 + bob, 9.5, Math.PI, 0); g.fill(); g.strokeStyle = `rgba(255,250,200,${0.6 + Math.sin(t * 4) * 0.3})`; g.lineWidth = 1; for (let i = 0; i < 7; i++) { const a = Math.PI + (i / 6) * Math.PI; g.beginPath(); g.moveTo(Math.cos(a) * 11, -30 + bob + Math.sin(a) * 11); g.lineTo(Math.cos(a) * 16, -30 + bob + Math.sin(a) * 16); g.stroke(); } }
     else if (e.c === 'gunslinger') { g.fillStyle = '#4a3a2a'; g.fillRect(-12, -33 + bob, 24, 3); g.fillRect(-7, -41 + bob, 14, 9); }
     else { g.beginPath(); g.arc(0, -30 + bob, 9, Math.PI, 0); g.fill(); }
     // weapon
@@ -252,6 +264,11 @@
       case 'mace': g.fillStyle = '#8a7a5a'; g.fillRect(-1.5, -20, 3, 26); g.fillStyle = '#e8d070'; g.beginPath(); g.arc(0, -22, 5.5, 0, 7); g.fill(); break;
       case 'knuckle': g.fillStyle = '#c8a060'; g.beginPath(); g.arc(0, -2, 5, 0, 7); g.fill(); g.fillStyle = metal; g.fillRect(-4, -6, 8, 2.5); break;
       case 'scythe': g.fillStyle = '#3a2a3a'; g.fillRect(-1.5, -34, 3, 42); g.fillStyle = '#c8c0e0'; g.beginPath(); g.moveTo(0, -34); g.quadraticCurveTo(16, -36, 18, -24); g.quadraticCurveTo(10, -30, 0, -28); g.fill(); break;
+      case 'chakram': g.strokeStyle = metal; g.lineWidth = 2.5; g.beginPath(); g.arc(2, -10, 7, 0, 7); g.stroke(); g.strokeStyle = '#3ad6c8'; g.lineWidth = 1; g.beginPath(); g.arc(2, -10, 4, 0, 7); g.stroke(); g.beginPath(); g.moveTo(2, -10); g.lineTo(2 + Math.cos(t * 6) * 4, -10 + Math.sin(t * 6) * 4); g.stroke(); break;
+      case 'orb': g.fillStyle = glow || '#ffe08a'; g.shadowColor = '#ffe08a'; g.shadowBlur = 10; g.beginPath(); g.arc(4, -18 + Math.sin(t * 2.5) * 2, 5.5, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,0.8)'; g.beginPath(); g.arc(2.5, -19.5 + Math.sin(t * 2.5) * 2, 1.8, 0, 7); g.fill(); break;
+      case 'claw': g.fillStyle = '#4a2020'; g.fillRect(-3, -6, 7, 6); g.fillStyle = '#e8d8c0'; for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(-2 + i * 2.5, -6); g.quadraticCurveTo(-1 + i * 3, -16, 4 + i * 2, -18); g.lineTo(0 + i * 2.5, -6); g.fill(); } break;
+      case 'katana': g.fillStyle = '#c8c0e8'; g.beginPath(); g.moveTo(-1, -2); g.quadraticCurveTo(-3, -18, 3, -30); g.lineTo(1.5, -2); g.fill(); g.fillStyle = '#2a1a3a'; g.fillRect(-3, -2, 7, 2); g.fillStyle = '#5a2a8a'; g.fillRect(-1, 0, 2.5, 7); break;
+      case 'prism': g.fillStyle = 'rgba(220,240,255,0.9)'; g.beginPath(); g.moveTo(3, -26 + Math.sin(t * 3) * 1.5); g.lineTo(9, -14); g.lineTo(-3, -14); g.closePath(); g.fill(); g.strokeStyle = `hsl(${(t * 120) % 360},90%,70%)`; g.lineWidth = 1.2; g.stroke(); break;
       case 'gun': g.fillStyle = '#3a3a42'; g.fillRect(-2, -6, 14, 4.5); g.fillStyle = '#6a4a2a'; g.fillRect(-3, -3, 4, 7); g.fillStyle = '#aab'; g.fillRect(8, -7, 4, 2); break;
     }
     g.restore();

@@ -1,7 +1,7 @@
 # Novice Online
 
 MMORPG แนวแอ็กชันคอมโบที่เล่นบนเว็บด้วย HTML5 — PvP, Guild War, Field/World Boss, ฟาร์มรูน/ประดับ, ตีบวก +20, เลเวล 250
-10 คลาส × 50 สกิล (40 โจมตี / 5 อัลติเมต / 5 บัฟ), 5 เมือง, 25 แผนที่ฟาร์ม, 5 ดันเจี้ยน × 1000 ชั้น, ระบบออโต้ และคำสั่ง GM
+15 คลาส × 50 สกิล (750 สกิล) (40 โจมตี / 5 อัลติเมต / 5 บัฟ), 5 เมือง, 25 แผนที่ฟาร์ม, 5 ดันเจี้ยน × 1000 ชั้น, ระบบออโต้ และคำสั่ง GM
 
 ## เริ่มเล่น
 
@@ -100,23 +100,64 @@ client/               HTML5 Canvas + DOM HUD (ไม่ต้อง build)
 แก้ตารางใน `docs/classes/XX_<class>.md` (คำอธิบายภาษาไทยมีตัวเลขและคีย์เวิร์ด เช่น `200%`, `AoE 3×3`, `Airborne`, `ใช้ Bleed →`)
 จากนั้น `npm run build:skills` หรือ `@reload` ในเกม — ตัวคอมไพล์จะแปลงเป็นกลไกและรายงานถ้ามีสกิลที่ค่าซ้ำกัน
 
-## Pixel-art skill VFX (pixelfx)
+## Skill VFX (in-house engine)
 
-All skill effects are rendered with [pixelfx](https://github.com/patch-gg/pixelfx) (MIT). The 179 bundled effects live in `client/js/vendor/pixelfx.js`, with the license in `client/js/vendor/LICENSE-pixelfx.txt`.
+`client/js/vfx.js` is our own effect engine. No third-party effect library is used.
 
-`client/js/vfx.js` gives each of the 500 skills a recipe: cast flourish → delivery (projectile / beam / swing) → impact → aftermath. The recipe is chosen from what the skill does:
+**Recipes.** Every skill (750) gets its own recipe built from 35 effect painters, for example:
 
-- its design (shot, rain, quake, dash, zone, pull, blink, ult type, buff mods…)
-- its element
-- its shape and radius
-- the class weapon
-- the statuses it inflicts
+- projectiles in 13 styles, and 8 slash styles
+- rings, pillars, lightning, beams, waves, cones, rains
+- black holes, sigils, fields, spikes
+- auras, shields, wings, clocks, portals, chains
+- impacts
 
-Each recipe is recolored with a hue-shifted palette ramp unique to that skill. All 500 recipes are distinct.
+Each recipe is chosen from the skill's delivery, element, class motif, weapon and statuses, and uses a palette of its own. All 750 recipes are distinct.
 
-Status tags show as looping overlays on the target (burning, frozen, poisoned, stunned, bleeding…). Hits, crits, reactions, deaths, level-ups and pickups are pixel effects too.
+**Rendering.**
 
-Effects render into small per-instance frames at 12–20 fps and are drawn with nearest-neighbour scaling (24 effect pixels per tile). To rebuild the bundle, run esbuild over pixelfx's `src/core` plus the chosen `src/fx/*` modules (iife, global `PFX`).
+- Effects draw into a 16 px-per-tile layer.
+- An ordered dither thresholds that layer for crisp pixel art, which is then scaled up with nearest-neighbour.
+- On top of that sit soft light, ground decals, debris physics, shadows, hit-stop, screen shake and a darkened screen on ultimates.
+- Picking up loot has no effect.
+- `client/vfx-gallery.html` renders every class's effects frame by frame for review.
+
+## Classes v3 (15)
+
+Five new classes, each with 40 Active + 5 Ultimate + 5 Buff skills, its own weapon, art and effect motif:
+
+| Class | Theme | Weapon | Motif |
+|---|---|---|---|
+| **Chrono Stalker** (นักล่าเวลา) | time | twin chakram | clock |
+| **Divine Sovereign** (เทพผู้ครองฟ้า) | god | divine orb | halo and wings |
+| **Hellfiend** (ปีศาจนรก) | demon | claws | hellfire wings |
+| **Void Walker** (ผู้เดินในความมืด) | darkness | shadow katana | void rifts |
+| **Lightbringer** (ผู้นำแสง) | light | prism | rainbow beams |
+
+New skill mechanics: cooldown shift and self-haste.
+
+The passive tree was re-laid out for 15 starting points. Old allocations are refunded once, automatically.
+
+## Balance v2
+
+Monster HP and ATK now climb with level, and skill damage is scaled by `F.SKILL_DMG`. Against a same-level normal monster:
+
+- a kill takes about 2–3 skills or 6–10 basic hits
+- a monster hit deals about 4–8% of a geared player's HP
+- a solo field boss lasts about 50–100 s
+
+EXP is raised to match. PvP damage multiplier is ×0.5.
+
+## Hotbar
+
+50 slots in 5 rows of 10, collapsible to 20.
+
+| Row | Keys |
+|---|---|
+| 1 | 1–0 |
+| 2 | Shift+1–0 (Z X C V B N still work) |
+| 3 | Alt+1–0 |
+| 4–5 | click only |
 
 ## Items, Monster Book, crafting (v5)
 

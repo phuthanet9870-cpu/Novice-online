@@ -267,8 +267,8 @@ C.dealDamage = function (src, tgt, o) {
   }
   if (tgt.kind === 'p') dmg *= 1 - tgt.st.dmgReduce / 100;
   if (tgt.kind === 'p' && tgt.pfx && tgt.pfx.ward && tgt.hp < tgt.maxHp * 0.35) dmg *= 1 - Math.min(60, tgt.pfx.ward) / 100;
-  if (pvp && src.kind === 'p') dmg *= 0.35 * (1 + src.st.pvpDmg / 100) * (1 - tgt.st.pvpRes / 100);
-  else if (pvp) dmg *= 0.35;
+  if (pvp && src.kind === 'p') dmg *= 0.5 * (1 + src.st.pvpDmg / 100) * (1 - tgt.st.pvpRes / 100);
+  else if (pvp) dmg *= 0.5;
   dmg = Math.max(1, Math.round(dmg));
   if (tgt.kind === 'p' && tgt.blocks > 0 && o.kind !== 'dot') {
     tgt.blocks--; inst.emit({ k: 'txt', t: tgt.id, x: tgt.x, y: tgt.y, m: 'BLOCK', c: '#9cf' }); return 0;
@@ -722,6 +722,8 @@ const execCore = function (p, sk, lv, tgt, ax, ay) {
   if (sk.selfBuff) C.addBuff(p, 'sb:' + sk.id, sk.selfBuff.mods, sk.selfBuff.dur, sk.name, cls.color);
   if (sk.stealth) { p.stealthUntil = t + sk.stealth; inst.inRadius(p.x, p.y, 25, (o) => { if (o.kind === 'm' && o.target === p) o.target = null; }); }
   if (sk.nextBonus) { p.nextBonus = sk.nextBonus; }
+  if (sk.cdShift) { for (const k in p.cds) if (k !== sk.id) p.cds[k] -= sk.cdShift; p.sess && p.sess.send({ t: 'cdshift', d: sk.cdShift, except: sk.id }); }
+  if (sk.haste) C.addBuff(p, 'skhaste', { aspdPct: sk.haste, movePct: sk.haste }, 4, 'Accelerate', '⏩');
   if (sk.reflect && !sk.dmg) C.addBuff(p, 'sb:' + sk.id, { reflect: sk.reflect }, 4, sk.name, cls.color);
   if (sk.shield) { p.shield = Math.max(p.shield, p.maxHp * sk.shield.pct / 100 * F.skillMult(sk, lv) * 0.8); }
   if (sk.selfHeal && !sk.cond) C.heal(p, p.maxHp * sk.selfHeal / 100, p);
@@ -730,8 +732,8 @@ const execCore = function (p, sk, lv, tgt, ax, ay) {
   if (sk.cleanse) for (const q of partyNear(p, 8)) for (const k of [...q.tags.keys()]) q.tags.delete(k);
   if (sk.summon) {
     const n = Math.min(sk.summon.count, 12);
-    const shape = p.cls === 'ranger' ? 'beast' : p.cls === 'shadow_assassin' ? 'shadow' : p.cls === 'gunslinger' ? 'drone' : 'undead';
-    const color = p.cls === 'ranger' ? '#a08060' : p.cls === 'shadow_assassin' ? '#4a2a6a' : p.cls === 'gunslinger' ? '#9ab' : '#c8c0e0';
+    const shape = p.cls === 'ranger' ? 'beast' : p.cls === 'shadow_assassin' || p.cls === 'void_walker' ? 'shadow' : p.cls === 'gunslinger' ? 'drone' : p.cls === 'divine_sovereign' || p.cls === 'lightbringer' ? 'spirit' : p.cls === 'hellfiend' ? 'imp' : 'undead';
+    const color = p.cls === 'ranger' ? '#a08060' : p.cls === 'shadow_assassin' || p.cls === 'void_walker' ? '#4a2a6a' : p.cls === 'gunslinger' ? '#9ab' : p.cls === 'divine_sovereign' || p.cls === 'lightbringer' ? '#ffe9a0' : p.cls === 'hellfiend' ? '#c83a1a' : '#c8c0e0';
     for (let i = 0; i < n; i++) W.spawnSummon(p, { name: sk.name.replace(/^(Raise|Summon|Army of the)\s*/i, '') || 'Minion', dur: sk.summon.dur, shape: /Knight/.test(sk.name) ? 'knight' : /Wraith/.test(sk.name) ? 'spirit' : shape, color, mult: sk.kind === 'ult' ? 0.8 : 0.55, mag: cls.dmg === 'mag', element: el });
   }
   if (sk.detonate === 'trap') {

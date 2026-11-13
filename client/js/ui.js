@@ -6,7 +6,12 @@
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmt = (n) => Math.round(n).toLocaleString();
   const UI = window.UI = { wins: {}, open: [], chatTab: 'all', chatCh: 'map', selItem: null, skillTab: null, invTab: 'all', log: [] };
-  const HOTKEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 'z', 'x', 'c', 'v', 'b', 'n'];
+  // 50 slots in 5 rows of 10: row 1 = 1..0, row 2 = Shift+1..0 (Z X C V B N also reach slots 13-18), row 3 = Alt+1..0, rows 4-5 by click
+  const HB_N = 50, HB_ROW = 10;
+  const DIG = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+  const HOTKEYS = Array.from({ length: HB_N }, (_, i) => { const r = (i / HB_ROW) | 0, c = DIG[i % HB_ROW]; return r === 0 ? c : r === 1 ? '⇧' + c : r === 2 ? 'Alt' + c : ''; });
+  const LEGACY = { z: 12, x: 13, c: 14, v: 15, b: 16, n: 17 };
+  UI.hbCollapsed = (() => { try { return localStorage.getItem('no_hb_full') !== '1'; } catch (e) { return true; } })();
   const WINKEYS = { i: 'inv', k: 'skills', u: 'char', o: 'auto', m: 'map', j: 'dungeon', g: 'guild', p: 'party', r: 'rank', h: 'help', f10: 'gm', l: 'quests', y: 'achieve', f: 'friends', ',': 'pets', '.': 'settings', '[': 'passive', ']': 'book' };
 
   // ================================================================ screens
@@ -36,7 +41,7 @@
     UI.chars = m.chars;
     const list = $('#charList');
     list.innerHTML = m.chars.map((c) => `<div class="charCard" data-id="${c.id}"><img src="${ART.portrait(c.cls, c.name, 96)}"><div><b>${esc(c.name)}</b><span>Lv ${c.lv} ${D.CLASSES[c.cls].name}</span><small>${esc(c.guild ? '<' + c.guild + '> ' : '')}${esc(mapName(c.map))}</small></div><button class="btn gold" data-play="${c.id}">เข้าเกม ▶</button><button class="btn tiny danger" data-del="${c.id}" data-name="${esc(c.name)}">ลบ</button></div>`).join('')
-      + (m.chars.length < 6 ? `<div class="charCard new" id="newCharBtn"><div class="plus">＋</div><div><b>สร้างตัวละครใหม่</b><span>เลือกได้ 10 คลาส</span></div></div>` : '');
+      + (m.chars.length < 6 ? `<div class="charCard new" id="newCharBtn"><div class="plus">＋</div><div><b>สร้างตัวละครใหม่</b><span>เลือกได้ 15 คลาส</span></div></div>` : '');
     list.onclick = (e) => {
       const pl = e.target.closest('[data-play]'); if (pl) return G.send({ t: 'play', id: pl.dataset.play });
       const dl = e.target.closest('[data-del]'); if (dl) { UI.ask(`พิมพ์ชื่อ "${dl.dataset.name}" เพื่อยืนยันการลบตัวละคร`, { input: true, danger: true, ok: 'ลบตัวละคร' }).then((n) => { if (n) G.send({ t: 'deleteChar', id: dl.dataset.del, confirm: n }); }); return; }
@@ -87,18 +92,10 @@
 
   // ================================================================ HUD
   function setupHud() {
-    const hb = $('#hotbar1'), hb2 = $('#hotbar2');
-    hb.innerHTML = HOTKEYS.slice(0, 12).map((k, i) => slotHtml(i, k)).join('');
-    hb2.innerHTML = HOTKEYS.slice(12).map((k, i) => slotHtml(i + 12, k.toUpperCase())).join('') + `<div class="slot bf" id="bfBtn" data-tip="Break Free (Q): หลุดสถานะควบคุม · CD 25s · ใช้ SP 15%"><span class="glyph">⛓</span><kbd>Q</kbd><div class="cd"></div></div>`;
-    for (const el of document.querySelectorAll('.hotbar .slot[data-i]')) {
-      el.onclick = () => G.useHotbar(+el.dataset.i);
-      el.oncontextmenu = (e) => { e.preventDefault(); G.char.hotbar[+el.dataset.i] = null; saveHotbar(); };
-      el.ondragover = (e) => e.preventDefault();
-      el.ondrop = (e) => { e.preventDefault(); const v = e.dataTransfer.getData('text/plain'); if (!v) return; const from = e.dataTransfer.getData('from'); if (from !== '') { const fi = +from; const tmp = G.char.hotbar[+el.dataset.i]; G.char.hotbar[+el.dataset.i] = G.char.hotbar[fi]; G.char.hotbar[fi] = tmp; } else G.char.hotbar[+el.dataset.i] = v; saveHotbar(); };
-      el.draggable = true;
-      el.ondragstart = (e) => { const v = G.char.hotbar[+el.dataset.i]; if (!v) return e.preventDefault(); e.dataTransfer.setData('text/plain', v); e.dataTransfer.setData('from', el.dataset.i); };
-    }
+    buildHotbar();
+    $('#hotbar2').innerHTML = `<button class="hbToggle" id="hbToggle" data-tip="ขยาย/ย่อ Hotbar (50 ↔ 20 ช่อง)">${UI.hbCollapsed ? '▲ 50' : '▼ 20'}</button>` + `<div class="slot bf" id="bfBtn" data-tip="Break Free (Q): หลุดสถานะควบคุม · CD 25s · ใช้ SP 15%"><span class="glyph">⛓</span><kbd>Q</kbd><div class="cd"></div></div>`;
     $('#bfBtn').onclick = () => G.send({ t: 'breakfree' });
+    $('#hbToggle').onclick = () => { UI.hbCollapsed = !UI.hbCollapsed; try { localStorage.setItem('no_hb_full', UI.hbCollapsed ? '0' : '1'); } catch (e) {} $('#hbToggle').textContent = UI.hbCollapsed ? '▲ 50' : '▼ 20'; buildHotbar(); renderHotbar(); };
     $('#menu').innerHTML = [['char', '👤', 'ตัวละคร', 'U'], ['inv', '🎒', 'กระเป๋า', 'I'], ['skills', '📖', 'สกิล', 'K'], ['passive', '🌌', 'Passive Tree', '['], ['book', '📕', 'สมุดมอนสเตอร์', ']'], ['auto', '🤖', 'ออโต้', 'O'], ['quests', '📜', 'ภารกิจ', 'L'], ['map', '🗺', 'แผนที่โลก', 'M'], ['dungeon', '🗼', 'ดันเจี้ยน', 'J'], ['achieve', '🏅', 'ความสำเร็จ/ฉายา', 'Y'], ['pets', '🐾', 'สัตว์เลี้ยง/พาหนะ', ','], ['mail', '✉', 'จดหมาย', '-'], ['market', '🏛', 'ตลาดประมูล', '-'], ['craft', '⚗', 'คราฟต์/แลกโทเคน', '-'], ['guild', '🏰', 'กิลด์', 'G'], ['party', '👥', 'ปาร์ตี้', 'P'], ['friends', '💬', 'เพื่อน', 'F'], ['rank', '🏆', 'อันดับ/บอส', 'R'], ['settings', '⚙', 'ตั้งค่า', '.'], ['help', '❔', 'คู่มือ', 'H'], ['gm', '🛡', 'GM', 'F10']]
       .map(([w, ic, n, k]) => `<button class="mbtn" data-win="${w}" data-tip="${n} (${k})" ${w === 'gm' ? 'id="gmBtn" hidden' : ''}><span>${ic}</span><kbd>${k}</kbd></button>`).join('');
     $('#menu').onclick = (e) => { const b = e.target.closest('[data-win]'); if (b) UI.toggle(b.dataset.win); };
@@ -115,12 +112,28 @@
     $('#zoomIn').onclick = () => { G.zoom = Math.min(1.8, G.zoom * 1.15); };
     $('#zoomOut').onclick = () => { G.zoom = Math.max(0.55, G.zoom / 1.15); };
   }
+  function buildHotbar() {
+    const rows = UI.hbCollapsed ? 2 : HB_N / HB_ROW;
+    $('#hotbar1').innerHTML = Array.from({ length: rows }, (_, r) => `<div class="hotbar hbrow">${Array.from({ length: HB_ROW }, (_, c) => slotHtml(r * HB_ROW + c, HOTKEYS[r * HB_ROW + c])).join('')}</div>`).join('');
+    for (const el of document.querySelectorAll('#hotbar1 .slot[data-i]')) {
+      el.onclick = () => G.useHotbar(+el.dataset.i);
+      el.oncontextmenu = (e) => { e.preventDefault(); G.char.hotbar[+el.dataset.i] = null; saveHotbar(); };
+      el.ondragover = (e) => e.preventDefault();
+      el.ondrop = (e) => { e.preventDefault(); const v = e.dataTransfer.getData('text/plain'); if (!v) return; const from = e.dataTransfer.getData('from'); if (from !== '') { const fi = +from; const tmp = G.char.hotbar[+el.dataset.i]; G.char.hotbar[+el.dataset.i] = G.char.hotbar[fi]; G.char.hotbar[fi] = tmp; } else G.char.hotbar[+el.dataset.i] = v; saveHotbar(); };
+      el.draggable = true;
+      el.ondragstart = (e) => { const v = G.char.hotbar[+el.dataset.i]; if (!v) return e.preventDefault(); e.dataTransfer.setData('text/plain', v); e.dataTransfer.setData('from', el.dataset.i); };
+    }
+  }
   function slotHtml(i, k) { return `<div class="slot" data-i="${i}"><img><span class="qty"></span><kbd>${k}</kbd><div class="cd"></div><span class="cdt"></span></div>`; }
   function saveHotbar() { G.send({ t: 'hotbar', slots: G.char.hotbar }); renderHotbar(); }
   UI.hotkeyIndex = function (ev) {
-    if (ev.ctrlKey || ev.altKey || ev.metaKey) return -1;
-    return HOTKEYS.indexOf(ev.key.toLowerCase());
+    if (ev.ctrlKey || ev.metaKey) return -1;
+    const m = /^Digit(\d)$/.exec(ev.code || '');
+    if (m) { const d = (+m[1] + 9) % 10; return (ev.altKey ? 20 : ev.shiftKey ? 10 : 0) + d; }
+    if (!ev.altKey && !ev.shiftKey && LEGACY[ev.key.toLowerCase()] !== undefined) return LEGACY[ev.key.toLowerCase()];
+    return -1;
   };
+  UI.hotkeyLabel = (i) => HOTKEYS[i] || `#${i + 1}`;
   UI.typing = () => { const a = document.activeElement; return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT'); };
   UI.focusChat = () => $('#chatIn').focus();
   UI.blurChat = () => { if (UI.typing()) document.activeElement.blur(); };
@@ -578,7 +591,7 @@
       else if (a === 'sell') { const it = findItem(sel); if (it) (it.type !== 'equip' || it.rarity < 3 ? Promise.resolve(true) : UI.ask('ขายของหายากชิ้นนี้?')).then((y) => y && G.send({ t: 'sell', uid: sel, qty: it.qty })); UI.selItem = null; }
       else if (a === 'drop') { UI.ask('ทิ้งไอเทมนี้?', { danger: true, ok: 'ทิ้ง' }).then((y) => y && G.send({ t: 'drop', uid: sel })); UI.selItem = null; }
       else if (a === 'combine') { const it = findItem(sel); if (it) G.send({ t: 'combine', id: it.id }); }
-      else if (a === 'hot') { const it = findItem(sel); const i = G.char.hotbar.findIndex((x, k) => !x && k >= 12); const j = i >= 0 ? i : G.char.hotbar.indexOf(null); if (it && j >= 0) { G.char.hotbar[j] = 'item:' + it.id; saveHotbar(); } }
+      else if (a === 'hot') { const it = findItem(sel); const i = G.char.hotbar.findIndex((x, k) => !x && k >= 10); const j = i >= 0 ? i : G.char.hotbar.indexOf(null); if (it && j >= 0) { G.char.hotbar[j] = 'item:' + it.id; saveHotbar(); } }
       renderWin('inv');
     }
   };
@@ -612,7 +625,7 @@
       if (a === 'learn') G.send({ t: 'learn', id: d.id });
       if (a === 'vfx' && window.VFX && VFX.ok) { const sk = SKS()[d.id], me = G.self, dir = Math.cos(G.ents.get(G.me) && G.ents.get(G.me).dir || 0) >= 0 ? 1 : -1; const reach = sk.shape === 'circle' && sk.self ? 0 : Math.min(6, sk.range || 4); VFX.cast({ s: G.me, sk: d.id, x: me.x, y: me.y, tx: me.x + dir * Math.max(1.5, reach), ty: me.y, sh: sk.shape, r: sk.radius || 0, self: sk.self ? 1 : 0, u: sk.kind === 'ult' ? 1 : 0 }); }
       if (a === 'reset') UI.ask('รีเซ็ตสกิลทั้งหมด? (ฟรีถึง Lv100)').then((y) => y && G.send({ t: 'resetSkills' }));
-      if (a === 'slot') { if (G.char.hotbar.includes(d.id)) return UI.toast('อยู่ใน Hotbar แล้ว'); const i = G.char.hotbar.indexOf(null); if (i < 0) return UI.toast('Hotbar เต็ม', 'err'); G.char.hotbar[i] = d.id; saveHotbar(); UI.toast(`ใส่ ${SKS()[d.id].name} ที่ช่อง ${HOTKEYS[i].toUpperCase()}`); }
+      if (a === 'slot') { if (G.char.hotbar.includes(d.id)) return UI.toast('อยู่ใน Hotbar แล้ว'); const i = G.char.hotbar.indexOf(null); if (i < 0) return UI.toast('Hotbar เต็ม', 'err'); G.char.hotbar[i] = d.id; saveHotbar(); UI.toast(`ใส่ ${SKS()[d.id].name} ที่ช่อง ${UI.hotkeyLabel(i)}`); }
     },
     input(t) { if (t.id === 'skQ') { const w = UI.wins.skills; w.opts.q = t.value; const pos = t.selectionStart; renderWin('skills'); const n = document.getElementById('skQ'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } } }
   };

@@ -4,7 +4,7 @@
 <body><div id="bar">VFX audit gallery — <select id="cls"></select> <button id="go">render</button> <span id="st"></span></div><div id="out"></div>
 <script src="/shared/rng.js"></script><script src="/shared/data.js"></script><script src="/shared/data2.js"></script><script src="/shared/itemdb.js"></script>
 <script src="/shared/formulas.js"></script><script src="/shared/skills.js"></script>
-<script src="/client/js/vendor/pixelfx.js"></script><script src="/client/js/vfx.js"></script>
+<script src="/client/js/vfx.js"></script>
 <script>
 // Renders every skill's VFX recipe as frames on a grass backdrop: caster (blue) on the left, target (red) on the right.
 window.G = { cam: { x: 0, y: 0 }, ents: new Map(), settings: { particles: 1, shake: true }, shake: 0, me: 1, fps: 60 };
@@ -30,7 +30,7 @@ async function render(cls, cols = 4) {
     while (k < TIMES.length) {
       if (!hit && t >= hitsAt && sk.kind === 'attack') { hit = true; VFX.hit({ x: tx, y: tgt.y, el: sk.element, sk: sk.id, t: 2, c: i % 5 === 0 }, caster); }
       g.setTransform(SCALE, 0, 0, SCALE, CW / 2, CH * 0.62); scene(g); VFX.drawGround(g); actor(g, caster.x, caster.y, '#5aa8ff'); actor(g, tgt.x, tgt.y, '#ff5a5a');
-      VFX.draw(g, dt); t += dt;
+      VFX.setView({ ox: CW / 2, oy: CH * 0.62, scale: SCALE, W: CW, H: CH, dpr: 1 }); VFX.draw(g, dt); t += dt;
       if (t >= TIMES[k]) { const col = i % cols, row = (i / cols) | 0; S.drawImage(cv, (col * TIMES.length + k) * CW, row * (CH + 16) + 16); k++; }
     }
     const col = i % cols, row = (i / cols) | 0;

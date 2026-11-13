@@ -57,7 +57,12 @@
     cleric: (p, c) => { p.rect(14, 5, 4, 22, c); p.rect(8, 11, 16, 4, c); },
     monk: (p, c) => { p.poly([[8, 22], [12, 12], [16, 18], [20, 12], [24, 22]], c); p.ell(16, 24, 9, 3, c); },
     warlock: (p, c) => { p.disc(16, 14, 8, c); p.rect(12, 20, 8, 6, c); p.disc(13, 14, 2, null); p.disc(19, 14, 2, null); },
-    gunslinger: (p, c) => { p.ring(16, 16, 9, c, 2); p.rect(15, 4, 2, 24, c); p.rect(4, 15, 24, 2, c); }
+    gunslinger: (p, c) => { p.ring(16, 16, 9, c, 2); p.rect(15, 4, 2, 24, c); p.rect(4, 15, 24, 2, c); },
+    chrono_stalker: (p, c) => { p.ring(16, 16, 11, c, 2); p.line(16, 16, 16, 7, c, 2); p.line(16, 16, 23, 19, c, 2); for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; p.set(16 + Math.cos(a) * 13, 16 + Math.sin(a) * 13, c); } },
+    divine_sovereign: (p, c) => { p.ell(16, 7, 10, 3, c); p.ell(16, 7, 7, 1.5, null); for (let x = 0; x < 32; x++) for (let y = 0; y < 32; y++) if (((x - 16) / 7) ** 2 + ((y - 7) / 1.5) ** 2 <= 1) p.b[y * 32 + x] = null; p.disc(16, 19, 7, c); for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; p.line(16 + Math.cos(a) * 9, 19 + Math.sin(a) * 9, 16 + Math.cos(a) * 13, 19 + Math.sin(a) * 13, c); } },
+    hellfiend: (p, c) => { p.poly([[6, 4], [12, 14], [10, 18]], c); p.poly([[26, 4], [20, 14], [22, 18]], c); p.disc(16, 20, 8, c); p.disc(13, 19, 1.5, null); p.disc(19, 19, 1.5, null); },
+    void_walker: (p, c) => { p.ring(16, 16, 11, c, 3); p.disc(16, 16, 6, c); p.disc(16, 16, 3, null); },
+    lightbringer: (p, c) => { p.poly([[16, 4], [26, 24], [6, 24]], c); for (let i = 0; i < 5; i++) p.line(26, 18 + i, 31, 12 + i * 3, c); }
   };
 
   // ---------------------------------------------------------------- element emblems (7×7, bottom-left)
@@ -83,6 +88,9 @@
     if (w === 'staff' || w === 'mace' || w === 'scythe') { p.line(x, y, ex, ey, c[0], 1); p.disc(ex, ey, w === 'mace' ? 2.5 : 2, c[2]); if (w === 'scythe') p.ring(ex - 3, ey + 1, 4, c[2], 1, 3.6, 5.6); return; }
     if (w === 'axe') { p.line(x, y, ex, ey, c[0], 1); p.poly([[ex - 1, ey - 1], [ex + 4, ey + 1], [ex + 2, ey + 5], [ex - 2, ey + 3]], c[2]); return; }
     if (w === 'knuckle') { p.rect(Math.round(x) - 3, Math.round(y) - 3, 6, 6, c[1]); p.rect(Math.round(x) - 3, Math.round(y) - 3, 6, 2, c[2]); return; }
+    if (w === 'chakram') { p.ring(x + Math.cos(ang) * 4, y + Math.sin(ang) * 4, 4, c[2], 1); return; }
+    if (w === 'orb' || w === 'prism') { p.disc(x + Math.cos(ang) * 5, y + Math.sin(ang) * 5, 3, c[2]); return; }
+    if (w === 'claw') { for (let i = -1; i <= 1; i++) p.line(x + i * 2, y, ex + i * 2, ey, c[2]); return; }
     p.line(x, y, ex, ey, c[2], w === 'spear' ? 1 : 2); p.line(x - Math.sin(ang) * 2, y + Math.cos(ang) * 2, x + Math.sin(ang) * 2, y - Math.cos(ang) * 2, c[0]);
   };
   const star = (p, x, y, r, c) => { p.line(x - r, y, x + r, y, c); p.line(x, y - r, x, y + r, c); p.line(x - r * 0.6, y - r * 0.6, x + r * 0.6, y + r * 0.6, c); p.line(x - r * 0.6, y + r * 0.6, x + r * 0.6, y - r * 0.6, c); };

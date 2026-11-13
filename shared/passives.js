@@ -20,8 +20,14 @@
     [['int', 4], ['mdefPct', 3], ['regenPct', 8], ['hpPct', 2]],
     [['agi', 4], ['comboDmg', 2.5], ['aspdPct', 2], ['str', 3]],
     [['int', 5], ['matkPct', 2], ['cdr', 0.8], ['dmgPct', 1.2]],
-    [['dex', 5], ['crit', 1.4], ['aspdPct', 1.8], ['bossDmg', 2.5]]
+    [['dex', 5], ['crit', 1.4], ['aspdPct', 1.8], ['bossDmg', 2.5]],
+    [['agi', 5], ['cdr', 0.8], ['dex', 4], ['movePct', 1.8]],
+    [['int', 5], ['matkPct', 2], ['hpPct', 2], ['regenPct', 8]],
+    [['str', 5], ['lifesteal', 0.6], ['hpPct', 2.5], ['critDmg', 4]],
+    [['agi', 5], ['crit', 1.5], ['critDmg', 4.5], ['flee', 3]],
+    [['int', 5], ['matkPct', 2.2], ['castReduce', 2], ['dex', 4]]
   ];
+  const NSEC = SECTOR_THEMES.length;
   const GENERIC = [['luk', 4], ['dropPct', 1.5], ['pvpDmg', 1.5], ['pvpRes', 1.5], ['hpPct', 1.5], ['dmgPct', 1]];
   const LABEL = {
     str: 'STR', agi: 'AGI', vit: 'VIT', int: 'INT', dex: 'DEX', luk: 'LUK', atkPct: 'ATK %', matkPct: 'MATK %', defPct: 'DEF %', mdefPct: 'MDEF %', hpPct: 'HP สูงสุด %', spPct: 'SP สูงสุด %',
@@ -36,7 +42,10 @@
     ['Elemental Equilibrium', { dmgPct: 15, castReduce: 20, cdr: -10 }], ['Giant\'s Blood', { hpPct: 40, aspdPct: -20 }], ['Swift Killer', { aspdPct: 30, atkPct: -10, matkPct: -10 }],
     ['Sanctum', { regenPct: 200, dmgPct: -15 }], ['Bloodlust', { atkPct: 30, matkPct: 30, dmgReduce: -10 }], ['Titan Slayer', { bossDmg: 40, dmgPct: -10 }],
     ['Pain Attunement', { critDmg: 50, hpPct: -15 }], ['Mind over Matter', { mdefPct: 50, defPct: 30, dmgPct: -10 }], ['Lucky Star', { dropPct: 30, luk: 40, atkPct: -8 }],
-    ['Warlord', { pvpDmg: 25, pvpRes: 15, bossDmg: -20 }], ['Time Bender', { cdr: 15, castReduce: 25, hpPct: -15 }]
+    ['Warlord', { pvpDmg: 25, pvpRes: 15, bossDmg: -20 }], ['Time Bender', { cdr: 15, castReduce: 25, hpPct: -15 }],
+    ['Borrowed Hours', { aspdPct: 25, cdr: 10, defPct: -20 }], ['Frozen Clock', { ccRes: 40, flee: 30, dmgPct: -8 }], ['Divine Right', { matkPct: 30, hpPct: 15, movePct: -12 }], ['Heaven\'s Mercy', { regenPct: 250, defPct: 20, dmgPct: -12 }],
+    ['Infernal Hunger', { lifesteal: 8, atkPct: 20, regenPct: -100 }], ['Demon Hide', { hpPct: 35, defPct: 25, critDmg: -30 }], ['Nightblade', { critDmg: 60, crit: 15, hpPct: -25 }], ['Abyssal Gaze', { dmgPct: 25, flee: 25, defPct: -30 }],
+    ['Prismatic Focus', { matkPct: 35, castReduce: 15, hpPct: -20 }], ['Eternal Dawn', { regenPct: 180, mdefPct: 40, atkPct: -15 }]
   ];
   const ADJ = ['Fierce', 'Silent', 'Burning', 'Frozen', 'Radiant', 'Hollow', 'Iron', 'Crimson', 'Storm', 'Ancient', 'Wild', 'Sacred', 'Shadow', 'Golden', 'Feral', 'Gleaming', 'Thorned', 'Ashen', 'Verdant', 'Arcane', 'Savage', 'Celestial', 'Restless', 'Bitter', 'Tidal', 'Quiet', 'Molten', 'Lunar', 'Solar', 'Grim'];
   const NOUN = ['Heart', 'Edge', 'Bastion', 'Fang', 'Eye', 'Pulse', 'Oath', 'Tempest', 'Root', 'Crown', 'Spark', 'Mantle', 'Howl', 'Veil', 'Anvil', 'Bloom', 'Talon', 'Ember', 'Current', 'Rune', 'Spire', 'Wake', 'Chorus', 'Gale', 'Vigil', 'Marrow', 'Prism', 'Tide', 'Hymn', 'Scar'];
@@ -56,11 +65,11 @@
     }
   }
   const link = (a, b) => { if (a === b || a.adj.includes(b.id)) return; a.adj.push(b.id); b.adj.push(a.id); edges.push([a.id, b.id]); };
-  const sectorOf = (a) => { let x = a / (Math.PI * 2); x -= Math.floor(x); return Math.round(x * 10) % 10; };
+  const sectorOf = (a) => { let x = a / (Math.PI * 2); x -= Math.floor(x); return Math.round(x * NSEC) % NSEC; };
   // class starts: ring 4, nearest node to the class angle
   const starts = {};
   D.CLASS_IDS.forEach((cls, c) => {
-    const target = (c / 10) * Math.PI * 2;
+    const target = (c / D.CLASS_IDS.length) * Math.PI * 2;
     let best = null, bd = 9;
     for (const nd of index[START_RING]) { let d = Math.abs(((nd.a - target + Math.PI * 3) % (Math.PI * 2)) - Math.PI); if (d < bd) { bd = d; best = nd; } }
     best.type = 'start'; best.cls = cls; starts[cls] = best.id;
@@ -87,9 +96,9 @@
   }
   // keystones: 2 per sector on rings 12-14
   let ks = 0;
-  for (let s = 0; s < 10; s++) for (const k of [12, 14]) {
+  for (let s = 0; s < NSEC; s++) for (const k of [12, 14]) {
     const ring = index[k];
-    const target = (s / 10) * Math.PI * 2 + (k === 12 ? 0.18 : -0.18);
+    const target = (s / NSEC) * Math.PI * 2 + (k === 12 ? 0.12 : -0.12);
     let best = null, bd = 9;
     for (const nd of ring) { if (nd.type) continue; let d = Math.abs(((nd.a - target + Math.PI * 3) % (Math.PI * 2)) - Math.PI); if (d < bd) { bd = d; best = nd; } }
     const [name, mods] = KEYSTONES[ks++];
@@ -183,5 +192,5 @@
   }
   function describe(mods) { return Object.entries(mods).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${LABEL[k] || k}`); }
   const points = (lv, bonus) => Math.max(0, lv - 1) + Math.floor(lv / 10) + (bonus || 0);
-  return { nodes, edges, starts, modsOf, fxOf, fxText, canAllocate, canRefund, describe, LABEL, points, RINGS, ringRadius, count: nodes.length };
+  return { VERSION: 2, nodes, edges, starts, modsOf, fxOf, fxText, canAllocate, canRefund, describe, LABEL, points, RINGS, ringRadius, count: nodes.length };
 });

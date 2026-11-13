@@ -21,7 +21,12 @@ const KITS = {
   cleric: { res: 'Faith', range: 7.5, D: ['bolt', 'nova', 'zone', 'lance', 'ricochet', 'strike', 'rain', 'pull', 'quake'], T: ['holybrand', 'stun', 'silence', 'blind', 'root', 'slow'], H: ['purge', 'bonus', 'chain', 'combo', 'lowhp', 'consume', 'none'], U: ['partyHeal', 'shield', 'cleanse', 'dispel', 'healFromDmg', 'manaBurn', 'taunt', 'none'], E: ['holy', 'neutral'] },
   monk: { res: 'Chi Sphere', range: 1.9, D: ['combo', 'strike', 'spin', 'leap', 'dash', 'wave', 'pull', 'quake', 'blink'], T: ['airborne', 'knockdown', 'stun', 'armorbreak', 'silence', 'root'], H: ['chain', 'combo', 'consume', 'perRes', 'bonus', 'execute', 'none'], U: ['nextBonus', 'resGain', 'selfHeal', 'push', 'pierce', 'cleanse', 'none'], E: ['neutral', 'wind', 'holy'] },
   warlock: { res: 'Soul Shard', range: 8.5, D: ['bolt', 'zone', 'delayed', 'ricochet', 'summon', 'scythe', 'arc', 'pull', 'nova'], T: ['curse', 'poison', 'fear', 'silence', 'slow', 'bleed', 'blind'], H: ['perStack', 'consume', 'bonus', 'perSummon', 'execute', 'lowhp', 'none'], U: ['lifesteal', 'extendDots', 'manaBurn', 'dispel', 'hpCost', 'selfHeal', 'none'], E: ['dark', 'poison', 'blood'] },
-  gunslinger: { res: 'Heat', range: 8.5, D: ['shot', 'combo', 'pierce', 'arc', 'grenade', 'rain', 'ricochet', 'dash', 'backstep'], T: ['mark', 'armorbreak', 'burn', 'chill', 'shock', 'slow', 'knockdown', 'airborne'], H: ['perRes', 'bonus', 'consume', 'execute', 'combo', 'chain', 'none'], U: ['push', 'pierce', 'nextBonus', 'resGain', 'blindAoe', 'selfHeal', 'none'], E: ['neutral', 'fire', 'lightning', 'ice'] }
+  gunslinger: { res: 'Heat', range: 8.5, D: ['shot', 'combo', 'pierce', 'arc', 'grenade', 'rain', 'ricochet', 'dash', 'backstep'], T: ['mark', 'armorbreak', 'burn', 'chill', 'shock', 'slow', 'knockdown', 'airborne'], H: ['perRes', 'bonus', 'consume', 'execute', 'combo', 'chain', 'none'], U: ['push', 'pierce', 'nextBonus', 'resGain', 'blindAoe', 'selfHeal', 'none'], E: ['neutral', 'fire', 'lightning', 'ice'] },
+  chrono_stalker: { res: 'Chrono Charge', range: 6.5, D: ['throw', 'ricochet', 'delayed', 'blink', 'dash', 'zone', 'combo', 'wave', 'trap'], T: ['slow', 'freeze', 'stun', 'root', 'mark', 'chill', 'silence'], H: ['consume', 'bonus', 'perRes', 'chain', 'combo', 'execute', 'none'], U: ['cdShift', 'haste', 'nextBonus', 'resGain', 'push', 'pierce', 'none'], E: ['neutral', 'lightning', 'ice', 'wind'] },
+  divine_sovereign: { res: 'Divinity', range: 9, D: ['bolt', 'rain', 'nova', 'lance', 'zone', 'delayed', 'pull', 'ricochet', 'summon'], T: ['holybrand', 'stun', 'shock', 'silence', 'blind', 'root'], H: ['purge', 'bonus', 'consume', 'chain', 'execute', 'none'], U: ['partyHeal', 'shield', 'cleanse', 'dispel', 'healFromDmg', 'haste', 'none'], E: ['holy', 'lightning'] },
+  hellfiend: { res: 'Hellfire', range: 2.1, D: ['strike', 'combo', 'spin', 'dash', 'leap', 'quake', 'arc', 'pull', 'wave'], T: ['burn', 'bleed', 'fear', 'curse', 'knockdown', 'armorbreak', 'stun'], H: ['lowhp', 'perRes', 'consume', 'bonus', 'perStack', 'execute', 'none'], U: ['lifesteal', 'hpCost', 'selfHeal', 'push', 'haste', 'resGain', 'none'], E: ['fire', 'blood', 'dark'] },
+  void_walker: { res: 'Void Essence', range: 2.0, D: ['strike', 'combo', 'blink', 'pull', 'dash', 'arc', 'spin', 'throw', 'delayed'], T: ['blind', 'fear', 'silence', 'curse', 'mark', 'slow', 'root'], H: ['backstab', 'stealthOpen', 'consume', 'execute', 'bonus', 'chain', 'none'], U: ['stealth', 'pull', 'manaBurn', 'dispel', 'nextBonus', 'cdShift', 'none'], E: ['dark', 'poison', 'neutral'] },
+  lightbringer: { res: 'Radiance', range: 9, D: ['lance', 'ricochet', 'bolt', 'nova', 'zone', 'rain', 'wave', 'delayed', 'pull'], T: ['blind', 'holybrand', 'burn', 'shock', 'stun', 'slow'], H: ['bonus', 'consume', 'perRes', 'chain', 'combo', 'none'], U: ['partyHeal', 'cleanse', 'pierce', 'nextBonus', 'shield', 'haste', 'none'], E: ['holy', 'lightning', 'fire'] },
 };
 // name keywords → preferred delivery / status
 const NAME_D = [
@@ -73,7 +78,22 @@ const ULTS = {
     ['executeSweep', { r: 9, th: 15, dmg: 15 }], ['transform', { dur: 12, mods: { lifesteal: 20, matkPct: 50 }, fullRes: 1 }]],
   gunslinger: [
     ['barrage', { r: 9, dmg: 0.9, hits: 40 }], ['delayedAoe', { r: 4, dmg: 28, delay: 2 }], ['summonArmy', { n: 1, dur: 10, mult: 2.5, shape: 'drone' }],
-    ['single', { dmg: 40, pierce: 1, cast: 2, range: 20 }], ['transform', { dur: 15, mods: { aspdPct: 60, dmgPct: 30 } }]]
+    ['single', { dmg: 40, pierce: 1, cast: 2, range: 20 }], ['transform', { dur: 15, mods: { aspdPct: 60, dmgPct: 30 } }]],
+  chrono_stalker: [
+    ['nuke', { r: 14, dmg: 5, tag: ['freeze', 1, 3] }], ['stackburst', { r: 7, tag: ['slow', 4], per: 1.8 }], ['barrage', { r: 9, dmg: 1.1, hits: 30, tag: ['slow', 1] }],
+    ['saint', { dur: 3, revive: 0, heal: 60 }], ['transform', { dur: 12, mods: { cdr: 90, aspdPct: 30 } }]],
+  divine_sovereign: [
+    ['nuke', { r: 14, dmg: 20, tag: ['holybrand', 1, 10] }], ['revive', { heal: 70 }], ['barrage', { r: 12, dmg: 1.6, hits: 30, tag: ['shock', 1] }],
+    ['transform', { dur: 15, mods: { matkPct: 50, dmgReduce: 30, regenPct: 200 }, party: 1 }], ['zoneheal', { dur: 10, heal: 8, r: 7, invuln: 1 }]],
+  hellfiend: [
+    ['transform', { dur: 15, mods: { giant: 1, dmgPct: 45, lifesteal: 15 } }], ['zonetarget', { dur: 8, mult: 2.6, r: 6, tag: ['burn', 2] }], ['nuke', { r: 9, dmg: 24, tag: ['burn', 3, 5] }],
+    ['plague', { r: 14, tag: ['bleed', 3], tag2: ['fear', 1] }], ['transform', { dur: 12, mods: { dmgPct: 60, ccImmune: 1, invuln: 1 } }]],
+  void_walker: [
+    ['plague', { r: 14, tag: ['blind', 1], tag2: ['fear', 1] }], ['blackhole', { r: 10, dmg: 30, tag: ['silence', 1, 3] }], ['zoneself', { dur: 6, mult: 1.8, r: 4, tag: ['curse', 1] }],
+    ['nuke', { r: 12, dmg: 18, tag: ['blind', 1, 4] }], ['transform', { dur: 12, mods: { stealth: 1, critDmg: 80, dmgPct: 35 } }]],
+  lightbringer: [
+    ['nuke', { r: 14, dmg: 16, tag: ['blind', 1, 3] }], ['megaline', { len: 24, dmg: 26, tag: ['holybrand', 1, 8], pierce: 1 }], ['zoneheal', { dur: 8, heal: 12, r: 7 }],
+    ['transform', { dur: 15, mods: { matkPct: 50, castReduce: 40 } }], ['transform', { dur: 10, mods: { movePct: 60, aspdPct: 50, cdr: 40 } }]]
 };
 const BUFFS = {
   blade_knight: [{ atkPct: 15, hit: 30 }, { aspdPct: 15, party: 1 }, { lifesteal: 8, extraStack: 1 }, { dmgReduce: 20, ccImmune: 1, short: 8 }, { comboWin: 1.5, comboDmg: 10 }],
@@ -85,7 +105,12 @@ const BUFFS = {
   cleric: [{ str: 10, int: 10, dex: 10, party: 1 }, { agi: 10, movePct: 25, party: 1 }, { blocks: 5, short: 30, party: 1 }, { element: 'holy', party: 1 }, { dmgReduce: 12, ccRes: 30, party: 1 }],
   monk: [{ defPct: 30, ccRes: 25 }, { resGainPct: 100, crit: 15 }, { spRegen: 3, ccRes: 25 }, { comboWin: 2 }, { atkPct: 8, aspdPct: 8, party: 1 }],
   warlock: [{ matkPct: 20, regenPct: -50 }, { blocks: 3, short: 60 }, { summonBuff: 1, matkPct: 5 }, { soulSiphon: 1, lifesteal: 3 }, { mdefPct: 30, flee: 20 }],
-  gunslinger: [{ aspdPct: 20, hit: 20 }, { crit: 20, dropPct: 5 }, { element: 'cycle', aspdPct: 5 }, { heatSink: 1, cdr: 6 }, { movePct: 15, dmgReduce: 8, party: 1 }]
+  gunslinger: [{ aspdPct: 20, hit: 20 }, { crit: 20, dropPct: 5 }, { element: 'cycle', aspdPct: 5 }, { heatSink: 1, cdr: 6 }, { movePct: 15, dmgReduce: 8, party: 1 }],
+  chrono_stalker: [{ aspdPct: 20, movePct: 15 }, { cdr: 12 }, { flee: 35, short: 12 }, { regenPct: 150, spRegen: 2 }, { ccImmune: 1, short: 8 }],
+  divine_sovereign: [{ matkPct: 12, hpPct: 10, party: 1 }, { dmgPct: 10, party: 1 }, { blocks: 4, short: 30, party: 1 }, { castReduce: 25, spPct: 20 }, { str: 8, agi: 8, vit: 8, int: 8, dex: 8, luk: 8, party: 1 }],
+  hellfiend: [{ atkPct: 15, critDmg: 15 }, { defPct: 35, hpPct: 10 }, { lifesteal: 10, aspdPct: 10 }, { dmgPct: 20, regenPct: -60 }, { regenPct: 250, ccRes: 20 }],
+  void_walker: [{ flee: 30, movePct: 15 }, { crit: 20, hit: 30 }, { lifesteal: 5, critDmg: 25 }, { dmgPct: 14, defPct: -20 }, { cdr: 8, aspdPct: 12 }],
+  lightbringer: [{ matkPct: 15, party: 1 }, { dmgReduce: 15, blocks: 3, short: 20 }, { regenPct: 200, party: 1 }, { resGainPct: 100, matkPct: 8 }, { castReduce: 20, hit: 30, party: 1 }]
 };
 const MOD_TH = { atkPct: 'ATK', matkPct: 'MATK', defPct: 'DEF', mdefPct: 'MDEF', aspdPct: 'ความเร็วโจมตี', movePct: 'ความเร็วเดิน', crit: 'Critical', critDmg: 'Crit Damage', flee: 'Flee', hit: 'Hit', hpPct: 'HP สูงสุด', spPct: 'SP สูงสุด', lifesteal: 'Lifesteal', dmgReduce: 'ลดดาเมจ', comboWin: 'เวลาคอมโบ (วิ)', comboDmg: 'ดาเมจคอมโบ', castReduce: 'ร่ายเร็ว', dmgPct: 'ดาเมจ', regenPct: 'ฟื้นฟู HP', ccRes: 'ต้านควบคุม', dropPct: 'อัตราดรอป', cdr: 'ลดคูลดาวน์', range: 'ระยะโจมตี', guardAlly: 'รับดาเมจแทนเพื่อน', str: 'STR', int: 'INT', dex: 'DEX', agi: 'AGI', blocks: 'บล็อกการโจมตี (ครั้ง)', spRegen: 'ฟื้น SP ×', extraStack: 'ชั้นสถานะเพิ่ม', resGainPct: 'พลังพิเศษได้เร็วขึ้น' };
 const pctKeys = new Set(['atkPct', 'matkPct', 'defPct', 'mdefPct', 'aspdPct', 'movePct', 'critDmg', 'hpPct', 'spPct', 'lifesteal', 'dmgReduce', 'comboDmg', 'castReduce', 'dmgPct', 'regenPct', 'ccRes', 'dropPct', 'cdr', 'guardAlly', 'resGainPct']);
@@ -102,7 +127,7 @@ function modsText(m) {
 }
 
 // ---------------------------------------------------------------- names generated from the actual mechanics
-const WEAPON_WORD = { sword: 'Slash', spear: 'Thrust', axe: 'Cleave', dagger: 'Stab', bow: 'Arrow', staff: 'Bolt', mace: 'Smite', knuckle: 'Fist', scythe: 'Reap', gun: 'Shot' };
+const WEAPON_WORD = { sword: 'Slash', spear: 'Thrust', axe: 'Cleave', dagger: 'Stab', bow: 'Arrow', staff: 'Bolt', mace: 'Smite', knuckle: 'Fist', scythe: 'Reap', gun: 'Shot', chakram: 'Disc', orb: 'Orb', claw: 'Rend', katana: 'Iai', prism: 'Ray' };
 const DNOUN = {
   strike: ['Strike', 'Blow', 'Rend', 'Smash', 'Assault', 'Edge'], combo: ['Flurry', 'Onslaught', 'Frenzy', 'Rampage', 'Barrage', 'Chainblows'], spin: ['Whirlwind', 'Cyclone', 'Vortex', 'Spiral', 'Tempest', 'Pirouette'],
   arc: ['Crescent', 'Sweep', 'Arc', 'Fan', 'Reaver', 'Halfmoon'], wave: ['Wave', 'Lance', 'Ray', 'Piercer', 'Beam', 'Spear'], lance: ['Lance', 'Ray', 'Beam', 'Spear', 'Wave', 'Lancet'], pierce: ['Piercer', 'Skewer', 'Lance', 'Needle', 'Ray', 'Spike'],
@@ -231,6 +256,8 @@ function buildActive(sk, kit, cls, used, prev, idxInClass) {
     case 'manaBurn': out.manaBurn = 10 + Math.floor(rnd(20) * 15); parts.push(`เผา SP เป้า ${out.manaBurn}%`); break;
     case 'partyHeal': out.heal = { pct: 4 + Math.round(rnd(11) * 8), who: 'party' }; parts.push(`ฮีลปาร์ตี้ ${out.heal.pct}%`); break;
     case 'healFromDmg': out.healFromDmg = r1(0.4 + rnd(11) * 0.6); parts.push(`ฮีลเพื่อน HP ต่ำสุด ${Math.round(out.healFromDmg * 100)}% ของดาเมจ`); break;
+    case 'cdShift': out.cdShift = r1(1 + rnd(10) * 2); parts.push(`ลดคูลดาวน์สกิลอื่นทั้งหมด ${out.cdShift} วิ`); break;
+    case 'haste': out.haste = 15 + Math.round(rnd(10) * 15); parts.push(`เร่งเวลา: ความเร็วโจมตี/เดิน +${out.haste}% 4 วิ`); break;
     case 'blindAoe': out.applies = (out.applies || []).concat([{ tag: 'blind', stacks: 1, dur: r1(1.5 + rnd(12)) }]); break;
   }
   out.dmg = r1(Math.min(7.5, base) * (out.hits > 1 ? 1 / Math.sqrt(out.hits) : 1));

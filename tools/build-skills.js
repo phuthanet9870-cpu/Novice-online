@@ -39,7 +39,9 @@ function detectElement(cls, branch, name, desc) {
   if (/Stone|Earth|Boulder|Rock|หิน|Quake|Tectonic|Landslide|Fault|Crater|แผ่นดิน/.test(s)) return 'earth';
   if (/Venom|Toxic|Poison|พิษ|Acid|Plague|Noxious/.test(s)) return 'poison';
   if (/Blood|Crimson|เลือด|Sanguine|Gore|Hemorrhage/.test(s)) return 'blood';
-  if (cls === 'cleric') return 'holy';
+  if (cls === 'cleric' || cls === 'divine_sovereign' || cls === 'lightbringer') return 'holy';
+  if (cls === 'hellfiend') return 'fire';
+  if (cls === 'void_walker') return 'dark';
   if (cls === 'warlock') return 'dark';
   if (cls === 'elementalist') return branch === 'Cryo' ? 'ice' : branch === 'Storm' ? 'lightning' : 'fire';
   return 'neutral';
@@ -423,6 +425,19 @@ for (const cls in CLASS_SKILLS) {
     const key = [s.dmg, s.hits, s.cd, s.sp, s.range, s.cast, s.shape].join('/');
     if (seen.has(key)) { dup++; console.warn('duplicate profile', id, key); }
     seen.add(key);
+  }
+}
+// balance v2: skill damage scaled once here so the listed numbers are the real ones
+{
+  const K = require('../shared/formulas.js').SKILL_DMG;
+  const pct = (x) => Math.round(x * 100) + '%';
+  const swap = (sk, a, b) => { if (a !== b && sk.desc.includes(a)) sk.desc = sk.desc.replace(a, b); };
+  for (const id in SKILLS) {
+    const sk = SKILLS[id];
+    if (sk.dmg) { const o = sk.dmg, n = Math.round(o * K * 100) / 100; if (sk.hits > 1) swap(sk, pct(o * sk.hits), pct(n * sk.hits)); swap(sk, pct(o), pct(n)); sk.dmg = n; }
+    if (sk.perUnit) { const o = sk.perUnit, n = Math.round(o * K * 100) / 100; swap(sk, pct(o), pct(n)); sk.perUnit = n; }
+    if (sk.zone && sk.zone.mult) { const o = sk.zone.mult, n = Math.round(o * K * 100) / 100; swap(sk, pct(o), pct(n)); sk.zone.mult = n; }
+    if (sk.backstab) { sk.backstab.back = Math.round(sk.backstab.back * K * 100) / 100; sk.backstab.front = Math.round(sk.backstab.front * K * 100) / 100; }
   }
 }
 const report = require('./skill-traits.js')(SKILLS, CLASS_SKILLS, Object.keys(D.CLASSES).filter((c) => CLASS_SKILLS[c]));

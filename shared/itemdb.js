@@ -138,8 +138,8 @@
     snow: [['dmgReduce', 0.015], ['hpPct', 0.05]], crystal: [['matkPct', 0.04], ['castReduce', 0.03]], volcano: [['atkPct', 0.04], ['dmgPct', 0.02]],
     sky: [['cdr', 0.02], ['spPct', 0.05]], abyss: [['dmgPct', 0.025], ['lifesteal', 0.012]]
   };
-  const WEAPON_IMP = { sword: 'atkPct', spear: 'defPct', axe: 'critDmg', dagger: 'crit', bow: 'aspdPct', staff: 'matkPct', mace: 'matkPct', knuckle: 'comboDmg', scythe: 'lifesteal', gun: 'aspdPct' };
-  const IMP_PER = { atkPct: 0.04, defPct: 0.05, critDmg: 0.12, crit: 0.05, aspdPct: 0.035, matkPct: 0.04, comboDmg: 0.04, lifesteal: 0.012 };
+  const WEAPON_IMP = { sword: 'atkPct', spear: 'defPct', axe: 'critDmg', dagger: 'crit', bow: 'aspdPct', staff: 'matkPct', mace: 'matkPct', knuckle: 'comboDmg', scythe: 'lifesteal', gun: 'aspdPct', chakram: 'cdr', orb: 'matkPct', claw: 'lifesteal', katana: 'critDmg', prism: 'castReduce' };
+  const IMP_PER = { cdr: 0.02, castReduce: 0.03, atkPct: 0.04, defPct: 0.05, critDmg: 0.12, crit: 0.05, aspdPct: 0.035, matkPct: 0.04, comboDmg: 0.04, lifesteal: 0.012 };
   function addGear(id, o) { o.id = id; D.GEAR[id] = o; return id; }
   // field gear: every map has its own 10 weapons + 8 armours/accessories (Common–Epic)
   D.MAP_GEAR = {};
@@ -161,7 +161,7 @@
   });
   // dungeon legendaries
   const LEG_NOUN = {
-    sword: 'Greatblade', spear: 'Glaive', axe: 'Executioner', dagger: 'Fangblade', bow: 'Longbow', staff: 'Spire', mace: 'Reliquary', knuckle: 'Gauntlets', scythe: 'Reaper', gun: 'Hand Cannon',
+    sword: 'Greatblade', spear: 'Glaive', axe: 'Executioner', dagger: 'Fangblade', bow: 'Longbow', staff: 'Spire', mace: 'Reliquary', knuckle: 'Gauntlets', scythe: 'Reaper', gun: 'Hand Cannon', chakram: 'Chronowheel', orb: 'Godsphere', claw: 'Ripclaws', katana: 'Nodachi', prism: 'Lightcore',
     offhand: 'Bulwark', head: 'Crown', armor: 'Warplate', cloak: 'Mantle', boots: 'Striders', necklace: 'Pendant', earring: 'Earring', ring: 'Signet'
   };
   const DG_ADJ = { abyss_tower: 'Towerborn', inferno_depths: 'Hellfire', frost_crypt: 'Rimebound', shadow_labyrinth: 'Umbral', sky_sanctum: 'Seraphic' };
@@ -177,11 +177,11 @@
   }
   // crafted regional legendaries + mythics
   const CR_NOUN = {
-    sword: 'Oathblade', spear: 'Dragoon Lance', axe: 'Warcleaver', dagger: 'Twin Talons', bow: 'Warbow', staff: 'Scepter', mace: 'Sanctifier', knuckle: 'Fists', scythe: 'Grimoire', gun: 'Repeater',
+    sword: 'Oathblade', spear: 'Dragoon Lance', axe: 'Warcleaver', dagger: 'Twin Talons', bow: 'Warbow', staff: 'Scepter', mace: 'Sanctifier', knuckle: 'Fists', scythe: 'Grimoire', gun: 'Repeater', chakram: 'Timewheel', orb: 'Sphere', claw: 'Talons', katana: 'Blade of Dusk', prism: 'Prism',
     offhand: 'Aegis', head: 'Helm', armor: 'Cuirass', cloak: 'Shroud', boots: 'Greaves', necklace: 'Amulet', earring: 'Charm', ring: 'Band'
   };
   const MY_NAME = {
-    sword: 'Genesis, Edge of Dawn', spear: 'Gungnir Eternal', axe: 'Ragnarok Cleaver', dagger: 'Nihil & Nox', bow: 'Astral Hunter', staff: 'Primordial Codex Staff', mace: 'Hammer of Creation', knuckle: 'Fists of the Void Monk', scythe: 'Harvester of Worlds', gun: 'Infinity Engine',
+    sword: 'Genesis, Edge of Dawn', spear: 'Gungnir Eternal', axe: 'Ragnarok Cleaver', dagger: 'Nihil & Nox', bow: 'Astral Hunter', staff: 'Primordial Codex Staff', mace: 'Hammer of Creation', knuckle: 'Fists of the Void Monk', scythe: 'Harvester of Worlds', gun: 'Infinity Engine', chakram: 'Ouroboros, the Endless Hour', orb: 'Heart of the Creator', claw: 'Talons of the Fallen King', katana: 'Kuro-Oblivion', prism: 'Prism of the First Dawn',
     offhand: 'Wall of Ages', head: 'Crown of the First King', armor: 'Celestial Carapace', cloak: 'Shroud of Stars', boots: 'Worldwalkers', necklace: 'Heart of Eternity', earring: 'Whisper of Gods', ring: 'Ring of Origin'
   };
   D.CRAFT_GEAR = {};
