@@ -120,6 +120,8 @@ function handle(sess, m) {
         W.players.set(ch.id, p);
       }
       sess.p = p;
+      // GM-only character modes (immortal / no cooldown / ...) never carry over to non-GM accounts
+      if (p.gm > 0) { p.gmf = Object.assign({}, ch.gmf || {}); p.god = !!p.gmf.god; } else { p.gmf = {}; p.god = false; delete ch.gmf; }
       let map = ch.map || 'aurelia';
       if (ch.jailUntil && ch.jailUntil > Date.now()) map = 'jail';
       if (p.inst) W.enterMap(p, p.inst.id, p.x, p.y);
@@ -159,7 +161,7 @@ function handle(sess, m) {
     case 'sell': I.sell(p, m.uid, m.qty); break;
     case 'drop': I.drop(p, m.uid, m.qty); break;
     case 'buy': I.buy(p, m.id, m.qty); break;
-    case 'refine': I.refine(p, m.uid, !!m.prot, !!m.bless); break;
+    case 'refine': I.refine(p, m.uid, !!m.prot, !!m.bless, !!m.anvil); break;
     case 'socket': I.socket(p, m.uid, m.gem); break;
     case 'unsocket': I.unsocket(p, m.uid); break;
     case 'drill': I.drill(p, m.uid); break;
@@ -210,6 +212,7 @@ function handle(sess, m) {
     case 'ah': E.ah(p, m); break;
     case 'trade': E.trade(p, m); break;
     case 'craft': E.craft(p, m.i, m.n); break;
+    case 'book': C.sendChar(p, ['book']); break;
     case 'tokenBuy': E.tokenBuy(p, m.i); break;
     case 'stableBuy': E.stableBuy(p, m.id); break;
     case 'refreshChar': C.sendChar(p, Object.keys(C.charPayload(p))); break;

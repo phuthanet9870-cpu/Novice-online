@@ -117,3 +117,64 @@ Each recipe is recolored with a hue-shifted palette ramp unique to that skill. A
 Status tags show as looping overlays on the target (burning, frozen, poisoned, stunned, bleeding…). Hits, crits, reactions, deaths, level-ups and pickups are pixel effects too.
 
 Effects render into small per-instance frames at 12–20 fps and are drawn with nearest-neighbour scaling (24 effect pixels per tile). To rebuild the bundle, run esbuild over pixelfx's `src/core` plus the chosen `src/fx/*` modules (iife, global `PFX`).
+
+## Items, Monster Book, crafting (v5)
+
+`shared/itemdb.js` generates **1,843 items**: 1,195 stackables and 648 named gear bases.
+
+- **Monster species (178):** every monster species in every region has its own items:
+  - common, rare and Pristine trophy materials
+  - a junk item for selling
+  - a card that fits a rune socket (178 cards, each with a unique stat pair)
+- **Field gear:** each of the 25 field maps drops its own 18 named items (10 weapons, 8 armours and accessories). Field monsters drop **Common–Epic** only.
+- **Legendary:** comes from dungeon monsters and floor bosses (90 named), from Ancient Relic Chests, or from crafting (90 regional, needing trophies plus Field Boss crests).
+- **Mythic:** 18 items, crafted from trophies of every region, Guardian Sigils and World Boss materials; World Bosses also drop them (rarely).
+- **Other items:**
+  - Support: regional foods, element oils, draughts, stat foods, cures, Fly Wing.
+  - Refine: Rough Ore, Enriched Ore, shards, anvils, Smith's Charm.
+  - Sellables: regional treasures.
+  - Random boxes.
+- **Monster Book** (📕, key `]`): every species with portrait, level, element, location, kill count and its full drop table with rates. You can search by monster, map or item.
+
+## Passive tree special effects
+
+All 137 notables and 20 keystones carry a unique special effect on top of their stats. Examples:
+
+- execute and opener damage
+- damage against tagged targets
+- element mastery
+- on-hit status
+- crit heal
+- kill effects: heal, SP, cooldown, haste, corpse blast
+- ward, thorns, SP refund
+- faster ultimate charge, shield on ultimate
+- Last Stand
+- dodge heal
+
+## Auto: PvE / PvP
+
+The auto window switches between **PvE** (farm monsters) and **PvP** (hunt hostile players, with lowest-HP / nearest / healer-first targeting). Each mode keeps its own skill rotation.
+
+**🧠 Auto-arrange** (`F.autoPlan`) scores every learned skill for the chosen mode:
+
+- **PvE:** AoE when packs are around, set up and pay off combos, then raw DPS.
+- **PvP:** open with crowd control, follow with gap-closers, combo payoffs and executes; quick single-target skills are favoured.
+
+## GM modes
+
+`@gmmode god|nocd|nosp|nocast|onehit|peace|autoloot|dmg <x>|all|off` turns on immortal, no cooldown, no SP / ult cost, instant cast, one-hit kill, monsters ignore you, auto-loot, or a damage multiplier.
+
+These modes are saved per GM character and reset for non-GM accounts.
+
+New GM window pages:
+
+- **GM modes**
+- **Named gear:** spawn any base at any rarity and iLv
+- **Monster Book spawner**
+
+New commands: `@spawnsp`, `@gearb`, `@gearlist`, `@book`, `@pickupall`, `@clearground`, `@cdreset`, `@buffall`, `@respawnmap`.
+
+## Icons
+
+- **Skill icons** are 32×32 pixel art with a class backdrop and motif, a glyph showing the skill's mechanic, an element emblem, a status pip and a frame by kind. All 500 are unique.
+- **Item icons:** the new item types have pixel icons, all unique.

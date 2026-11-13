@@ -43,7 +43,7 @@
       const sum = T.describe(mods);
       return `<div class="ptTop"><span>แต้มคงเหลือ <b class="big">${c.passivePts || 0}</b></span><span>เลือกแล้ว ${(c.passives || []).length} / 1000 โหนด</span>
         <input id="ptQ" placeholder="ค้นหาโหนด เช่น Crit, Lifesteal, Glass" value="${esc(view.q)}"><button class="btn tiny" data-act="home">⌂ จุดเริ่ม</button><button class="btn tiny" data-act="zin">＋</button><button class="btn tiny" data-act="zout">−</button><button class="btn tiny danger" data-act="reset">รีเซ็ตทั้งต้น</button></div>
-        <div class="ptWrap"><canvas id="ptCv" width="780" height="560"></canvas><div class="ptSide scrollKeep"><h4>โบนัสรวมจากต้นไม้</h4>${sum.length ? sum.map((s) => `<div>${esc(s)}</div>`).join('') : '<small class="hint">ยังไม่ได้เลือกโหนด</small>'}
+        <div class="ptWrap"><canvas id="ptCv" width="780" height="560"></canvas><div class="ptSide scrollKeep">${(c.passives || []).some((id) => T.nodes[id] && T.nodes[id].fx) ? `<h4>เอฟเฟกต์พิเศษ</h4>${(c.passives || []).map((id) => T.nodes[id]).filter((n) => n && n.fx).map((n) => `<div class="pfx"><b>${esc(n.name)}</b> ${esc(T.fxText(n.fx))}</div>`).join('')}` : ''}<h4>โบนัสรวมจากต้นไม้</h4>${sum.length ? sum.map((s) => `<div>${esc(s)}</div>`).join('') : '<small class="hint">ยังไม่ได้เลือกโหนด</small>'}
         <h4>วิธีใช้</h4><small class="hint">คลิกโหนด = เลือก (ถ้าอยู่ไกลจะเลือกทั้งเส้นทางให้อัตโนมัติ) · คลิกขวา = คืนแต้ม (${fmt(c.lv * 50)}z) · ลาก = เลื่อน · ล้อเมาส์ = ซูม<br>● เล็ก = โหนดย่อย · ◆ = Notable · ⬢ ใหญ่ = Keystone (ข้อแลกเปลี่ยนใหญ่) · ได้ 1 แต้มต่อเลเวล + โบนัสทุก 10 เลเวล</small></div></div>`;
     },
     act(a) {
@@ -68,7 +68,7 @@
       const tip = $('#tip');
       if (h >= 0) {
         const nd = T.nodes[h]; const path = pathTo(h); const have = allocSet().has(h);
-        tip.innerHTML = `<div class="tt"><b style="color:${nd.type === 'keystone' ? '#ff9a3a' : nd.type === 'notable' ? '#ffd34a' : '#fff'}">${esc(nd.name || (nd.type === 'minor' ? 'โหนดย่อย' : ''))}</b> <small>${{ minor: 'Minor', notable: 'Notable', keystone: 'KEYSTONE', start: 'จุดเริ่มคลาส' }[nd.type]} · วง ${nd.k}</small>${T.describe(nd.mods || {}).map((s) => `<div class="opt">${esc(s)}</div>`).join('')}<small>${have ? '✔ เลือกแล้ว (คลิกขวาเพื่อคืน)' : path ? `ต้องใช้ ${path.length} แต้ม` : 'ยังไปไม่ถึง'}</small></div>`;
+        tip.innerHTML = `<div class="tt"><b style="color:${nd.type === 'keystone' ? '#ff9a3a' : nd.type === 'notable' ? '#ffd34a' : '#fff'}">${esc(nd.name || (nd.type === 'minor' ? 'โหนดย่อย' : ''))}</b> <small>${{ minor: 'Minor', notable: 'Notable', keystone: 'KEYSTONE', start: 'จุดเริ่มคลาส' }[nd.type]} · วง ${nd.k}</small>${T.describe(nd.mods || {}).map((s) => `<div class="opt">${esc(s)}</div>`).join('')}${nd.fx ? `<div class="opt imp">✦ ${esc(T.fxText(nd.fx))}</div>` : ''}<small>${have ? '✔ เลือกแล้ว (คลิกขวาเพื่อคืน)' : path ? `ต้องใช้ ${path.length} แต้ม` : 'ยังไปไม่ถึง'}</small></div>`;
         tip.hidden = false; tip.style.left = Math.min(innerWidth - 300, ev.clientX + 16) + 'px'; tip.style.top = (ev.clientY + 16) + 'px';
       } else tip.hidden = true;
     });
@@ -110,7 +110,7 @@
       g.lineWidth = nd.id === view.hover ? 4 : 2;
       g.strokeStyle = nd.id === view.hover ? '#fff' : hp.has(nd.id) ? '#7dffb0' : on ? '#fff3c8' : avail ? '#7dffb0' : nd.type === 'keystone' ? '#a0703a' : nd.type === 'notable' ? '#8a7a4a' : '#4a4660';
       g.stroke();
-      if (q && ((nd.name || '').toLowerCase().includes(q) || T.describe(nd.mods || {}).join(' ').toLowerCase().includes(q))) { g.strokeStyle = '#ff5ad0'; g.lineWidth = 3; g.beginPath(); g.arc(nd.x, nd.y, r + 7, 0, 7); g.stroke(); }
+      if (q && ((nd.name || '').toLowerCase().includes(q) || T.describe(nd.mods || {}).join(' ').toLowerCase().includes(q) || (nd.fx && T.fxText(nd.fx).toLowerCase().includes(q)))) { g.strokeStyle = '#ff5ad0'; g.lineWidth = 3; g.beginPath(); g.arc(nd.x, nd.y, r + 7, 0, 7); g.stroke(); }
       if ((nd.type === 'keystone' && view.z > 0.3) || (nd.type === 'notable' && view.z > 0.85) || nd.type === 'start') {
         g.font = `${nd.type === 'start' ? 700 : 600} ${nd.type === 'keystone' ? 15 : 12}px Kanit, sans-serif`; g.textAlign = 'center';
         g.fillStyle = nd.type === 'start' ? D.CLASSES[nd.cls].color : nd.type === 'keystone' ? '#ffb46a' : '#e8d8a0';

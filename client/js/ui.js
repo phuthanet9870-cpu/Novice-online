@@ -7,7 +7,7 @@
   const fmt = (n) => Math.round(n).toLocaleString();
   const UI = window.UI = { wins: {}, open: [], chatTab: 'all', chatCh: 'map', selItem: null, skillTab: null, invTab: 'all', log: [] };
   const HOTKEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 'z', 'x', 'c', 'v', 'b', 'n'];
-  const WINKEYS = { i: 'inv', k: 'skills', u: 'char', o: 'auto', m: 'map', j: 'dungeon', g: 'guild', p: 'party', r: 'rank', h: 'help', f10: 'gm', l: 'quests', y: 'achieve', f: 'friends', ',': 'pets', '.': 'settings', '[': 'passive' };
+  const WINKEYS = { i: 'inv', k: 'skills', u: 'char', o: 'auto', m: 'map', j: 'dungeon', g: 'guild', p: 'party', r: 'rank', h: 'help', f10: 'gm', l: 'quests', y: 'achieve', f: 'friends', ',': 'pets', '.': 'settings', '[': 'passive', ']': 'book' };
 
   // ================================================================ screens
   UI.boot = function () {
@@ -99,7 +99,7 @@
       el.ondragstart = (e) => { const v = G.char.hotbar[+el.dataset.i]; if (!v) return e.preventDefault(); e.dataTransfer.setData('text/plain', v); e.dataTransfer.setData('from', el.dataset.i); };
     }
     $('#bfBtn').onclick = () => G.send({ t: 'breakfree' });
-    $('#menu').innerHTML = [['char', '👤', 'ตัวละคร', 'U'], ['inv', '🎒', 'กระเป๋า', 'I'], ['skills', '📖', 'สกิล', 'K'], ['passive', '🌌', 'Passive Tree', '['], ['auto', '🤖', 'ออโต้', 'O'], ['quests', '📜', 'ภารกิจ', 'L'], ['map', '🗺', 'แผนที่โลก', 'M'], ['dungeon', '🗼', 'ดันเจี้ยน', 'J'], ['achieve', '🏅', 'ความสำเร็จ/ฉายา', 'Y'], ['pets', '🐾', 'สัตว์เลี้ยง/พาหนะ', ','], ['mail', '✉', 'จดหมาย', '-'], ['market', '🏛', 'ตลาดประมูล', '-'], ['craft', '⚗', 'คราฟต์/แลกโทเคน', '-'], ['guild', '🏰', 'กิลด์', 'G'], ['party', '👥', 'ปาร์ตี้', 'P'], ['friends', '💬', 'เพื่อน', 'F'], ['rank', '🏆', 'อันดับ/บอส', 'R'], ['settings', '⚙', 'ตั้งค่า', '.'], ['help', '❔', 'คู่มือ', 'H'], ['gm', '🛡', 'GM', 'F10']]
+    $('#menu').innerHTML = [['char', '👤', 'ตัวละคร', 'U'], ['inv', '🎒', 'กระเป๋า', 'I'], ['skills', '📖', 'สกิล', 'K'], ['passive', '🌌', 'Passive Tree', '['], ['book', '📕', 'สมุดมอนสเตอร์', ']'], ['auto', '🤖', 'ออโต้', 'O'], ['quests', '📜', 'ภารกิจ', 'L'], ['map', '🗺', 'แผนที่โลก', 'M'], ['dungeon', '🗼', 'ดันเจี้ยน', 'J'], ['achieve', '🏅', 'ความสำเร็จ/ฉายา', 'Y'], ['pets', '🐾', 'สัตว์เลี้ยง/พาหนะ', ','], ['mail', '✉', 'จดหมาย', '-'], ['market', '🏛', 'ตลาดประมูล', '-'], ['craft', '⚗', 'คราฟต์/แลกโทเคน', '-'], ['guild', '🏰', 'กิลด์', 'G'], ['party', '👥', 'ปาร์ตี้', 'P'], ['friends', '💬', 'เพื่อน', 'F'], ['rank', '🏆', 'อันดับ/บอส', 'R'], ['settings', '⚙', 'ตั้งค่า', '.'], ['help', '❔', 'คู่มือ', 'H'], ['gm', '🛡', 'GM', 'F10']]
       .map(([w, ic, n, k]) => `<button class="mbtn" data-win="${w}" data-tip="${n} (${k})" ${w === 'gm' ? 'id="gmBtn" hidden' : ''}><span>${ic}</span><kbd>${k}</kbd></button>`).join('');
     $('#menu').onclick = (e) => { const b = e.target.closest('[data-win]'); if (b) UI.toggle(b.dataset.win); };
     $('#autoToggle').onclick = () => G.send({ t: 'autoOn', on: !G.autoOn() });
@@ -359,12 +359,13 @@
   function setupTooltip() {
     const tip = $('#tip');
     document.addEventListener('mousemove', (e) => {
-      const t = e.target.closest && e.target.closest('[data-tip],[data-skill],[data-item],[data-itemid]');
+      const t = e.target.closest && e.target.closest('[data-tip],[data-skill],[data-item],[data-itemid],[data-gear]');
       if (!t) { tip.hidden = true; return; }
       let html = '';
       if (t.dataset.skill) html = skillTip(t.dataset.skill);
       else if (t.dataset.item) html = itemTip(findItem(t.dataset.item));
       else if (t.dataset.itemid) html = itemTip({ id: t.dataset.itemid });
+      else if (t.dataset.gear) html = itemTip(UI.gearPreview(t.dataset.gear));
       else html = esc(t.dataset.tip);
       if (!html) { tip.hidden = true; return; }
       tip.innerHTML = html; tip.hidden = false;
@@ -389,19 +390,26 @@
       if (d.type === 'rune') extra = `${D.RUNE_KINDS[d.kind].type} Rune · ${statLine(D.RUNE_KINDS[d.kind].stat, F.runeValue(d.kind, d.tier))}<br>ฝังในอาวุธ/เกราะที่มีช่องรูน · รวม 3 อัน = ระดับถัดไป · ใส่ชนิดเดียวกัน 3 ชิ้น = Rune Set +25%`;
       if (d.type === 'jewel') extra = `${statLine(D.JEWELS[d.kind].stat, F.jewelValue(d.kind, d.tier))}<br>ฝังในเครื่องประดับ · รวม 5 อัน = ระดับถัดไป`;
       const desc = { tele_scroll: 'วาร์ปกลับเมืองล่าสุด', ore_refine: 'วัตถุดิบตีบวก +1 ~ +10', crystal_pure: 'วัตถุดิบตีบวก +11 ~ +15', crystal_divine: 'วัตถุดิบตีบวก +16 ~ +20', scroll_protect: 'ป้องกันของพังเมื่อตีบวกล้มเหลว', scroll_bless: 'ป้องกันระดับลดเมื่อตีบวกล้มเหลว', rune_drill: 'เจาะช่องรูนเพิ่ม (โอกาส 60%)', reroll_stone: 'สุ่มออปชั่นอุปกรณ์ใหม่', memory_crystal: 'รีเซ็ตสกิล', stat_reset: 'รีเซ็ตสเตตัส', guild_emblem: 'ใช้สร้างกิลด์', monster_core: 'ขายให้ร้านค้าได้' }[it.id] || '';
-      return `<div class="tt"><b>${esc(d.n)}</b> <small>${esc(d.th || '')}</small><p>${extra || desc}</p>${it.qty ? `<small>จำนวน ${it.qty}</small>` : ''}</div>`;
+      if (d.type === 'card') extra = Object.entries(d.mods).map(([k, v]) => `<div class="opt">◆ ${statLine(k, v)}</div>`).join('') + '<small>ฝังในช่องรูนของอาวุธ/เกราะ</small>';
+      if (d.type === 'buffitem' && d.buff) extra = Object.entries(d.buff).map(([k, v]) => `<div class="opt">◆ ${typeof v === 'number' ? statLine(k, v) : 'ธาตุอาวุธ: ' + v}</div>`).join('') + `<small>นาน ${Math.round(d.dur / 60)} นาที</small>`;
+      if (d.type === 'anvil') extra = `โอกาสตีบวกสำเร็จ +${d.bonus}%`;
+      const src = d.sp && D.SPECIES[d.sp] ? `<small class="src">ดรอปจาก: ${esc(D.SPECIES[d.sp].name)} · ${esc(D.SPECIES[d.sp].where)}</small>` : '';
+      const catTh = { support: 'ซัพพอร์ต', material: 'วัตถุดิบ', refine: 'ตีบวก', socket: 'ฝังช่อง', junk: 'ขยะ', sell: 'ของขาย', box: 'กล่องสุ่ม', other: 'อื่นๆ' }[D.itemCategory(d)];
+      return `<div class="tt"><b>${esc(d.n)}</b> <small>[${catTh}] ${esc(d.th || '')}</small><p>${extra || desc}</p>${src}${it.qty ? `<small>จำนวน ${it.qty}</small>` : ''}<small class="price">ขายได้ ${fmt(d.sell || Math.floor((d.price || 10) / 4))} z</small></div>`;
     }
     const R = D.RARITY[it.rarity];
     const st = F.itemStats(it, {});
     const base = ['atk', 'matk', 'def', 'mdef', 'hp'].filter((k) => st[k]).map((k) => `<div class="tl">${k.toUpperCase()} <b>${fmt(st[k])}</b></div>`).join('');
-    const opts = (it.opts || []).map(([k, v]) => `<div class="opt">◆ ${statLine(k, v)}</div>`).join('');
-    const runes = it.sockets ? `<div class="sock">${Array.from({ length: it.sockets }, (_, i) => it.runes[i] ? `<span style="--c:${D.ITEMS[it.runes[i]].icon}">${esc(D.ITEMS[it.runes[i]].n)}</span>` : '<span class="empty">ช่องรูนว่าง</span>').join('')}</div>` : '';
+    const opts = (it.imp || []).map(([k, v]) => `<div class="opt imp">✦ ${statLine(k, v)}</div>`).join('') + (it.opts || []).map(([k, v]) => `<div class="opt">◆ ${statLine(k, v)}</div>`).join('');
+    const gb = it.base && D.GEAR[it.base];
+    const origin = gb ? `<small class="src">${gb.src === 'field' ? 'ดรอปที่ ' + esc((D.FARM_MAPS.find((f) => f.id === gb.map) || {}).name || '') : gb.src === 'dungeon' ? 'ดรอปในดันเจี้ยน ' + esc(D.DUNGEONS.find((x) => x.id === gb.dungeon).name) : gb.src === 'craft' ? 'คราฟต์ได้ (Alchemist)' : 'Mythic — คราฟต์จากวัตถุดิบ World Boss'}</small>` : '';
+    const runes = it.sockets ? `<div class="sock">${Array.from({ length: it.sockets }, (_, i) => it.runes && it.runes[i] ? `<span style="--c:${D.ITEMS[it.runes[i]].icon}">${esc(D.ITEMS[it.runes[i]].n)}</span>` : '<span class="empty">ช่องรูน/การ์ดว่าง</span>').join('')}</div>` : '';
     const jw = it.jewelSlots ? `<div class="sock">${Array.from({ length: it.jewelSlots }, (_, i) => it.jewels && it.jewels[i] ? `<span style="--c:${D.ITEMS[it.jewels[i]].icon}">${esc(D.ITEMS[it.jewels[i]].n)}</span>` : '<span class="empty">ช่องอัญมณีว่าง</span>').join('')}</div>` : '';
     const cls = it.slot === 'weapon' ? F.classesForWeapon(it.wtype).map((c) => D.CLASSES[c].name).join(', ') : 'ทุกคลาส';
     const cur = it.slot && G.char.equip[it.slot === 'ring' ? 'ring1' : it.slot];
     let cmp = '';
     if (cur && cur.uid !== it.uid) { const cs = F.itemStats(cur, {}); const diff = ['atk', 'matk', 'def', 'hp'].map((k) => [k, (st[k] || 0) - (cs[k] || 0)]).filter(([, v]) => v); cmp = diff.length ? `<div class="cmp">เทียบกับที่สวม: ${diff.map(([k, v]) => `<span class="${v > 0 ? 'up' : 'down'}">${k.toUpperCase()} ${v > 0 ? '+' : ''}${fmt(v)}</span>`).join(' ')}</div>` : ''; }
-    return `<div class="tt"><b style="color:${R.color}">${it.refine ? '+' + it.refine + ' ' : ''}${esc(it.name)}</b><small style="color:${R.color}">[${R.n}] ${D.SLOT_TH[it.slot] || it.slot} · iLv ${it.ilv} · ต้อง Lv ${it.reqLv}</small>${base}${opts}${runes}${jw}<small>ใช้ได้: ${cls}</small>${cmp}<small class="price">ขายได้ ${fmt(sellPrice(it))} z</small></div>`;
+    return `<div class="tt"><b style="color:${R.color}">${it.refine ? '+' + it.refine + ' ' : ''}${esc(it.name)}</b><small style="color:${R.color}">[${R.n}] ${D.SLOT_TH[it.slot] || it.slot} · iLv ${it.ilv} · ต้อง Lv ${it.reqLv}</small>${base}${opts}${runes}${jw}${origin}<small>ใช้ได้: ${cls}</small>${cmp}<small class="price">ขายได้ ${fmt(sellPrice(it))} z</small></div>`;
   }
   function sellPrice(it) { if (it.type === 'equip') return Math.round((it.ilv * 25 + 40) * (1 + it.rarity * it.rarity * 0.8) * (1 + (it.refine || 0) * 0.15)); const d = D.ITEMS[it.id]; return d.sell || Math.floor((d.price || 10) / 4); }
   const SHAPE_TH = { single: 'เป้าเดียว', circle: 'วงกลม AoE', line: 'เส้นตรง', cone: 'รูปกรวย', chain: 'กระโดดหลายเป้า', self: 'ตัวเอง' };
@@ -530,14 +538,16 @@
   function p_runesets() { const s = G.char.gear && G.char.gear.runeSets; return s && s.length ? '· Rune Set: ' + s.map((k) => D.RUNE_KINDS[k].n).join(', ') : ''; }
 
   // ---------------------------------------------------------------- inventory
-  const INV_TABS = [['all', 'ทั้งหมด'], ['equip', 'อุปกรณ์'], ['use', 'ใช้ได้'], ['mat', 'วัตถุดิบ'], ['rune', 'รูน/อัญมณี']];
+  const INV_TABS = [['all', 'ทั้งหมด'], ['equip', 'อุปกรณ์'], ['use', 'ใช้ได้'], ['mat', 'วัตถุดิบ'], ['rune', 'รูน/การ์ด'], ['etc', 'ขยะ/ของขาย']];
   function invFilter(it, tab) {
     if (tab === 'all') return true;
     if (tab === 'equip') return it.type === 'equip';
     const d = D.ITEMS[it.id]; if (!d) return false;
-    if (tab === 'use') return d.type === 'potion' || d.type === 'scroll';
-    if (tab === 'mat') return d.type === 'mat' || d.type === 'loot';
-    if (tab === 'rune') return d.type === 'rune' || d.type === 'jewel';
+    const cat = D.itemCategory(d);
+    if (tab === 'use') return cat === 'support' || cat === 'box';
+    if (tab === 'mat') return cat === 'material' || cat === 'refine';
+    if (tab === 'rune') return cat === 'socket';
+    if (tab === 'etc') return cat === 'junk' || cat === 'sell' || cat === 'other';
   }
   WIN.inv = {
     title: '🎒 กระเป๋า', w: 520,
@@ -551,7 +561,7 @@
         const d = sel.type === 'equip' ? null : D.ITEMS[sel.id];
         actions = `<div class="selName">${sel.type === 'equip' ? `<b style="color:${D.RARITY[sel.rarity].color}">${sel.refine ? '+' + sel.refine + ' ' : ''}${esc(sel.name)}</b>` : `<b>${esc(d.n)}</b> ×${sel.qty}`}</div><div class="acts">
           ${sel.type === 'equip' ? '<button class="btn gold" data-act="equip">สวมใส่</button>' : ''}
-          ${d && (d.type === 'potion' || d.type === 'scroll') ? '<button class="btn gold" data-act="use">ใช้</button><button class="btn" data-act="hot">ใส่ Hotbar</button>' : ''}
+          ${d && ['potion', 'scroll', 'buffitem', 'cure', 'wing'].includes(d.type) ? '<button class="btn gold" data-act="use">ใช้</button><button class="btn" data-act="hot">ใส่ Hotbar</button>' : ''}${d && ['box', 'pet', 'mount', 'petfood'].includes(d.type) ? '<button class="btn gold" data-act="use">ใช้ / เปิด</button>' : ''}
           ${d && (d.type === 'rune' && d.tier < 5 || d && d.type === 'jewel' && d.tier < 10) ? `<button class="btn" data-act="combine">รวม (${d.type === 'rune' ? 3 : 5}→1)</button>` : ''}
           <button class="btn" data-act="sell">ขาย (${fmt(sellPrice(sel) * (sel.qty || 1))}z)</button><button class="btn danger" data-act="drop">ทิ้ง</button></div>`;
       }
@@ -610,7 +620,7 @@
   const CONDS = [['always', 'ใช้เสมอ'], ['opener', 'เปิดฉาก (เป้าเลือดเต็ม)'], ['tag', 'เป้ามีแท็ก'], ['notag', 'เป้าไม่มีแท็ก'], ['targetHpBelow', 'HP เป้า < %'], ['selfHpBelow', 'HP เรา < %'], ['selfSpAbove', 'SP เรา > %'], ['mobsAround', 'มอนรอบตัว ≥'], ['comboAtLeast', 'Combo ≥'], ['isElite', 'เป้าเป็น Elite/Boss']];
   let autoDraft = null;
   WIN.auto = {
-    title: '🤖 ระบบออโต้', w: 700,
+    title: '🤖 ระบบออโต้', w: 960,
     onOpen() { autoDraft = JSON.parse(JSON.stringify(G.char.auto)); },
     render() {
       const a = autoDraft || (autoDraft = JSON.parse(JSON.stringify(G.char.auto)));
@@ -631,10 +641,14 @@
           <div class="sub">มอนใกล้ตัว: ${near.map((n) => `<button class="chip add" data-act="addw" data-n="${esc(n)}">+${esc(n)}</button>`).join('') || '-'}</div>
         </section>
         <section><h4>⚔ ลำดับสกิล (บนลงล่าง = ความสำคัญ)</h4>
+          <div class="fightMode"><button class="${a.fight !== 'pvp' ? 'on' : ''}" data-act="fight" data-k="pve">🐺 PvE<small>ฟาร์มมอน / บอส</small></button><button class="${a.fight === 'pvp' ? 'on pvp' : ''}" data-act="fight" data-k="pvp">⚔ PvP<small>ล่าผู้เล่นศัตรู</small></button></div>
+          ${a.fight === 'pvp' ? `<label>เป้าหมาย PvP <select data-k="pvpTarget">${[['lowest', 'HP % ต่ำสุด'], ['nearest', 'ใกล้สุด'], ['healer', 'ฮีลเลอร์ก่อน']].map(([v, n]) => `<option value="${v}" ${a.pvpTarget === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>` : ''}
+          <button class="btn gold" data-act="plan">🧠 จัดสกิลอัตโนมัติสำหรับ ${a.fight === 'pvp' ? 'PvP' : 'PvE'}</button>
+          <small class="hint">${a.fight === 'pvp' ? 'PvP: เปิดด้วยสกิล CC → สกิลพุ่งเข้าหา → คอมโบต่อเมื่อติดสถานะ → ปิดท้ายเป้า HP ต่ำ · เน้นเป้าเดียว ร่ายเร็ว' : 'PvE: AoE เมื่อมอนรวมกลุ่ม → ตั้งคอมโบสถานะ → ดาเมจหลักตามค่า DPS · เน้นวงกว้าง/โซน/สมุน'} · ลำดับแยกกันระหว่าง PvE และ PvP</small>
           <div class="rot">${a.rotation.map((r, i) => `<div class="rotRow"><span class="n">${i + 1}</span><img src="${ART.skillIcon(SKS()[r.id])}" data-skill="${r.id}"><select data-rot="${i}" data-f="id">${learned.map((id) => `<option value="${id}" ${id === r.id ? 'selected' : ''}>${esc(SKS()[id].name)}</option>`).join('')}</select>
             <select data-rot="${i}" data-f="cond">${CONDS.map(([v, n]) => `<option value="${v}" ${r.cond === v ? 'selected' : ''}>${n}</option>`).join('')}</select>
             ${['tag', 'notag'].includes(r.cond) ? `<select data-rot="${i}" data-f="v">${D.TAG_IDS.map((t) => `<option value="${t}" ${r.v === t ? 'selected' : ''}>${D.TAGS[t].n}</option>`).join('')}</select>` : ['always', 'opener', 'isElite'].includes(r.cond) ? '' : `<input type="number" data-rot="${i}" data-f="v" value="${+r.v || 0}" style="width:54px">`}
-            <button class="btn tiny" data-act="up" data-i="${i}">▲</button><button class="btn tiny" data-act="down" data-i="${i}">▼</button><button class="btn tiny danger" data-act="rm" data-i="${i}">✕</button></div>`).join('') || '<small class="hint">ยังไม่ได้ตั้ง → ใช้สกิลโจมตีจาก Hotbar ตามลำดับ</small>'}</div>
+            <button class="btn tiny" data-act="up" data-i="${i}">▲</button><button class="btn tiny" data-act="down" data-i="${i}">▼</button><button class="btn tiny danger" data-act="rm" data-i="${i}">✕</button>${r.why ? `<em class="why">${esc(r.why)}</em>` : ''}</div>`).join('') || '<small class="hint">ยังไม่ได้ตั้ง → ใช้สกิลโจมตีจาก Hotbar ตามลำดับ</small>'}</div>
           <div class="acts"><button class="btn" data-act="addRot" ${learned.length ? '' : 'disabled'}>+ เพิ่มสกิล</button><button class="btn" data-act="fromHot">นำเข้าจาก Hotbar</button><button class="btn" data-act="combo">สร้างคอมโบอัตโนมัติ (S→L→F)</button><button class="btn danger" data-act="clearRot">ล้าง</button></div>
           <label>ใช้ Ultimate <select data-k="useUlt">${[['never', 'ไม่ใช้'], ['elite', 'เฉพาะ Elite/Boss'], ['always', 'ใช้ทันทีที่เต็ม']].map(([v, n]) => `<option value="${v}" ${a.useUlt === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
           <label class="ck"><input type="checkbox" data-k="autoBuff" ${a.autoBuff ? 'checked' : ''}> ต่อบัฟอัตโนมัติ (สกิลบัฟที่เรียนแล้ว)</label>
@@ -659,8 +673,11 @@
     },
     act(a, d) {
       const A = autoDraft;
-      if (a === 'toggle') { G.send({ t: 'auto', cfg: A }); G.send({ t: 'autoOn', on: !G.autoOn() }); }
-      if (a === 'save') { G.send({ t: 'auto', cfg: A }); UI.toast('บันทึกการตั้งค่าออโต้แล้ว', 'gold'); }
+      const stash = () => { if (A.fight === 'pvp') A.rotPvp = A.rotation; else A.rotPve = A.rotation; };
+      if (a === 'fight' && (A.fight || 'pve') !== d.k) { stash(); A.fight = d.k; A.rotation = (d.k === 'pvp' ? A.rotPvp : A.rotPve) || []; if (!A.rotation.length) A.rotation = F.autoPlan(CSK()[G.char.cls].filter((id) => G.skillLv(id)).map((id) => SKS()[id]), d.k); stash(); A.useUlt = d.k === 'pvp' ? 'always' : A.useUlt; }
+      if (a === 'plan') { A.rotation = F.autoPlan(CSK()[G.char.cls].filter((id) => G.skillLv(id)).map((id) => SKS()[id]), A.fight || 'pve'); stash(); UI.toast(`จัดลำดับสกิล ${A.fight === 'pvp' ? 'PvP' : 'PvE'} อัตโนมัติแล้ว (${A.rotation.length} สกิล) — กดบันทึกเพื่อใช้`, 'gold'); }
+      if (a === 'toggle') { stash(); G.send({ t: 'auto', cfg: A }); G.send({ t: 'autoOn', on: !G.autoOn() }); }
+      if (a === 'save') { stash(); G.send({ t: 'auto', cfg: A }); UI.toast('บันทึกการตั้งค่าออโต้แล้ว', 'gold'); }
       if (a === 'rmchip') A[d.k].splice(+d.i, 1);
       if (a === 'addw' && !A.whitelist.includes(d.n)) A.whitelist.push(d.n);
       const learned = CSK()[G.char.cls].filter((id) => G.skillLv(id) && SKS()[id].kind === 'attack');
@@ -682,6 +699,7 @@
         A.rotation = rot.slice(0, 18);
         UI.toast('สร้างลำดับคอมโบจากบทบาทสกิลแล้ว', 'gold');
       }
+      stash();
       renderWin('auto');
     },
     change(t) {
@@ -757,14 +775,14 @@
       const sellable = G.char.inv.filter((it) => it.type === 'equip' || (D.ITEMS[it.id] && D.ITEMS[it.id].type !== 'potion'));
       return `<div class="tabs"><button class="${tab === 'buy' ? 'on' : ''}" data-act="tab" data-k="buy">ซื้อ</button><button class="${tab === 'sell' ? 'on' : ''}" data-act="tab" data-k="sell">ขาย</button><span class="zeny">💰 ${fmt(G.char.zeny)}</span></div>
       ${tab === 'buy' ? `<div class="shopList scrollKeep">${list.map((id) => { const d = D.ITEMS[id]; return `<div class="shopRow"><img src="${ART.itemIcon({ id })}" data-itemid="${id}"><div><b>${d.n}</b><small>${d.th}${d.lv > 1 ? ' · Lv' + d.lv : ''}</small></div><span class="price">${fmt(d.price)} z</span><input type="number" min="1" max="999" value="${d.type === 'potion' ? 50 : 1}" data-q="${id}"><button class="btn gold tiny" data-act="buy" data-id="${id}">ซื้อ</button></div>`; }).join('')}</div>`
-        : `<div class="acts"><button class="btn" data-act="sellJunk">ขาย Monster Core + อุปกรณ์ Common ทั้งหมด</button></div><div class="shopList scrollKeep">${sellable.map((it) => `<div class="shopRow"><img src="${ART.itemIcon(it)}" data-item="${it.uid}"><div><b style="color:${it.type === 'equip' ? D.RARITY[it.rarity].color : '#fff'}">${esc(it.type === 'equip' ? (it.refine ? '+' + it.refine + ' ' : '') + it.name : D.ITEMS[it.id].n)}</b><small>${it.qty ? '×' + it.qty : D.RARITY[it.rarity].n}</small></div><span class="price">${fmt(sellPrice(it) * (it.qty || 1))} z</span><button class="btn tiny" data-act="sell" data-uid="${it.uid}" data-q="${it.qty || 1}">ขาย</button></div>`).join('')}</div>`}`;
+        : `<div class="acts"><button class="btn" data-act="sellJunk">ขายขยะ + Monster Core + อุปกรณ์ Common ทั้งหมด</button></div><div class="shopList scrollKeep">${sellable.map((it) => `<div class="shopRow"><img src="${ART.itemIcon(it)}" data-item="${it.uid}"><div><b style="color:${it.type === 'equip' ? D.RARITY[it.rarity].color : '#fff'}">${esc(it.type === 'equip' ? (it.refine ? '+' + it.refine + ' ' : '') + it.name : D.ITEMS[it.id].n)}</b><small>${it.qty ? '×' + it.qty : D.RARITY[it.rarity].n}</small></div><span class="price">${fmt(sellPrice(it) * (it.qty || 1))} z</span><button class="btn tiny" data-act="sell" data-uid="${it.uid}" data-q="${it.qty || 1}">ขาย</button></div>`).join('')}</div>`}`;
     },
     act(a, d) {
       const w = UI.wins.shop;
       if (a === 'tab') { w.opts.tab = d.k; renderWin('shop'); }
       if (a === 'buy') { const q = document.querySelector(`[data-q="${d.id}"]`); G.send({ t: 'buy', id: d.id, qty: +q.value || 1 }); }
       if (a === 'sell') G.send({ t: 'sell', uid: d.uid, qty: +d.q });
-      if (a === 'sellJunk') for (const it of G.char.inv) if (it.id === 'monster_core' || (it.type === 'equip' && it.rarity === 0)) G.send({ t: 'sell', uid: it.uid, qty: it.qty || 1 });
+      if (a === 'sellJunk') for (const it of G.char.inv) if (it.id === 'monster_core' || (D.ITEMS[it.id] && D.ITEMS[it.id].type === 'junk') || (it.type === 'equip' && it.rarity === 0 && !Object.values(G.char.equip).some((e) => e && e.uid === it.uid))) G.send({ t: 'sell', uid: it.uid, qty: it.qty || 1 });
     }
   };
 
@@ -791,6 +809,7 @@
             <div class="failInfo">${f.breakChance ? `⚠ ล้มเหลว: <b class="bad">ของพัง ${f.breakChance * 100}%</b> หรือ -${f.down}` : f.down ? `ล้มเหลว: ระดับลด ${f.downMin ? f.downMin + '~' : ''}${f.down}` : 'ล้มเหลว: ไม่มีผล (ปลอดภัย)'}</div>
             <label class="ck"><input type="checkbox" id="refProt" ${o.prot ? 'checked' : ''}> Protection Scroll (กันพัง) — มี ${cnt('scroll_protect')}</label>
             <label class="ck"><input type="checkbox" id="refBless" ${o.bless ? 'checked' : ''}> Blessed Scroll (กันลด) — มี ${cnt('scroll_bless')}</label>
+            <label class="ck"><input type="checkbox" id="refAnvil" ${o.anvil ? 'checked' : ''}> ใช้ทั่ง/แร่เสริม (${D.ANVILS.map((a) => `${D.ITEMS[a].n.split(' ')[0]} ${cnt(a)}`).join(' · ')} · Enriched ${cnt('ore_enriched')} · Charm ${cnt('smith_charm')})</label>
             <button class="btn gold big" data-act="go" data-uid="${it.uid}">⚒ ตีบวก!</button>
             <small class="hint">โบนัส: อาวุธ/เกราะ +6% ต่อระดับ (เพิ่มขึ้นหลัง +10 และ +15) · +10/+15/+20 ปลดออร่าและโบนัสพิเศษ</small></div>`;
         }
@@ -801,7 +820,7 @@
     act(a, d) {
       const w = UI.wins.refine;
       if (a === 'pick') { w.opts.uid = d.uid; renderWin('refine'); }
-      if (a === 'go') { w.opts.uid = d.uid; w.opts.prot = $('#refProt').checked; w.opts.bless = $('#refBless').checked; G.send({ t: 'refine', uid: d.uid, prot: w.opts.prot, bless: w.opts.bless }); }
+      if (a === 'go') { w.opts.uid = d.uid; w.opts.prot = $('#refProt').checked; w.opts.bless = $('#refBless').checked; w.opts.anvil = $('#refAnvil').checked; G.send({ t: 'refine', uid: d.uid, prot: w.opts.prot, bless: w.opts.bless, anvil: w.opts.anvil }); }
     }
   };
   UI.refineResult = function (m) {
@@ -819,7 +838,7 @@
     render(o) {
       const list = gearList();
       const sel = list.find((x) => x.it.uid === o.uid) || list[0];
-      const gems = G.char.inv.filter((it) => D.ITEMS[it.id] && (D.ITEMS[it.id].type === 'rune' || D.ITEMS[it.id].type === 'jewel'));
+      const gems = G.char.inv.filter((it) => D.ITEMS[it.id] && (D.ITEMS[it.id].type === 'rune' || D.ITEMS[it.id].type === 'jewel' || D.ITEMS[it.id].type === 'card'));
       let right = '';
       if (sel) {
         const it = sel.it;

@@ -73,6 +73,18 @@
     it.reqLv = Math.max(1, ilv - 5);
     return it;
   }
+  // an equipment instance from a named base (shared/itemdb.js): its own name, implicit bonuses and rarity limits
+  function genFromBase(r, baseId, rarity, ilv) {
+    const b = D.GEAR && D.GEAR[baseId]; if (!b) return null;
+    rarity = clamp(rarity, b.minR || 0, b.maxR === undefined ? 5 : b.maxR);
+    ilv = Math.max(1, Math.round(ilv || b.ilv || 1));
+    const it = genEquip(r, b.slot === 'ring' ? 'ring1' : b.slot, ilv, rarity, b.wtype);
+    it.base = baseId; it.name = b.n;
+    const k = (1 + ilv / 25) * (1 + rarity * 0.15);
+    it.imp = b.imp.map(([s, per]) => { const v = per * 10 * k; return [s, v >= 3 ? Math.round(v) : r1(v)]; });
+    if (b.src === 'mythic') it.reqLv = Math.min(it.reqLv, 220);
+    return it;
+  }
   function rollOptions(r, it) {
     const R = D.RARITY[it.rarity];
     it.opts = [];
@@ -105,7 +117,8 @@
     if (it.slot === 'weapon' && r >= 10 && it.matk) add('matkPct', r >= 20 ? 20 : r >= 15 ? 10 : 5);
     const om = isAcc ? 1 + r * 0.06 : 1;
     for (const [k, v] of it.opts || []) add(k, isAcc ? r1(v * om) : v);
-    for (const rid of it.runes || []) { const ri = D.ITEMS[rid]; if (ri) add(D.RUNE_KINDS[ri.kind].stat, runeValue(ri.kind, ri.tier)); }
+    for (const [k, v] of it.imp || []) add(k, v);
+    for (const rid of it.runes || []) { const ri = D.ITEMS[rid]; if (!ri) continue; if (ri.type === 'card') { for (const k in ri.mods) add(k, ri.mods[k]); } else add(D.RUNE_KINDS[ri.kind].stat, runeValue(ri.kind, ri.tier)); }
     for (const jid of it.jewels || []) { const ji = D.ITEMS[jid]; if (ji) add(D.JEWELS[ji.kind].stat, jewelValue(ji.kind, ji.tier)); }
     return out;
   }
@@ -116,7 +129,7 @@
       const it = equip && equip[slot];
       if (!it) continue;
       itemStats(it, out);
-      for (const rid of it.runes || []) { const ri = D.ITEMS[rid]; if (ri) runeCount[ri.kind] = (runeCount[ri.kind] || 0) + 1; }
+      for (const rid of it.runes || []) { const ri = D.ITEMS[rid]; if (ri && ri.type === 'rune') runeCount[ri.kind] = (runeCount[ri.kind] || 0) + 1; }
     }
     // Rune set: 3+ runes of the same kind → +25% of that rune stat
     out.runeSets = [];
@@ -179,6 +192,47 @@
     return st;
   }
 
+  // ------------------------------------------------------------------ Auto skill planner (PvE farming vs PvP fighting)
+  // skills: learned skill objects. Returns an ordered rotation [{ id, cond, v, why }] — first ready entry whose condition holds is cast.
+  const HARD_CC = ['stun', 'freeze', 'knockdown', 'airborne', 'root', 'fear', 'silence', 'sleep'];
+  function autoPlan(skills, mode) {
+    const pvp = mode === 'pvp';
+    const atk = skills.filter((s) => s.kind === 'attack');
+    const score = (s) => {
+      const hits = s.hits || 1, aoe = s.shape === 'circle' ? 1 + (s.radius || 3) * (pvp ? 0.08 : 0.38) : s.shape === 'cone' ? 1 + (s.radius || 3) * (pvp ? 0.06 : 0.28) : s.shape === 'line' ? (pvp ? 1.05 : 1.6) : s.shape === 'chain' ? (pvp ? 1.1 : 1.5) : pvp ? 1.35 : 1;
+      let v = ((s.dmg || 1) * hits + (s.perUnit || 0) * 2) * aoe / Math.max(1.2, s.cd || 1);
+      const cc = (s.applies || []).filter((a) => HARD_CC.includes(a.tag)).length, soft = (s.applies || []).length - cc;
+      v *= 1 + cc * (pvp ? 0.9 : 0.15) + soft * (pvp ? 0.25 : 0.1);
+      if (s.move) v *= pvp ? 1.35 : 0.9;
+      if (s.cast) v /= 1 + s.cast * (pvp ? 0.9 : 0.25);
+      if (s.summon || s.trap || s.zone) v *= pvp ? 0.8 : 1.25;
+      if (s.pierce) v *= 1 + s.pierce * (pvp ? 0.5 : 0.2);
+      return v;
+    };
+    const used = new Set(), out = [];
+    const push = (s, cond, v, why) => { if (!s || used.has(s.id)) return; used.add(s.id); out.push({ id: s.id, cond, v: v === undefined ? 0 : v, why }); };
+    const ranked = atk.slice().sort((a, b) => score(b) - score(a));
+    // 1. executes and self-HP skills only work in their window, so they go first with that condition
+    for (const s of ranked) if (s.cond && s.cond.type === 'targetHp') push(s, 'targetHpBelow', s.cond.v, 'ปิดท้ายเป้า HP ต่ำ');
+    for (const s of ranked) if (s.cond && s.cond.type === 'selfHp') push(s, 'selfHpBelow', s.cond.v, 'ใช้ตอน HP เราต่ำ');
+    for (const s of ranked) if (s.heal && !s.heal.zone) push(s, 'selfHpBelow', 55, 'ฮีลตัวเอง');
+    // 2. combo payoffs: a skill that consumes / gets a bonus from a tag fires when the tag is up...
+    const payoff = [];
+    for (const s of ranked) { const t = (s.consumes && s.consumes[0]) || (s.bonusIf && s.bonusIf[0] && s.bonusIf[0][0]); if (t) payoff.push([s, t]); }
+    for (const [s, t] of payoff.slice(0, pvp ? 3 : 2)) push(s, 'tag', t, 'ต่อคอมโบเมื่อเป้ามี ' + t);
+    // 3. PvP: open with crowd control the target does not already have; PvE: big AoE when a pack is around
+    if (pvp) {
+      for (const s of ranked) { const cc = (s.applies || []).find((a) => HARD_CC.includes(a.tag)); if (cc && out.length < 7) push(s, 'notag', cc.tag, 'CC เปิดเกม (' + cc.tag + ')'); }
+      for (const s of ranked) if (s.move && out.length < 9) push(s, 'always', 0, 'ไล่ตาม/เข้าประชิด');
+    } else {
+      for (const s of ranked) if ((s.shape === 'circle' && (s.radius || 0) >= 3) || s.zone) { if (out.length < 8) push(s, 'mobsAround', s.radius >= 4 ? 3 : 2, 'AoE เมื่อมีมอนรวมกลุ่ม'); }
+      for (const [s, t] of payoff) { const setup = ranked.find((x) => !used.has(x.id) && (x.applies || []).some((a) => a.tag === t)); if (setup) push(setup, 'notag', t, 'ตั้งคอมโบ (ใส่ ' + t + ')'); }
+    }
+    // 4. everything else by value
+    for (const s of ranked) if (out.length < 14) push(s, 'always', 0, pvp ? 'ดาเมจเป้าเดียว' : 'ดาเมจหลัก');
+    return out;
+  }
+
   // Skill scaling with level
   function skillMult(sk, lv) {
     lv = Math.max(1, lv || 1);
@@ -190,5 +244,5 @@
   function skillCd(sk, lv) { return r1((sk.cd || 0) * (lv >= 10 ? 0.9 : 1)); }
 
   return { clamp, r1, expToNext, statPointsAt, skillPointsAt, statCost, STAT_MAX, RANK, monsterStats, weaponTypeOf, classesForWeapon,
-    autoStats, statGrowth, rollRarity, genEquip, rollOptions, refinePct, runeValue, jewelValue, itemStats, gearStats, calcStats, skillMult, skillSp, skillCd };
+    autoStats, statGrowth, rollRarity, genEquip, genFromBase, autoPlan, rollOptions, refinePct, runeValue, jewelValue, itemStats, gearStats, calcStats, skillMult, skillSp, skillCd };
 });

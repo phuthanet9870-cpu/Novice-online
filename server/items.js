@@ -188,7 +188,48 @@ I.use = function (p, u, byId) {
     I.consume(ch, it.id, 1); W.enterMap(p, ch.lastTown || 'aurelia'); return true;
   }
   if (['pet', 'mount', 'petfood', 'buffitem'].includes(def.type)) return P.useSpecial(p, it, def);
+  if (def.type === 'cure') {
+    let n = 0;
+    for (const k of [...p.tags.keys()]) if (def.tags.includes('*') ? !['mark'].includes(k) : def.tags.includes(k)) { p.tags.delete(k); n++; }
+    if (def.heal) C.heal(p, p.maxHp * def.heal / 100, p);
+    I.consume(ch, it.id, 1); invSync(p); p.inst.emit({ k: 'pot', t: p.id, x: p.x, y: p.y, c: def.icon });
+    note(p, n ? `${def.n}: ล้างสถานะ ${n} อย่าง` : `${def.n}: ไม่มีสถานะที่ต้องล้าง`); return true;
+  }
+  if (def.type === 'wing') {
+    if (p.inst.def.kind === 'town' || p.inst.def.kind === 'castle' || p.inst.def.pvp) return err(p, 'ใช้ Fly Wing ในแผนที่นี้ไม่ได้');
+    const pos = require('../shared/mapgen.js').randomWalkable(p.inst.map, r);
+    I.consume(ch, it.id, 1); invSync(p); W.enterMap(p, p.inst.id, pos.x, pos.y); return true;
+  }
+  if (def.type === 'box') return I.openBox(p, it, def);
   return err(p, 'ไอเทมนี้ใช้โดยตรงไม่ได้');
+};
+// random boxes: region crates, gear boxes, support boxes, card albums, relic chests
+I.openBox = function (p, it, def) {
+  const ch = p.char;
+  if (ch.inv.length >= 150 - 1) return err(p, 'กระเป๋าเต็ม');
+  I.consume(ch, it.id, 1);
+  let got = '';
+  if (def.box === 'region') {
+    const sp = Object.values(D.SPECIES).filter((s) => s.region === def.region && s.kind === 'field');
+    const roll = r();
+    const id = roll < 0.45 ? r.pick(sp).mats[0] : roll < 0.7 ? r.pick(sp).mats[1] : roll < 0.85 ? r.pick(D.REGION_SUPPORT[def.region]) : roll < 0.97 ? r.pick(D.REGION_TREASURE[def.region]) : r.pick(sp).mats[2];
+    const q = roll < 0.45 ? r.int(3, 8) : roll < 0.7 ? r.int(1, 3) : 1; I.addItem(ch, id, q); got = `${D.ITEMS[id].n} ×${q}`;
+  } else if (def.box === 'gear' || def.box === 'legend') {
+    const pool = def.box === 'gear' ? Object.values(D.MAP_GEAR).flat() : Object.values(D.DUNGEON_GEAR).flat();
+    const b = D.GEAR[r.pick(pool)];
+    const rar = def.box === 'gear' ? Math.min(3, F.rollRarity(r, 0.3)) : 4;
+    const g = F.genFromBase(r, b.id, rar, def.box === 'gear' ? b.ilv : Math.max(60, ch.lv)); g.uid = uid(); g.src = def.n;
+    I.addEquip(ch, g); got = `[${D.RARITY[g.rarity].n}] ${g.name}`;
+  } else if (def.box === 'card') {
+    const cards = Object.keys(D.ITEMS).filter((k) => D.ITEMS[k].type === 'card');
+    const id = r.pick(cards); I.addItem(ch, id, 1); got = D.ITEMS[id].n;
+  } else {
+    const pool = Object.keys(D.ITEMS).filter((k) => ['buffitem', 'cure', 'anvil'].includes(D.ITEMS[k].type) && !/^anvil_[34]/.test(k)).concat(['ore_enriched', 'smith_charm', 'scroll_protect', 'crystal_pure', 'reroll_stone', 'rune_drill']);
+    const id = r.pick(pool); I.addItem(ch, id, 1); got = D.ITEMS[id].n;
+  }
+  invSync(p); C.sendChar(p, ['inv']);
+  note(p, `🎁 เปิด ${def.n} ได้ ${got}`);
+  return true;
 };
 I.sellPrice = function (it) {
   if (it.type === 'equip') return Math.round((it.ilv * 25 + 40) * (1 + it.rarity * it.rarity * 0.8) * (1 + (it.refine || 0) * 0.15));
@@ -252,27 +293,35 @@ I.onMonsterKilled = function (m, killer) {
   if (lv >= 25 && roll(0.08)) give('mana_dust', rk ? 3 : 1);
   if (rk >= 2 && roll(0.25)) give(r() < 0.5 ? 'exp_scroll' : 'drop_scroll');
   if (rk >= 1 && roll(0.04)) give('pet_food', 2);
-  if (roll(rk ? 0.25 : 0.05)) give('ore_refine', rk >= 2 ? 5 : 1);
-  if (lv >= 50 && roll(rk ? 0.08 : 0.012)) give('crystal_pure', rk >= 2 ? 3 : 1);
-  if (lv >= 120 && roll(rk ? 0.02 : 0.003)) give('crystal_divine', rk >= 2 ? 2 : 1);
+  if (roll(rk ? 0.25 : 0.04)) give('ore_refine', rk >= 2 ? 5 : 1);
+  if (lv >= 50 && roll(rk ? 0.06 : 0.006)) give('crystal_pure', rk >= 2 ? 3 : 1);
+  if (lv >= 120 && roll(rk ? 0.015 : 0.0015)) give('crystal_divine', rk >= 2 ? 2 : 1);
   const runeTier = Math.min(5, 1 + Math.floor(lv / 60) + (rk >= 2 && r() < 0.4 ? 1 : 0));
   if (roll(rk >= 2 ? 1 : rk ? 0.07 : 0.009)) give(`rune_${r.pick(Object.keys(D.RUNE_KINDS).filter((k) => k !== 'titan' || rk >= 2))}_${runeTier}`);
   if (roll(rk >= 2 ? 0.8 : rk ? 0.05 : 0.007)) give(`jewel_${r.pick(Object.keys(D.JEWELS))}_${Math.min(10, 1 + Math.floor(lv / 40) + (rk >= 2 ? 1 : 0))}`);
   if (rk >= 2 && roll(0.3)) give('scroll_protect');
   if (rk >= 2 && roll(0.15)) give('rune_drill');
   if (rk >= 2 && roll(0.12)) give('reroll_stone');
-  const eqN = rk >= 2 ? 3 : 1;
-  for (let i = 0; i < eqN; i++) {
-    if (!roll(rk >= 2 ? 1 : rk ? 0.25 : 0.03)) continue;
-    let rar = F.rollRarity(r, killer.st.dropPct / 100);
-    if (rk >= 2) rar = Math.max(rar, 2 + (r() < 0.4 ? 1 : 0) + (r() < 0.12 ? 1 : 0));
-    else if (rk === 1) rar = Math.max(rar, 1);
-    const slot = r.pick(D.SLOTS);
-    const it = F.genEquip(r, slot === 'ring2' ? 'ring1' : slot, Math.max(1, lv + r.int(-3, 3)), rar, r() < 0.55 ? D.CLASSES[ch.cls].weapon : null);
-    it.uid = uid(); it.src = m.name;
-    W.dropItem(inst, m.x, m.y, it, owners); got.push(it.name);
+  // the species' own drop table (regional materials, junk, card, named gear...) — exactly what the Monster Book lists
+  const table = m.sp ? D.dropTable(m.sp) : [];
+  const eliteK = rk === 1 ? 3 : 1;
+  for (const [id, pct, q] of table) {
+    if (r() >= Math.min(1, pct / 100 * dropMul * eliteK)) continue;
+    if (id.startsWith('gear:')) {
+      const base = D.GEAR[id.slice(5)];
+      let rar = Math.min(base.maxR, F.rollRarity(r, killer.st.dropPct / 100));
+      if (rk === 1) rar = Math.max(rar, 1);
+      if (rk >= 2 && base.src === 'field') rar = Math.max(rar, 2 + (r() < 0.35 ? 1 : 0));
+      const ilv = base.src === 'field' ? Math.max(1, lv + r.int(-3, 2)) : base.src === 'mythic' ? 250 : lv;
+      const it = F.genFromBase(r, base.id, rar, ilv);
+      it.uid = uid(); it.src = m.name;
+      W.dropItem(inst, m.x, m.y, it, owners); got.push(it.name);
+    } else if (D.ITEMS[id]) give(id, q);
   }
+  // Monster Book progress
+  if (m.sp) for (const q of mates) { const b = q.char.book || (q.char.book = {}); b[m.sp] = (b[m.sp] || 0) + 1; }
   inst.emit({ k: 'loot', t: m.id, x: m.x, y: m.y, z: 0, n: got.length });
+  if (killer.gmf && killer.gmf.autoloot) inst.after(0.05, () => { for (const e of [...inst.entities.values()]) if (e.kind === 'i' && !e.dead && Math.hypot(e.x - m.x, e.y - m.y) < 2.5) I.pickup(killer, e.id, 'force'); });
 };
 function autoSkip(p, id) {
   if (!p.auto.on) return false;
@@ -283,7 +332,7 @@ function autoSkip(p, id) {
 }
 
 // ------------------------------------------------------------------ refine +20
-I.refine = function (p, u, prot, bless) {
+I.refine = function (p, u, prot, bless, anvil) {
   const ch = p.char;
   if (p.inst.def.kind !== 'town' && !p.gm) return err(p, 'ตีบวกได้ที่ช่างตีเหล็กในเมือง');
   let it = I.find(ch, u), equipped = null;
@@ -302,7 +351,12 @@ I.refine = function (p, u, prot, bless) {
   I.consume(ch, cost.mat, cost.qty); ch.zeny -= cost.zeny;
   if (prot) I.consume(ch, 'scroll_protect', 1);
   if (bless) I.consume(ch, 'scroll_bless', 1);
-  const rate = Math.min(100, D.REFINE_RATES[target - 1] * (db.data.settings.refine || 1) + (ch.pity || 0) * 0.5);
+  // anvils and Enriched Ore add flat success; Smith's Charm stops +7~+10 from dropping
+  let bonus = 0, charm = false;
+  if (anvil) { const a = [...D.ANVILS].reverse().find((id) => I.count(ch, id) > 0); if (a) { I.consume(ch, a, 1); bonus += D.ITEMS[a].bonus; } }
+  if (target <= 10 && I.count(ch, 'ore_enriched') > 0 && anvil) { I.consume(ch, 'ore_enriched', 1); bonus += 5; }
+  if (!bless && target >= 7 && target <= 10 && anvil && I.count(ch, 'smith_charm') > 0) { I.consume(ch, 'smith_charm', 1); charm = true; }
+  const rate = Math.min(100, D.REFINE_RATES[target - 1] * (db.data.settings.refine || 1) + (ch.pity || 0) * 0.5 + bonus);
   const ok = r() * 100 < rate;
   let broke = false, to = from;
   if (ok) { to = target; ch.pity = 0; P.event(p, 'refine', { to }); }
@@ -310,7 +364,7 @@ I.refine = function (p, u, prot, bless) {
     ch.pity = (ch.pity || 0) + 1;
     const f = D.refineFail(target);
     if (f.breakChance && !prot && r() < f.breakChance) broke = true;
-    else if (f.down && !bless) to = Math.max(0, from - (f.downMin ? r.int(f.downMin, f.down) : f.down));
+    else if (f.down && !bless && !charm) to = Math.max(0, from - (f.downMin ? r.int(f.downMin, f.down) : f.down));
   }
   if (broke) {
     if (equipped) delete ch.equip[equipped]; else I.removeUid(ch, u);
@@ -335,8 +389,8 @@ I.socket = function (p, equ, itemUid) {
   const gem = I.find(ch, itemUid);
   if (!it || it.type !== 'equip' || !gem) return err(p, 'เลือกอุปกรณ์และรูน/อัญมณี');
   const d = D.ITEMS[gem.id];
-  if (d.type === 'rune') {
-    if ((it.runes || []).length >= (it.sockets || 0)) return err(p, 'ช่องรูนเต็ม (ใช้ Rune Drill เพื่อเจาะเพิ่ม)');
+  if (d.type === 'rune' || d.type === 'card') {
+    if ((it.runes || []).length >= (it.sockets || 0)) return err(p, 'ช่องรูน/การ์ดเต็ม (ใช้ Rune Drill เพื่อเจาะเพิ่ม)');
     it.runes = it.runes || []; it.runes.push(gem.id);
   } else if (d.type === 'jewel') {
     if (!it.jewelSlots) return err(p, 'อัญมณีฝังได้เฉพาะเครื่องประดับ');
@@ -399,8 +453,8 @@ I.canTake = function (p, e) {
 I.pickup = function (p, id, quiet) {
   const e = p.inst.entities.get(id);
   if (!e || e.kind !== 'i') return false;
-  if (W.dist(p, e) > 2.8) return quiet ? false : err(p, 'อยู่ไกลเกินไป');
-  if (!I.canTake(p, e)) return quiet ? false : err(p, 'ของชิ้นนี้ยังเป็นของผู้อื่น (รอ 30 วินาที)');
+  if (W.dist(p, e) > 2.8 && quiet !== 'force') return quiet ? false : err(p, 'อยู่ไกลเกินไป');
+  if (quiet !== 'force' && !I.canTake(p, e)) return quiet ? false : err(p, 'ของชิ้นนี้ยังเป็นของผู้อื่น (รอ 30 วินาที)');
   const it = e.item, ch = p.char;
   let ok;
   if (it.id === 'zeny') { ch.zeny += it.qty; ok = true; }
@@ -422,6 +476,7 @@ I.autoWants = function (p, e) {
   if (it.type === 'equip') return it.rarity >= (a.lootMinRarity || 0);
   const d = D.ITEMS[it.id]; if (!d) return false;
   if (d.type === 'potion' && !a.lootPotions) return false;
-  if ((d.type === 'mat' || d.type === 'loot') && !a.lootMats) return false;
+  if ((d.type === 'mat' || d.type === 'loot' || d.type === 'card') && !a.lootMats) return false;
+  if (d.type === 'junk' && a.lootJunk === false) return false;
   return true;
 };

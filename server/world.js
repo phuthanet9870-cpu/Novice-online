@@ -125,10 +125,30 @@ W.spawnMonster = function (inst, spec) {
   };
   if (spec.rank === 4) m.speed = 2.0;
   if (spec.extra) Object.assign(m, spec.extra);
+  m.sp = spec.sp || W.speciesFor(inst, m, fam);
   inst.add(m);
   return m;
 };
 
+// which bestiary species a monster is (decides its drop table)
+W.speciesFor = function (inst, m, fam) {
+  const def = inst.def;
+  if (m.rank === 4) { const wb = D.WORLD_BOSSES.find((b) => b.name === fam[0] || m.name.startsWith(b.name)); if (wb) return 'wb.' + wb.id; }
+  if (def.kind === 'farm') {
+    if (m.fieldBoss) return def.id + '.boss';
+    const fi = D.FAMILIES[def.biome].indexOf(fam); if (fi >= 0) return def.id + '.' + fi;
+  }
+  if (def.kind === 'dungeon') {
+    if (m.floorBoss) return def.dungeon + '.boss';
+    const dg = D.DUNGEONS.find((d) => d.id === def.dungeon), fi = D.FAMILIES[dg.biome].indexOf(fam);
+    if (fi >= 0) return def.dungeon + '.' + fi;
+    const ai = D.FAMILIES.abyss.indexOf(fam); if (ai >= 0) return 'abyssal_throne.' + ai;
+  }
+  // anywhere else (GM spawns, castles, arenas): the first species of that family whose level fits best
+  let best = null, bd = 1e9;
+  for (const id in D.SPECIES) { const s = D.SPECIES[id]; if (s.fam[0] !== fam[0] || s.kind !== 'field') continue; const d = Math.abs(s.lv - m.lv); if (d < bd) { bd = d; best = id; } }
+  return best;
+};
 // ------------------------------------------------------------------ Spawning per map
 function famsFor(biome) { return D.FAMILIES[biome] || D.FAMILIES.meadow; }
 W.populate = function (inst) {
@@ -252,7 +272,7 @@ function nearestEnemy(e, range, pred) {
   let best = null, bd = range * range;
   e.inst.inRadius(e.x, e.y, range, (o) => {
     if (o === e || o.dead || !C.isEnemy(e, o)) return;
-    if (o.kind === 'p' && (o.hidden || o.god || C.stealthed(o))) return;
+    if (o.kind === 'p' && (o.hidden || o.god || (o.gmf && o.gmf.peace) || C.stealthed(o))) return;
     if (pred && !pred(o)) return;
     const d = (o.x - e.x) ** 2 + (o.y - e.y) ** 2;
     if (d < bd) { bd = d; best = o; }

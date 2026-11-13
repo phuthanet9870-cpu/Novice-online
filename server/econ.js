@@ -1,5 +1,7 @@
 // Economy: account storage, mail, auction house, player trade, crafting, token & stable shops.
 const D = require('../shared/data2.js');
+const F = require('../shared/formulas.js');
+const rng = require('../shared/rng.js').rng(Date.now() & 0xffffff);
 const db = require('./db');
 const W = require('./world');
 const C = require('./combat');
@@ -222,11 +224,18 @@ E.craft = function (p, idx, n) {
   let made = 0;
   for (let k = 0; k < n; k++) {
     if (c.zeny < r.zeny || !r.req.every(([id, q]) => I.count(c, id) >= q)) break;
+    if (r.out.startsWith('gear:') && c.inv.length >= (c.invMax || 120)) break;
     for (const [id, q] of r.req) I.consume(c, id, q);
-    c.zeny -= r.zeny; I.addItem(c, r.out, r.q); made++;
+    c.zeny -= r.zeny;
+    if (r.out.startsWith('gear:')) {
+      const g = F.genFromBase(rng, r.out.slice(5), r.rar, r.ilv); g.uid = 'u' + db.nextId(); g.src = 'Crafted';
+      I.addEquip(c, g);
+      S.broadcast({ t: 'notice', k: 'loot', m: `⚒ ${c.name} คราฟต์ [${D.RARITY[g.rarity].n}] ${g.name} สำเร็จ!` });
+    } else I.addItem(c, r.out, r.q);
+    made++;
   }
   if (!made) return err(p, 'วัตถุดิบหรือ Zeny ไม่พอ');
-  note(p, `⚗ คราฟต์ ${D.ITEMS[r.out].n} ×${r.q * made} สำเร็จ`);
+  note(p, `⚗ คราฟต์ ${r.out.startsWith('gear:') ? D.GEAR[r.out.slice(5)].n : D.ITEMS[r.out].n} ×${r.q * made} สำเร็จ`);
   P.event(p, 'craft', { n: made });
   sync(p, ['inv', 'zeny']);
 };

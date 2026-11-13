@@ -121,6 +121,47 @@
   const used = new Set();
   for (const nd of nodes) if (nd.type === 'notable') { let nm = nd.name, j = 2; while (used.has(nm)) nm = nd.name + ' ' + ['II', 'III', 'IV', 'V', 'VI', 'VII'][j++ - 2]; used.add(nm); nd.name = nm; }
 
+  // ---------------------------------------------------------------- special effects: every notable and keystone does something of its own
+  const TAGS = ['burn', 'chill', 'freeze', 'shock', 'wet', 'poison', 'bleed', 'curse', 'stun', 'slow', 'root', 'knockdown', 'airborne', 'armorbreak', 'mark', 'blind', 'holybrand', 'fear', 'silence'];
+  const ELS = ['fire', 'ice', 'lightning', 'water', 'wind', 'earth', 'holy', 'dark', 'poison', 'blood', 'neutral'];
+  const HIT_TAGS = ['burn', 'chill', 'shock', 'poison', 'bleed', 'curse', 'slow', 'wet', 'mark', 'armorbreak', 'blind', 'holybrand'];
+  const FX_TYPES = [
+    ['execute', null, 8, 'ดาเมจ +{v}% ต่อเป้าที่ HP < 35%'], ['opener', null, 10, 'ดาเมจ +{v}% ต่อเป้าที่ HP ≥ 90%'], ['rage', null, 9, 'ดาเมจ +{v}% เมื่อ HP ตัวเอง < 40%'], ['calm', null, 6, 'ดาเมจ +{v}% เมื่อ HP ตัวเอง > 90%'],
+    ['vsElite', null, 8, 'ดาเมจ +{v}% ต่อ Elite / บอส'], ['comboStack', null, 2, 'ดาเมจ +{v}% ต่อทุก 10 คอมโบ'], ['critHeal', null, 0.8, 'คริติคอลฟื้น HP {v}% (ทุก 1 วิ)'], ['critSp', null, 2, 'คริติคอลฟื้น SP {v}'],
+    ['killHeal', null, 3, 'ฆ่าศัตรู: ฟื้น HP {v}%'], ['killSp', null, 3, 'ฆ่าศัตรู: ฟื้น SP {v}%'], ['killCdr', null, 0.3, 'ฆ่าศัตรู: ลดคูลดาวน์ทุกสกิล {v} วิ'], ['killHaste', null, 8, 'ฆ่าศัตรู: ความเร็วเดิน/โจมตี +{v}% 4 วิ'],
+    ['killBlast', null, 6, 'ฆ่าศัตรู: ศพระเบิดสร้างดาเมจ {v}% ของ HP สูงสุดของมัน รอบตัว'], ['ward', null, 6, 'HP < 35%: รับดาเมจลดลง {v}%'], ['thorns', null, 6, 'สะท้อน {v}% ของดาเมจที่ได้รับ'], ['spRefund', null, 5, 'ใช้สกิล: โอกาส {v}% คืน SP ทั้งหมด'],
+    ['ultCharge', null, 10, 'เกจอัลติชาร์จเร็วขึ้น {v}%'], ['shieldOnUlt', null, 6, 'ใช้อัลติ: ได้โล่ {v}% ของ HP สูงสุด'], ['firstStrike', null, 15, 'โจมตีแรกต่อเป้าใหม่: ดาเมจ +{v}%'], ['dodgeHeal', null, 1, 'ทุกครั้งที่ศัตรูพลาด (Flee): ฟื้น HP {v}%']
+  ];
+  const FXP = [];
+  for (const t of FX_TYPES) FXP.push([t[0], null]);
+  for (const tg of TAGS) FXP.push(['vsTag', tg]);
+  for (const el of ELS) FXP.push(['elem', el]);
+  for (const tg of HIT_TAGS) FXP.push(['onHitTag', tg]);
+  const FXV = { vsTag: [7, 'ดาเมจ +{v}% ต่อเป้าที่ติด {p}'], elem: [7, 'สกิลธาตุ {p} แรงขึ้น +{v}%'], onHitTag: [6, 'โจมตี: โอกาส {v}% ใส่ {p} 3 วิ'] };
+  for (const t of FX_TYPES) FXV[t[0]] = [t[2], t[3]];
+  const KEY_FX = [['execute', null, 30], ['ward', null, 25], ['critHeal', null, 3], ['killHaste', null, 30], ['comboStack', null, 6], ['spRefund', null, 18], ['thorns', null, 25], ['firstStrike', null, 60], ['lastStand', null, 1], ['elem', 'neutral', 25],
+    ['killHeal', null, 10], ['ultCharge', null, 40], ['shieldOnUlt', null, 25], ['rage', null, 35], ['vsElite', null, 30], ['killBlast', null, 25], ['dodgeHeal', null, 4], ['killSp', null, 12], ['opener', null, 40], ['killCdr', null, 1.5]];
+  FXV.lastStand = [1, 'ได้รับดาเมจถึงตาย: รอดด้วย HP 1 และอมตะ 2 วิ (ทุก 60 วิ)'];
+  const usedFx = new Set();
+  let kI = 0;
+  for (const nd of nodes) {
+    if (nd.type === 'keystone') { const [t, pr, v] = KEY_FX[kI++ % KEY_FX.length]; nd.fx = { t, p: pr, v }; usedFx.add(t + ':' + pr + ':k'); continue; }
+    if (nd.type !== 'notable') continue;
+    let i = RNG.hashStr('pfx' + nd.id) % FXP.length, g = 0;
+    while (usedFx.has(FXP[i][0] + ':' + FXP[i][1] + ':' + Math.floor(nd.k / 5)) && g++ < FXP.length) i = (i + 1) % FXP.length;
+    usedFx.add(FXP[i][0] + ':' + FXP[i][1] + ':' + Math.floor(nd.k / 5));
+    const [t, pr] = FXP[i], base = FXV[t][0];
+    nd.fx = { t, p: pr, v: +(base * (0.7 + nd.k * 0.05)).toFixed(1) };
+  }
+  { const seen = new Set(); for (const nd of nodes) if (nd.fx) { let k; while (seen.has(k = nd.fx.t + ':' + nd.fx.p + ':' + nd.fx.v)) nd.fx.v = +(nd.fx.v + 0.1).toFixed(1); seen.add(k); } }
+  function fxText(fx) { if (!fx) return ''; const d = FXV[fx.t]; return d ? d[1].replace('{v}', fx.v).replace('{p}', fx.p ? ((D.TAGS[fx.p] && D.TAGS[fx.p].n) || (D.ELEMENTS[fx.p] && (D.ELEMENTS[fx.p].n || fx.p)) || fx.p) : '') : ''; }
+  // summed effects of an allocation: { execute: 30, 'vsTag:burn': 9, ... }
+  function fxOf(ids) {
+    const out = {};
+    for (const id of ids || []) { const nd = nodes[id]; if (!nd || !nd.fx) continue; const k = nd.fx.p ? nd.fx.t + ':' + nd.fx.p : nd.fx.t; out[k] = +((out[k] || 0) + nd.fx.v).toFixed(1); }
+    return out;
+  }
+
   function modsOf(ids) {
     const out = {};
     for (const id of ids || []) { const nd = nodes[id]; if (!nd || !nd.mods) continue; for (const k in nd.mods) out[k] = +((out[k] || 0) + nd.mods[k]).toFixed(1); }
@@ -142,5 +183,5 @@
   }
   function describe(mods) { return Object.entries(mods).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${LABEL[k] || k}`); }
   const points = (lv, bonus) => Math.max(0, lv - 1) + Math.floor(lv / 10) + (bonus || 0);
-  return { nodes, edges, starts, modsOf, canAllocate, canRefund, describe, LABEL, points, RINGS, ringRadius, count: nodes.length };
+  return { nodes, edges, starts, modsOf, fxOf, fxText, canAllocate, canRefund, describe, LABEL, points, RINGS, ringRadius, count: nodes.length };
 });

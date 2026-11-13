@@ -36,7 +36,39 @@ const CMDS = {
   recall: [2, '@recall <player>', 'ดึงผู้เล่นมาหา', (p, a) => { const q = need(W.findPlayerByName(a[0]), a[0]); W.enterMap(q, p.inst.id, p.x, p.y); return 'ok'; }],
   recallall: [3, '@recallall', 'ดึงทุกคนมาหา', (p) => { let n = 0; for (const q of W.players.values()) if (q !== p) { W.enterMap(q, p.inst.id, p.x, p.y); n++; } return `recalled ${n}`; }],
   hide: [1, '@hide', 'ล่องหน (GM)', (p) => { p.hidden = !p.hidden; for (const q of p.inst.players) q.known.delete(p.id); return 'hide: ' + p.hidden; }],
-  god: [2, '@god', 'อมตะ / ไม่ใช้ SP / ไม่มีคูลดาวน์เกจ', (p) => { p.god = !p.god; return 'god: ' + p.god; }],
+  god: [2, '@god', 'อมตะ / ไม่ใช้ SP / ไม่ใช้เกจอัลติ (สลับ)', (p) => { p.god = !p.god; p.gmf = p.gmf || {}; p.gmf.god = p.god ? 1 : 0; p.char.gmf = Object.assign({}, p.gmf); sync(p); return 'god: ' + p.god; }],
+  gmmode: [2, '@gmmode <god|nocd|nosp|nocast|onehit|peace|autoloot|dmg <x>|all|off>', 'โหมดตัวละคร GM (เฉพาะบัญชี GM เท่านั้น): อมตะ, ไม่มีคูลดาวน์, ไม่ใช้ SP/เกจ, ร่ายทันที, ตีทีเดียวตาย, มอนไม่โจมตี, ดาเมจ ×x', (p, a) => {
+    const f = p.gmf || (p.gmf = {});
+    const k = (a[0] || '').toLowerCase();
+    const KEYS = ['god', 'nocd', 'nosp', 'nocast', 'onehit', 'peace', 'autoloot'];
+    if (k === 'all') KEYS.forEach((x) => (f[x] = 1));
+    else if (k === 'off') { for (const x of Object.keys(f)) delete f[x]; }
+    else if (k === 'dmg') f.dmg = Math.max(0.1, Math.min(10000, +a[1] || 1));
+    else if (KEYS.includes(k)) f[k] = f[k] ? 0 : 1;
+    else return 'gmmode: ' + JSON.stringify(f);
+    p.god = !!f.god; if (f.nocd) { p.cds = {}; p.sess && p.sess.send({ t: 'cdreset' }); }
+    p.char.gmf = Object.assign({}, f);
+    sync(p); return 'gmmode: ' + (Object.entries(f).filter(([, v]) => v).map(([x, v]) => (v === 1 ? x : x + '×' + v)).join(', ') || 'off');
+  }],
+  book: [1, '@book <species_id>', 'ข้อมูล/ตารางดรอปของมอนสเตอร์ในสมุด', (p, a) => { const s = D.SPECIES[a[0]]; if (!s) return 'ตัวอย่าง id: ' + Object.keys(D.SPECIES).slice(0, 12).join(', '); return `${s.name} Lv${s.lv}-${s.lvMax} ${s.where}\n` + D.dropTable(a[0]).map(([id, c, q]) => `${id.startsWith('gear:') ? D.GEAR[id.slice(5)].n : D.ITEMS[id].n} ${c}%${q > 1 ? ' ×' + q : ''}`).join('\n'); }],
+  spawnsp: [2, '@spawnsp <species_id> [n] [lv]', 'เรียกมอนตามสมุดมอนสเตอร์ (ดรอปตามตารางของสายพันธุ์นั้น)', (p, a) => {
+    const s = D.SPECIES[a[0]]; if (!s) return 'ไม่พบ species';
+    const n = Math.min(50, +a[1] || 1), lv = Math.max(1, Math.min(320, +a[2] || s.lv)), rk = s.rank || 0;
+    for (let i = 0; i < n; i++) { const pos = M.randomWalkable(p.inst.map, r, p, 6); W.spawnMonster(p.inst, { fam: s.fam, lv, rank: rk, x: pos.x, y: pos.y, name: s.name, color: s.color, sp: s.id, extra: { noRespawn: true } }); }
+    return `spawned ${n}× ${s.name} Lv${lv}`;
+  }],
+  gearb: [3, '@gearb <base_id> <rarity0-5> [ilv] [+refine] [player]', 'สร้างอุปกรณ์จากฐานไอเทมที่มีชื่อ (ดู @gearlist)', (p, a) => {
+    const b = D.GEAR[a[0]]; if (!b) return 'ไม่พบ base';
+    const q = need(target(p, a[4]), a[4]);
+    const it = F.genFromBase(r, b.id, Math.max(0, Math.min(5, +a[1] || 0)), +a[2] || b.ilv || q.lv); it.refine = Math.min(20, +(String(a[3] || '0').replace('+', '')) || 0);
+    I.addEquip(q.char, it); sync(q); return `${q.name} ← [${D.RARITY[it.rarity].n}] ${it.name}`;
+  }],
+  gearlist: [1, '@gearlist [filter]', 'รายการ base id อุปกรณ์', (p, a) => Object.keys(D.GEAR).filter((k) => !a[0] || k.includes(a[0]) || D.GEAR[k].n.toLowerCase().includes(a[0].toLowerCase())).slice(0, 120).join(', ')],
+  pickupall: [2, '@pickupall', 'เก็บไอเทมบนพื้นทั้งแผนที่', (p) => { let n = 0; for (const e of [...p.inst.entities.values()]) if (e.kind === 'i' && !e.dead) { I.pickup(p, e.id, 'force'); n++; } return `picked ${n}`; }],
+  clearground: [2, '@clearground', 'ลบไอเทมบนพื้นทั้งแผนที่', (p) => { let n = 0; for (const e of [...p.inst.entities.values()]) if (e.kind === 'i') { p.inst.remove(e); n++; } return `removed ${n}`; }],
+  cdreset: [2, '@cdreset [player]', 'รีเซ็ตคูลดาวน์ทั้งหมด', (p, a) => { const q = need(target(p, a[0]), a[0]); q.cds = {}; q.sess && q.sess.send({ t: 'cdreset' }); return 'ok'; }],
+  buffall: [3, '@buffall', 'บัฟทุกคนที่ออนไลน์ (ATK/MATK/DEF +20% 30 นาที)', () => { let n = 0; for (const q of W.players.values()) { C.addBuff(q, 'gm_bless', { atkPct: 20, matkPct: 20, defPct: 20 }, 1800, 'GM Blessing', '✨'); n++; } S.announce('✨ GM มอบพรให้ทุกคน (30 นาที)', 'gm'); return `buffed ${n}`; }],
+  respawnmap: [2, '@respawnmap', 'เกิดมอนทุกตัวในแผนที่ใหม่ทันที', (p) => { const inst = p.inst; const q = inst.respawnQ || []; for (const x of q) x.at = 0; return `respawn ${q.length}`; }],
   speed: [1, '@speed <1-10>', 'ความเร็วเดิน', (p, a) => { p.speedMul = Math.max(0.5, Math.min(10, +a[0] || 1)); return 'speed ×' + p.speedMul; }],
   heal: [1, '@heal [player]', 'ฮีลเต็ม', (p, a) => { const q = need(target(p, a[0]), a[0]); q.hp = q.maxHp; q.sp = q.maxSp; q.ult = 100; q.tags.clear(); return 'healed ' + q.name; }],
   revive: [2, '@revive <player>', 'ชุบชีวิต', (p, a) => { const q = need(target(p, a[0]), a[0]); if (q.dead) { q.dead = false; q.hp = q.maxHp; } return 'revived'; }],

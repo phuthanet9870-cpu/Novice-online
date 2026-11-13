@@ -2,7 +2,7 @@
 (function (root, factory) {
   const D = typeof require === 'function' ? require('./data.js') : root.NO_DATA;
   factory(D);
-  if (typeof module === 'object' && module.exports) module.exports = D;
+  if (typeof module === 'object' && module.exports) { require('./itemdb.js'); module.exports = D; }
 })(typeof self !== 'undefined' ? self : this, function (D) {
   if (D.EXT) return; D.EXT = true;
 

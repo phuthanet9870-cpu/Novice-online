@@ -21,6 +21,9 @@ A.sanitize = function (cfg) {
   a.whitelist = Array.isArray(cfg.whitelist) ? cfg.whitelist.slice(0, 20).map((s) => String(s).slice(0, 40)) : [];
   a.blacklist = Array.isArray(cfg.blacklist) ? cfg.blacklist.slice(0, 20).map((s) => String(s).slice(0, 40)) : [];
   a.avoidBoss = cfg.avoidBoss !== false; a.ksProtect = cfg.ksProtect !== false;
+  const rot = (list) => (Array.isArray(list) ? list.slice(0, 18).filter((x) => x && SKILLS[x.id]).map((x) => ({ id: x.id, cond: COND.includes(x.cond) ? x.cond : 'always', v: typeof x.v === 'number' || typeof x.v === 'string' ? x.v : 0, why: typeof x.why === 'string' ? x.why.slice(0, 40) : undefined })) : []);
+  a.fight = cfg.fight === 'pvp' ? 'pvp' : 'pve';
+  a.rotPve = rot(cfg.rotPve); a.rotPvp = rot(cfg.rotPvp); a.pvpTarget = ['lowest', 'nearest', 'healer'].includes(cfg.pvpTarget) ? cfg.pvpTarget : 'lowest';
   a.rotation = Array.isArray(cfg.rotation) ? cfg.rotation.slice(0, 18).filter((x) => x && SKILLS[x.id]).map((x) => ({ id: x.id, cond: COND.includes(x.cond) ? x.cond : 'always', v: typeof x.v === 'number' || typeof x.v === 'string' ? x.v : 0 })) : [];
   a.useUlt = ['never', 'elite', 'always'].includes(cfg.useUlt) ? cfg.useUlt : 'elite';
   a.autoBuff = cfg.autoBuff !== false;
@@ -95,6 +98,16 @@ const nameMatch = (list, n) => list.some((s) => s && n.toLowerCase().includes(s.
 function pickTarget(p, a, t) {
   const cx = a.anchor ? a.ax : p.x, cy = a.anchor ? a.ay : p.y;
   let best = null, bv = Infinity;
+  // PvP mode: hostile players first (lowest HP% / nearest / healers), monsters only when no player is around
+  if (a.fight === 'pvp') {
+    p.inst.inRadius(p.x, p.y, Math.max(a.radius, 16), (o) => {
+      if (o.kind !== 'p' || o === p || o.dead || o.hidden || C.stealthed(o) || !C.isEnemy(p, o)) return;
+      const v = a.pvpTarget === 'nearest' ? W.dist(p, o) : a.pvpTarget === 'healer' ? (o.cls === 'cleric' ? 0 : 100) + o.hp / o.maxHp * 100 : o.hp / o.maxHp * 100 + W.dist(p, o) * 0.5;
+      if (v < bv) { bv = v; best = o; }
+    });
+    if (best) return best;
+    bv = Infinity;
+  }
   // defend: whoever is hitting me first
   p.inst.inRadius(p.x, p.y, 8, (o) => { if (!best && o.kind === 'm' && !o.dead && o.target === p) best = o; });
   if (best) return best;
@@ -131,7 +144,7 @@ A.update = function (p, dt, t) {
   if (p.sp / p.maxSp * 100 < a.spPot) { const it = bestPot(ch, 'sp', ch.lv); if (it) I.use(p, it.uid); }
   // supply run
   const noPots = !bestPot(ch, 'hp', ch.lv);
-  if (a.state === 'farm' && a.returnTown && p.inst.def.kind !== 'town' && ((noPots && p.hp < p.maxHp * 0.3) || ch.inv.length >= 148)) {
+  if (a.state === 'farm' && a.fight !== 'pvp' && a.returnTown && p.inst.def.kind !== 'town' && ((noPots && p.hp < p.maxHp * 0.3) || ch.inv.length >= 148)) {
     a.state = 'supply'; a.back = { map: p.inst.id, x: a.ax, y: a.ay };
     p.sess && p.sess.send({ t: 'notice', k: 'system', m: 'ออโต้: กลับเมืองเพื่อเติมของ' });
     W.enterMap(p, ch.lastTown || 'aurelia'); return;
@@ -196,9 +209,16 @@ A.update = function (p, dt, t) {
     return;
   }
   // rotation
-  const rot = a.rotation.length ? a.rotation : ch.hotbar.filter((h) => h && !h.startsWith('item:') && SKILLS[h] && SKILLS[h].kind === 'attack').map((id) => ({ id, cond: 'always' }));
+  const modeRot = a.fight === 'pvp' ? a.rotPvp : a.rotPve;
+  let rot = modeRot && modeRot.length ? modeRot : a.rotation;
+  if (!rot.length) {
+    // nothing configured: plan one from the learned skills for this mode
+    const key = a.fight + ':' + Object.keys(ch.skills).length;
+    if (a._planKey !== key) { a._planKey = key; a._plan = F.autoPlan(Object.keys(ch.skills).map((id) => SKILLS[id]).filter(Boolean), a.fight); }
+    rot = a._plan;
+  }
   let choice = null;
-  if (a.useUlt !== 'never' && p.ult >= 100 && (a.useUlt === 'always' || tgt.rank >= 1)) {
+  if (a.useUlt !== 'never' && p.ult >= 100 && (a.useUlt === 'always' || tgt.rank >= 1 || tgt.kind === 'p')) {
     for (const id in ch.skills) if (SKILLS[id].kind === 'ult' && skillReady(p, id, t)) { choice = id; break; }
   }
   if (!choice) for (const e of rot) { if (skillReady(p, e.id, t) && condOk(p, e, tgt, a)) { choice = e.id; break; } }

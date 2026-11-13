@@ -9,6 +9,7 @@ const S = require('./social');
 const P = require('./progress');
 
 const C = module.exports;
+const T = require('../shared/passives.js');
 const now = () => Date.now() / 1000;
 const HARD = new Set(D.TAG_IDS.filter((t) => D.TAGS[t].cc === 'hard'));
 const DOT = { bleed: 1, poison: 1, burn: 1 };
@@ -59,6 +60,7 @@ C.recalc = function (p) {
   for (const k in ext) { if (k === 'cdr') cdrBonus += ext[k]; else if (k !== 'expPct') mods[k] = (mods[k] || 0) + ext[k]; }
   const castle = S.castleBonus(p);
   if (castle) { mods.atkPct = (mods.atkPct || 0) + castle; mods.matkPct = (mods.matkPct || 0) + castle; }
+  p.pfx = T.fxOf(p.char.passives);
   p.gear = F.gearStats(p.char.equip);
   p.st = F.calcStats(p.char, p.gear, mods);
   p.st.dmgType = D.CLASSES[p.cls].dmg;
@@ -75,7 +77,7 @@ C.makePlayer = function (char, sess, acc) {
     id: W.nextEnt++, kind: 'p', char, sess, name: char.name, cls: char.cls, lv: char.lv, x: char.x || 0, y: char.y || 0, dir: 0,
     hp: 1, sp: 0, res: 0, ult: char.ult || 0, combo: 0, comboT: 0, bestCombo: 0, lastSkill: null, cds: {}, buffs: new Map(), tags: new Map(),
     shield: 0, blocks: 0, atkTarget: null, atkReady: 0, casting: null, party: null, gm: acc ? acc.gm : 0, acc: acc ? acc.user : '',
-    stealthUntil: 0, invulnUntil: 0, dead: false, god: false, hidden: false, speedMul: 1, known: new Set(), lastMv: now(), movedAt: 0,
+    stealthUntil: 0, invulnUntil: 0, dead: false, god: false, gmf: {}, hidden: false, speedMul: 1, known: new Set(), lastMv: now(), movedAt: 0,
     nextBonus: 0, summons: [], traps: [], delayed: [], ccDR: {}, size: 0.6, guildName: '', title: '', buffsChanged: true
   };
   P.init(char);
@@ -87,7 +89,7 @@ C.makePlayer = function (char, sess, acc) {
 };
 function defaultAuto() {
   return { on: false, mode: 'nearest', radius: 14, anchor: true, whitelist: [], blacklist: [], avoidBoss: true, ksProtect: true,
-    rotation: [], useUlt: 'elite', autoBuff: true, hpPot: 45, spPot: 25, returnTown: true, supply: true, potBuy: 50, offline: false,
+    rotation: [], rotPve: [], rotPvp: [], fight: 'pve', pvpTarget: 'lowest', useUlt: 'elite', autoBuff: true, hpPot: 45, spPot: 25, returnTown: true, supply: true, potBuy: 50, offline: false,
     lootMinRarity: 0, lootPotions: true, lootMats: true, partyHeal: 60, breakFree: true, respawnReturn: true };
 }
 C.defaultAuto = defaultAuto;
@@ -97,7 +99,7 @@ C.charPayload = function (p) {
   return {
     id: c.id, name: c.name, cls: c.cls, lv: c.lv, exp: c.exp, next: F.expToNext(c.lv), statPts: c.statPts, stats: c.stats, skillPts: c.skillPts,
     skills: c.skills, hotbar: c.hotbar, inv: c.inv, equip: c.equip, zeny: c.zeny, st: p.st, gear: p.gear, auto: p.auto, dungeonBest: c.dungeonBest || {},
-    guild: S.guildInfo(c.guild), party: S.partyInfo(p), gm: p.gm, lastTown: c.lastTown, bestCombo: c.bestCombo || 0, pity: c.pity || 0, ...P.payload(p)
+    guild: S.guildInfo(c.guild), party: S.partyInfo(p), gm: p.gm, gmf: p.gm ? p.gmf : undefined, book: c.book || {}, lastTown: c.lastTown, bestCombo: c.bestCombo || 0, pity: c.pity || 0, ...P.payload(p)
   };
 };
 C.sendChar = function (p, fields) {
@@ -202,9 +204,14 @@ C.dealDamage = function (src, tgt, o) {
   if (!tgt || tgt.dead || !tgt.inst || tgt.kind === 'n' || tgt.kind === 'z') return 0;
   const t = now();
   const inst = tgt.inst;
-  if (tgt.kind === 'p' && (tgt.god || tgt.invulnUntil > t)) { inst.emit({ k: 'txt', t: tgt.id, x: tgt.x, y: tgt.y, m: 'IMMUNE', c: '#ddd' }); return 0; }
+  if (tgt.kind === 'p' && (tgt.god || (tgt.gmf && tgt.gmf.god) || tgt.invulnUntil > t)) { inst.emit({ k: 'txt', t: tgt.id, x: tgt.x, y: tgt.y, m: 'IMMUNE', c: '#ddd' }); return 0; }
   const srcP = C.ownerP(src);
   const pvp = srcP && tgt.kind === 'p';
+  if (tgt.kind === 'p' && o.kind === 'mob' && W.rand() * 100 < Math.max(0, Math.min(30, (tgt.st.flee - (src.lv || 1) * 2) / 10))) {
+    inst.emit({ k: 'txt', t: tgt.id, x: tgt.x, y: tgt.y, m: 'DODGE', c: '#9cf' });
+    if (tgt.pfx && tgt.pfx.dodgeHeal) C.heal(tgt, tgt.maxHp * tgt.pfx.dodgeHeal / 100, tgt, true);
+    return 0;
+  }
   const mag = o.mag !== undefined ? o.mag : (src.kind === 'p' ? src.st.dmgType === 'mag' : false);
   let dmg;
   if (o.flat !== undefined) dmg = o.flat;
@@ -233,10 +240,30 @@ C.dealDamage = function (src, tgt, o) {
       if (o.kind === 'skill' || o.kind === 'basic') dmg *= 1 + Math.min(20, src.combo) * 0.03 * (pvp ? 0.5 : 1) + (src.combo > 0 ? src.st.comboDmg / 100 : 0);
       dmg *= 1 + src.st.dmgPct / 100;
       if (tgt.kind === 'm' && tgt.rank >= 2) dmg *= 1 + src.st.bossDmg / 100;
+      const pf = src.pfx;
+      if (pf) {
+        let k = 0;
+        const hpPct = tgt.hp / tgt.maxHp, myPct = src.hp / src.maxHp;
+        if (pf.execute && hpPct < 0.35) k += pf.execute;
+        if (pf.opener && hpPct >= 0.9) k += pf.opener;
+        if (pf.rage && myPct < 0.4) k += pf.rage;
+        if (pf.calm && myPct > 0.9) k += pf.calm;
+        if (pf.vsElite && tgt.kind === 'm' && tgt.rank >= 1) k += pf.vsElite;
+        if (pf.comboStack) k += pf.comboStack * Math.floor((src.combo || 0) / 10);
+        if (pf['elem:' + (o.el || 'neutral')]) k += pf['elem:' + (o.el || 'neutral')];
+        for (const tg of tgt.tags.keys()) if (pf['vsTag:' + tg]) k += pf['vsTag:' + tg];
+        if (pf.firstStrike && src._lastTgt !== tgt.id) { k += pf.firstStrike; src._lastTgt = tgt.id; }
+        dmg *= 1 + k / 100;
+      }
     }
     if (o.siege && tgt.kind === 'c') dmg *= o.siege;
   }
+  if (src.kind === 'p' && src.gmf) {
+    if (src.gmf.dmg) dmg *= src.gmf.dmg;
+    if (src.gmf.onehit && o.kind !== 'reflect' && !(tgt.kind === 'p' && tgt.gm >= src.gm)) dmg = Math.max(dmg, tgt.hp + (tgt.shield || 0) + 1);
+  }
   if (tgt.kind === 'p') dmg *= 1 - tgt.st.dmgReduce / 100;
+  if (tgt.kind === 'p' && tgt.pfx && tgt.pfx.ward && tgt.hp < tgt.maxHp * 0.35) dmg *= 1 - Math.min(60, tgt.pfx.ward) / 100;
   if (pvp && src.kind === 'p') dmg *= 0.35 * (1 + src.st.pvpDmg / 100) * (1 - tgt.st.pvpRes / 100);
   else if (pvp) dmg *= 0.35;
   dmg = Math.max(1, Math.round(dmg));
@@ -250,7 +277,18 @@ C.dealDamage = function (src, tgt, o) {
     }
   }
   if (tgt.shield > 0) { const ab = Math.min(tgt.shield, dmg); tgt.shield -= ab; dmg -= ab; if (dmg <= 0) { inst.emit({ k: 'hit', t: tgt.id, x: tgt.x, y: tgt.y, d: ab, sh: 1 }); return 0; } }
+  if (tgt.kind === 'p' && tgt.pfx && tgt.pfx.lastStand && dmg >= tgt.hp && (tgt.lastStandAt || 0) < t - 60) {
+    tgt.lastStandAt = t; dmg = Math.max(0, tgt.hp - 1); tgt.invulnUntil = t + 2;
+    inst.emit({ k: 'txt', t: tgt.id, x: tgt.x, y: tgt.y, m: 'LAST STAND!', c: '#ffd34a', big: 1 });
+  }
   tgt.hp -= dmg;
+  if (src.kind === 'p' && src.pfx && o.kind !== 'dot' && o.kind !== 'reflect') {
+    const pf = src.pfx;
+    if (crit && pf.critHeal && (src._critHealAt || 0) < t - 1) { src._critHealAt = t; C.heal(src, src.maxHp * pf.critHeal / 100, src, true); }
+    if (crit && pf.critSp) src.sp = Math.min(src.maxSp, src.sp + pf.critSp);
+    if (o.kind === 'skill' || o.kind === 'basic') for (const k in pf) if (k.startsWith('onHitTag:') && W.rand() * 100 < pf[k] && tgt.hp > 0) C.applyTag(tgt, k.slice(9), 1, 3, src);
+  }
+  if (tgt.kind === 'p' && tgt.pfx && tgt.pfx.thorns && o.kind !== 'reflect' && o.kind !== 'dot' && !src.dead && src.inst === inst && src !== tgt) C.dealDamage(tgt, src, { flat: Math.round(dmg * Math.min(80, tgt.pfx.thorns) / 100), kind: 'reflect' });
   if (src.kind === 'p') { src._dealt = (src._dealt || 0) + dmg; if (crit) src._crits = (src._crits || 0) + 1; }
   inst.emit({ k: 'hit', t: tgt.id, x: tgt.x, y: tgt.y, d: dmg, c: crit ? 1 : 0, r: o.reaction || undefined, el: o.el, dot: o.kind === 'dot' ? 1 : undefined, s: srcP ? srcP.id : 0 });
   // reflect
@@ -301,6 +339,7 @@ C.onDeath = function (e, killer) {
     let best = kp;
     if (e.dmgBy.size) { let bd = 0; for (const [pid, d] of e.dmgBy) if (d > bd) { const q = inst.entities.get(pid); if (q) { bd = d; best = q; } } }
     if (best && !e.owner) I.onMonsterKilled(e, best);
+    if (kp && kp.pfx) C.onKillFx(kp, e);
     for (const p of inst.players) if (p.auto && p.auto.target === e) p.auto.target = null;
     if (e.rank >= 2 && e.rank !== 4) S.onBossDeath(e, best);
     if (e.rank === 4) S.onWorldBossDeath(e, best);
@@ -330,6 +369,19 @@ C.onDeath = function (e, killer) {
   }
 };
 
+// passive-tree kill effects
+C.onKillFx = function (p, e) {
+  const pf = p.pfx, t = now();
+  if (pf.killHeal) C.heal(p, p.maxHp * pf.killHeal / 100, p, true);
+  if (pf.killSp) p.sp = Math.min(p.maxSp, p.sp + p.maxSp * pf.killSp / 100);
+  if (pf.killCdr) { for (const k in p.cds) p.cds[k] -= pf.killCdr; p.sess && p.sess.send({ t: 'cdshift', d: pf.killCdr, except: '' }); }
+  if (pf.killHaste) C.addBuff(p, 'pfx_haste', { movePct: pf.killHaste, aspdPct: pf.killHaste }, 4, 'Killing Spree', '💨');
+  if (pf.killBlast && e.inst) {
+    const dmg = Math.min(e.maxHp * pf.killBlast / 100, p.st.atk * 6 + p.st.matk * 6);
+    e.inst.emit({ k: 'boom', x: e.x, y: e.y, r: 3, el: 'fire' });
+    e.inst.inRadius(e.x, e.y, 3.5, (o) => { if (o !== e && !o.dead && (o.kind === 'm' || o.kind === 'p') && C.isEnemy(p, o)) C.dealDamage(p, o, { flat: Math.round(dmg), kind: 'true' }); });
+  }
+};
 C.respawn = function (p, returnToFarm) {
   if (!p.dead) return;
   const back = returnToFarm && p.inst && p.inst.def.kind === 'farm' ? { map: p.inst.mapId, x: p.auto.ax || p.x, y: p.auto.ay || p.y } : null;
@@ -388,7 +440,7 @@ C.updatePlayer = function (p, dt, t, sec) {
         const blind = p.tags.has('blind') && W.rand() < 0.5;
         if (!blind) {
           C.dealDamage(p, tgt, { mult: 1, kind: 'basic', el: p.weaponEl || 'neutral' });
-          p.ult = Math.min(100, p.ult + 1);
+          p.ult = Math.min(100, p.ult + 1 * (1 + ((p.pfx && p.pfx.ultCharge) || 0) / 100));
           p.lastHit = t;
           gainRes(p, 'basic');
         } else inst.emit({ k: 'txt', t: tgt.id, x: tgt.x, y: tgt.y, m: 'MISS', c: '#aaa' });
@@ -452,11 +504,12 @@ C.useSkill = function (p, id, tid, ax, ay) {
   if (C.isHardCC(p)) return err(p, 'ถูกควบคุมอยู่!');
   if (p.tags.has('silence') && sk.kind !== 'buff') return err(p, 'ถูกใบ้ ใช้สกิลไม่ได้');
   if (p.casting) return err(p, 'กำลังร่ายเวท');
-  if ((p.cds[id] || 0) > t + 0.05) return err(p, 'คูลดาวน์');
-  if (sk.kind === 'ult' && p.ult < 100 && !p.god) return err(p, 'เกจอัลติเมตยังไม่เต็ม');
+  const gf = p.gmf || {};
+  if ((p.cds[id] || 0) > t + 0.05 && !gf.nocd) return err(p, 'คูลดาวน์');
+  if (sk.kind === 'ult' && p.ult < 100 && !p.god && !gf.nosp) return err(p, 'เกจอัลติเมตยังไม่เต็ม');
   const cost = F.skillSp(sk, lv);
-  if (p.sp < cost && !p.god) return err(p, 'SP ไม่พอ');
-  if (sk.needRes && p.res < sk.needRes && !p.god) return err(p, `ต้องมี ${D.CLASSES[p.cls].res.name} ≥ ${sk.needRes}`);
+  if (p.sp < cost && !p.god && !gf.nosp) return err(p, 'SP ไม่พอ');
+  if (sk.needRes && p.res < sk.needRes && !p.god && !gf.nosp) return err(p, `ต้องมี ${D.CLASSES[p.cls].res.name} ≥ ${sk.needRes}`);
   if (sk.cond && sk.cond.type === 'selfHp' && p.hp / p.maxHp * 100 >= sk.cond.v) return err(p, `ใช้ได้เมื่อ HP < ${sk.cond.v}%`);
   if (sk.hpCost && p.hp <= p.maxHp * sk.hpCost / 100 + 1) return err(p, 'HP ไม่พอ');
   const inst = p.inst;
@@ -478,7 +531,7 @@ C.useSkill = function (p, id, tid, ax, ay) {
   const ad = Math.hypot(ax - p.x, ay - p.y);
   if (ad > range + 1) { ax = p.x + (ax - p.x) / ad * range; ay = p.y + (ay - p.y) / ad * range; }
   let castT = (sk.cast || 0) * (1 - p.st.castReduce / 100);
-  if (p.flags.stealth) castT = 0;
+  if (p.flags.stealth || gf.nocast) castT = 0;
   if (castT > 0.05) {
     p.casting = { sk, lv, tgtId: tgt ? tgt.id : 0, ax, ay, start: t, until: t + castT, needsTarget };
     p.atkTarget = tgt ? tgt.id : p.atkTarget;
@@ -614,15 +667,20 @@ const execCore = function (p, sk, lv, tgt, ax, ay) {
   const t = now();
   const inst = p.inst;
   const cls = D.CLASSES[p.cls];
-  if (!p.god) {
+  const gf = p.gmf || {};
+  if (!p.god && !gf.nosp) {
     p.sp -= F.skillSp(sk, lv);
     if (sk.hpCost) p.hp -= p.maxHp * sk.hpCost / 100;
   }
   const cdr = Math.min(90, p.st.cdr + (p.cdrBonus || 0));
-  const cd = sk.kind === 'buff' ? sk.cd : F.skillCd(sk, lv) * (1 - cdr / 100);
+  const cd = gf.nocd ? 0 : sk.kind === 'buff' ? sk.cd : F.skillCd(sk, lv) * (1 - cdr / 100);
   p.cds[sk.id] = t + cd;
   p.sess && p.sess.send({ t: 'cd', id: sk.id, d: Math.round(cd * 100) / 100 });
-  if (sk.kind === 'ult' && !p.god) p.ult = 0;
+  if (sk.kind === 'ult' && !p.god && !gf.nosp) p.ult = 0;
+  if (p.pfx) {
+    if (p.pfx.spRefund && W.rand() * 100 < p.pfx.spRefund) { p.sp = Math.min(p.maxSp, p.sp + F.skillSp(sk, lv)); inst.emit({ k: 'txt', t: p.id, x: p.x, y: p.y, m: 'SP REFUND', c: '#6af' }); }
+    if (sk.kind === 'ult' && p.pfx.shieldOnUlt) p.shield = Math.max(p.shield || 0, p.maxHp * p.pfx.shieldOnUlt / 100);
+  }
   if (sk.kind !== 'buff' && sk.shape !== 'self' && !sk.stealth && p.stealthUntil > t && !p.flags.stealth) p.stealthUntil = Math.min(p.stealthUntil, t + 0.1);
   if (tgt) { p.dir = Math.atan2(tgt.y - p.y, tgt.x - p.x); if (sk.kind === 'attack') p.atkTarget = tgt.id; }
   else if (ax !== undefined) p.dir = Math.atan2(ay - p.y, ax - p.x);
@@ -776,7 +834,7 @@ function afterCast(p, sk, anyHit) {
       if (p.combo >= 10 && p.combo % 2 === 0) P.event(p, 'combo', { n: p.combo });
       const ms = { 5: 10, 10: 15, 15: 20, 20: 30 }[p.combo];
       if (ms) { p.ult = Math.min(100, p.ult + ms); p.inst.emit({ k: 'txt', t: p.id, x: p.x, y: p.y, m: `${p.combo} COMBO! +${ms}% ULT`, c: '#ffd34a', big: 1 }); }
-      if (sk.kind !== 'ult') p.ult = Math.min(100, p.ult + 3);
+      if (sk.kind !== 'ult') p.ult = Math.min(100, p.ult + 3 * (1 + ((p.pfx && p.pfx.ultCharge) || 0) / 100));
       p.lastHit = t;
       if (!sk.consumeRes) gainRes(p, 'skill', sk);
     }
