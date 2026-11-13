@@ -165,7 +165,7 @@
       const q = () => ({ q: o.q, cat: o.cat, sort: o.sort });
       if (a === 'tab') { o.tab = d.k; render('market'); }
       if (a === 'search') { o.q = $('#ahQ').value; o.cat = $('#ahCat').value; o.sort = $('#ahSort').value; G.send({ t: 'ah', a: 'search', ...q() }); }
-      if (a === 'buy' && confirm('ยืนยันการซื้อ?')) G.send({ t: 'ah', a: 'buy', id: d.id, ...q() });
+      if (a === 'buy') UI.ask('ยืนยันการซื้อ?').then((y) => y && G.send({ t: 'ah', a: 'buy', id: d.id, ...q() }));
       if (a === 'cancel') G.send({ t: 'ah', a: 'cancel', id: d.id, ...q() });
       if (a === 'pick') { o.sel = d.uid; render('market'); }
       if (a === 'sell') { G.send({ t: 'ah', a: 'sell', uid: d.uid, qty: +($('#ahQty') || {}).value || 1, price: +$('#ahPrice').value, ...q() }); o.sel = null; o.tab = 'mine'; }

@@ -39,7 +39,7 @@
       + (m.chars.length < 6 ? `<div class="charCard new" id="newCharBtn"><div class="plus">＋</div><div><b>สร้างตัวละครใหม่</b><span>เลือกได้ 10 คลาส</span></div></div>` : '');
     list.onclick = (e) => {
       const pl = e.target.closest('[data-play]'); if (pl) return G.send({ t: 'play', id: pl.dataset.play });
-      const dl = e.target.closest('[data-del]'); if (dl) { const n = prompt(`พิมพ์ชื่อ "${dl.dataset.name}" เพื่อยืนยันการลบ`); if (n) G.send({ t: 'deleteChar', id: dl.dataset.del, confirm: n }); return; }
+      const dl = e.target.closest('[data-del]'); if (dl) { UI.ask(`พิมพ์ชื่อ "${dl.dataset.name}" เพื่อยืนยันการลบตัวละคร`, { input: true, danger: true, ok: 'ลบตัวละคร' }).then((n) => { if (n) G.send({ t: 'deleteChar', id: dl.dataset.del, confirm: n }); }); return; }
       if (e.target.closest('#newCharBtn')) { $('#createPanel').hidden = false; }
       const card = e.target.closest('.charCard[data-id]'); if (card && e.detail === 2) G.send({ t: 'play', id: card.dataset.id });
     };
@@ -69,7 +69,20 @@
       <div class="skillPreview">${sk.filter((s) => s.kind === 'ult').map((s) => `<img src="${ART.skillIcon(s)}" data-skill="${s.id}">`).join('')}${sk.filter((s) => s.kind !== 'ult').slice(0, 12).map((s) => `<img src="${ART.skillIcon(s)}" data-skill="${s.id}">`).join('')}</div>`;
   }
   function mapName(id) { const d = NO_MAP.getMapDef(id || 'aurelia'); return d ? d.name : id; }
-  UI.kicked = (m) => { alert(m || 'ถูกตัดการเชื่อมต่อ'); location.reload(); };
+  UI.kicked = (m) => { UI.ask(m || 'ถูกตัดการเชื่อมต่อ', { ok: 'เริ่มใหม่', noCancel: true }).then(() => location.reload()); };
+  // in-page confirm/prompt dialog (native dialogs are blocked inside embedded viewers)
+  UI.ask = function (msg, o = {}) {
+    return new Promise((res) => {
+      const el = document.createElement('div'); el.className = 'askBack';
+      el.innerHTML = `<div class="askBox"><p></p>${o.input ? '<input class="askIn" maxlength="200">' : ''}<div class="acts"><button class="btn ${o.danger ? 'danger' : 'gold'}" data-r="ok">${esc(o.ok || 'ตกลง')}</button>${o.noCancel ? '' : '<button class="btn" data-r="no">ยกเลิก</button>'}</div></div>`;
+      el.querySelector('p').textContent = msg;
+      const inp = el.querySelector('.askIn'); if (inp) inp.value = o.def || '';
+      const done = (v) => { el.remove(); res(v); };
+      el.addEventListener('click', (e) => { const b = e.target.closest('[data-r]'); if (b) done(b.dataset.r === 'ok' ? (inp ? inp.value : true) : (inp ? null : false)); });
+      el.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') done(inp ? inp.value : true); if (e.key === 'Escape') done(inp ? null : false); });
+      document.body.appendChild(el); (inp || el.querySelector('[data-r=ok]')).focus();
+    });
+  };
   UI.disconnected = () => { const d = $('#disc'); d.hidden = false; };
 
   // ================================================================ HUD
@@ -511,7 +524,7 @@
         <div class="derived">${derived.map(([k, v]) => `<div><small>${k}</small><b>${typeof v === 'number' ? fmt(v) : v}</b></div>`).join('')}</div>
         <button class="btn tiny" data-act="resetStats">รีเซ็ตสเตตัส (ฟรีถึง Lv50)</button></div></div>`;
     },
-    act(a, d) { if (a === 'stat') G.send({ t: 'stat', k: d.k, n: +d.n }); if (a === 'unequip' && G.char.equip[d.slot]) G.send({ t: 'unequip', slot: d.slot }); if (a === 'resetStats' && confirm('รีเซ็ตสเตตัส?')) G.send({ t: 'resetStats' }); }
+    act(a, d) { if (a === 'stat') G.send({ t: 'stat', k: d.k, n: +d.n }); if (a === 'unequip' && G.char.equip[d.slot]) G.send({ t: 'unequip', slot: d.slot }); if (a === 'resetStats') UI.ask('รีเซ็ตสเตตัสทั้งหมด?').then((y) => y && G.send({ t: 'resetStats' })); }
   };
   function p_runesets() { const s = G.char.gear && G.char.gear.runeSets; return s && s.length ? '· Rune Set: ' + s.map((k) => D.RUNE_KINDS[k].n).join(', ') : ''; }
 
@@ -551,8 +564,8 @@
       else if (a === 'sel') UI.selItem = d.uid;
       else if (a === 'equip') G.send({ t: 'equip', uid: sel });
       else if (a === 'use') G.send({ t: 'use', uid: sel });
-      else if (a === 'sell') { const it = findItem(sel); if (it && (it.type !== 'equip' || it.rarity < 3 || confirm('ขายของหายากนี้?'))) G.send({ t: 'sell', uid: sel, qty: it.qty }); UI.selItem = null; }
-      else if (a === 'drop') { if (confirm('ทิ้งไอเทมนี้?')) G.send({ t: 'drop', uid: sel }); UI.selItem = null; }
+      else if (a === 'sell') { const it = findItem(sel); if (it) (it.type !== 'equip' || it.rarity < 3 ? Promise.resolve(true) : UI.ask('ขายของหายากชิ้นนี้?')).then((y) => y && G.send({ t: 'sell', uid: sel, qty: it.qty })); UI.selItem = null; }
+      else if (a === 'drop') { UI.ask('ทิ้งไอเทมนี้?', { danger: true, ok: 'ทิ้ง' }).then((y) => y && G.send({ t: 'drop', uid: sel })); UI.selItem = null; }
       else if (a === 'combine') { const it = findItem(sel); if (it) G.send({ t: 'combine', id: it.id }); }
       else if (a === 'hot') { const it = findItem(sel); const i = G.char.hotbar.findIndex((x, k) => !x && k >= 12); const j = i >= 0 ? i : G.char.hotbar.indexOf(null); if (it && j >= 0) { G.char.hotbar[j] = 'item:' + it.id; saveHotbar(); } }
       renderWin('inv');
@@ -582,7 +595,7 @@
     act(a, d) {
       if (a === 'tab') { UI.skillTab = d.k; renderWin('skills'); }
       if (a === 'learn') G.send({ t: 'learn', id: d.id });
-      if (a === 'reset' && confirm('รีเซ็ตสกิลทั้งหมด? (ฟรีถึง Lv100)')) G.send({ t: 'resetSkills' });
+      if (a === 'reset') UI.ask('รีเซ็ตสกิลทั้งหมด? (ฟรีถึง Lv100)').then((y) => y && G.send({ t: 'resetSkills' }));
       if (a === 'slot') { if (G.char.hotbar.includes(d.id)) return UI.toast('อยู่ใน Hotbar แล้ว'); const i = G.char.hotbar.indexOf(null); if (i < 0) return UI.toast('Hotbar เต็ม', 'err'); G.char.hotbar[i] = d.id; saveHotbar(); UI.toast(`ใส่ ${SKS()[d.id].name} ที่ช่อง ${HOTKEYS[i].toUpperCase()}`); }
     }
   };
@@ -819,8 +832,8 @@
       if (a === 'pick') { w.opts.uid = d.uid; renderWin('rune'); }
       if (a === 'sock') { w.opts.uid = d.uid; G.send({ t: 'socket', uid: d.uid, gem: d.gem }); }
       if (a === 'drill') G.send({ t: 'drill', uid: d.uid });
-      if (a === 'reroll' && confirm('สุ่มออปชั่นใหม่ทั้งหมด?')) G.send({ t: 'reroll', uid: d.uid });
-      if (a === 'unsock' && confirm('ถอดรูน/อัญมณีทั้งหมด (เสีย Zeny)?')) G.send({ t: 'unsocket', uid: d.uid });
+      if (a === 'reroll') UI.ask('สุ่มออปชั่นใหม่ทั้งหมด?').then((y) => y && G.send({ t: 'reroll', uid: d.uid }));
+      if (a === 'unsock') UI.ask('ถอดรูน/อัญมณีทั้งหมด (เสีย Zeny)?').then((y) => y && G.send({ t: 'unsocket', uid: d.uid }));
       if (a === 'combine') G.send({ t: 'combine', id: d.id });
     }
   };
@@ -848,10 +861,10 @@
       if (a === 'create') G.send({ t: 'guild', a: 'create', name: $('#gName').value });
       if (a === 'invite') G.send({ t: 'guild', a: 'invite', name: $('#gInv').value });
       if (a === 'ally') G.send({ t: 'guild', a: 'ally', name: $('#gAlly').value });
-      if (a === 'leave' && confirm('ยืนยัน?')) G.send({ t: 'guild', a: 'leave' });
-      if (a === 'kick' && confirm('เตะ ' + d.n + '?')) G.send({ t: 'guild', a: 'kick', name: d.n });
+      if (a === 'leave') UI.ask('ออกจากกิลด์ (Master = ยุบกิลด์)?', { danger: true }).then((y) => y && G.send({ t: 'guild', a: 'leave' }));
+      if (a === 'kick') UI.ask('เตะ ' + d.n + ' ออกจากกิลด์?', { danger: true }).then((y) => y && G.send({ t: 'guild', a: 'kick', name: d.n }));
       if (a === 'promote') G.send({ t: 'guild', a: 'rank', name: d.n, rank: d.r });
-      if (a === 'notice') { const v = prompt('ประกาศกิลด์', G.char.guild.notice); if (v != null) G.send({ t: 'guild', a: 'notice', text: v }); }
+      if (a === 'notice') UI.ask('ประกาศกิลด์', { input: true, def: G.char.guild.notice }).then((v) => { if (v != null) G.send({ t: 'guild', a: 'notice', text: v }); });
       if (a === 'castle') G.send({ t: 'warp', map: d.id });
     }
   };
