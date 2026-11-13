@@ -120,7 +120,7 @@ W.spawnMonster = function (inst, spec) {
     x: spec.x, y: spec.y, sx: spec.x, sy: spec.y, hp: st.maxHp, maxHp: st.maxHp, atk: st.atk, def: st.def, mdef: st.mdef,
     exp: st.exp, zeny: st.zeny, size: st.size, tags: new Map(), target: null, atkReady: 0, state: 'idle', wanderAt: 0,
     speed: (fam[2] === 'melee' ? 2.6 : 2.2) * (spec.rank === 1 ? 1.15 : 1) * (spec.rank >= 2 ? 1.1 : 1),
-    range: fam[2] === 'melee' ? 1.2 + Math.min(3, st.size) * 0.35 : 6, // huge bosses keep a fair melee reach dmgBy: new Map(), spawnRef: spec.spawnRef || null,
+    range: fam[2] === 'melee' ? 1.2 + Math.min(3, st.size) * 0.35 : 6, /* huge bosses keep a fair melee reach */ dmgBy: new Map(), spawnRef: spec.spawnRef || null,
     stagger: 100, staggerMax: spec.rank >= 2 ? 100 : 0, phase: 0, skillAt: now() + 6, owner: null, ccDR: {}
   };
   if (spec.rank === 4) m.speed = 2.0;
