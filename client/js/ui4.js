@@ -62,6 +62,9 @@
             <small>📍 ${esc(sel.where)}</small>
             <small>กำจัดแล้ว <b>${fmt(book[sel.id] || 0)}</b> ตัว · ดรอปอุปกรณ์สูงสุด <b style="color:${D.RARITY[maxR].color}">${D.RARITY[maxR].n}</b></small>
             ${G.char.gm ? `<div class="acts"><button class="btn tiny" data-act="gmspawn" data-k="${sel.id}">👾 GM: เสก 5 ตัว</button><button class="btn tiny" data-act="gmspawn1" data-k="${sel.id}">เสก 1 ตัว</button></div>` : ''}</div></div>
+          ${sel.kind === 'world' && D.WB_MECH && D.WB_MECH[sel.id.slice(3)] ? ((W2) => `<div class="wbMech"><h4>⚔ กลไกบอส</h4><p>${esc(W2.th)}</p>
+            <div class="chips"><span class="chip">🔒 ผนึก: ${esc(W2.seal.name)} ×${W2.seal.n} (${{ pillars: 'ทำลายให้ครบ', order: 'ตามลำดับเลข', regen: 'ฟื้นใน 45 วิ', heal: 'ฮีลบอส', elemental: 'แตกด้วยธาตุ' + ((D.ELEMENTS[W2.seal.el] || {}).n || ''), guards: 'องครักษ์ Elite' }[W2.seal.type]})</span>${W2.phases.map(([at, k, n]) => `<span class="chip">HP ${Math.round(at * 100)}% → ${esc(D.WB_PHASE_TH[k])}${n ? ' ×' + n : ''}</span>`).join('')}</div>
+            <div class="chips">${[...new Set(W2.attacks)].map((k) => `<span class="chip warn">⚠ ${esc(D.WB_ATTACK_TH[k])}</span>`).join('')}<span class="chip">⏱ 10 นาทีบอสคลั่ง</span></div></div>`)(D.WB_MECH[sel.id.slice(3)]) : ''}
           ${groups.map(([n, g]) => g.length ? `<h4>${n}</h4><div class="bkDrops">${g.map(([id, c, qn]) => `<div class="bkDrop" ${dropAttr(id, sel)}><img src="${dropIcon(id)}"><span style="${id.startsWith('gear:') ? 'color:' + D.RARITY[D.GEAR[id.slice(5)].maxR].color : ''}">${esc(dropName(id))}${qn > 1 ? ' ×' + qn : ''}</span><em>${pct(c)}</em></div>`).join('')}</div>` : '').join('')}
           <small class="hint">อัตราดรอปพื้นฐาน · Elite ×3 · เพิ่มตาม LUK / อัตราดรอป / เรทเซิร์ฟ · มอนธรรมดาดรอปได้สูงสุด Epic — Legendary มาจากดันเจี้ยน/บอส/คราฟต์ และ Mythic จาก World Boss/คราฟต์</small>`;
       }

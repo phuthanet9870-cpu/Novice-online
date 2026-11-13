@@ -139,7 +139,7 @@
       out.push({ key: id, cat, name: d.n, sub: d.th || '', lv: d.lv || 1, it: { id } });
     }
     for (const wt in D.WEAPON_NAMES) D.WEAPON_NAMES[wt].forEach((n, t) => out.push({ key: `w:${wt}:${t}`, cat: 'weapon', name: n, sub: `${wt} · Tier ${t + 1}`, lv: t * 25 + 1, gear: { slot: 'weapon', wtype: wt, tier: t }, it: { type: 'equip', slot: 'weapon', wtype: wt } }));
-    for (const sl of ['offhand', 'head', 'armor', 'cloak', 'boots']) D.ARMOR_NAMES[sl].forEach((n, t) => out.push({ key: `a:${sl}:${t}`, cat: 'armor', name: n, sub: `${D.SLOT_TH[sl]} · Tier ${t + 1}`, lv: t * 25 + 1, gear: { slot: sl, tier: t }, it: { type: 'equip', slot: sl } }));
+    for (const sl of ['offhand', 'head', 'armor', 'cloak', 'gloves', 'belt', 'boots']) D.ARMOR_NAMES[sl].forEach((n, t) => out.push({ key: `a:${sl}:${t}`, cat: 'armor', name: n, sub: `${D.SLOT_TH[sl]} · Tier ${t + 1}`, lv: t * 25 + 1, gear: { slot: sl, tier: t }, it: { type: 'equip', slot: sl } }));
     for (const sl of ['necklace', 'earring', 'ring']) D.ARMOR_NAMES[sl].forEach((n, t) => out.push({ key: `c:${sl}:${t}`, cat: 'acc', name: n, sub: `${sl} · Tier ${t + 1}`, lv: t * 25 + 1, gear: { slot: sl, tier: t }, it: { type: 'equip', slot: sl } }));
     return (itemCatalog.cache = out);
   }

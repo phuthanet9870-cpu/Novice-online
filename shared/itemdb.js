@@ -131,7 +131,7 @@
 
   // ---------------------------------------------------------------- named gear bases
   D.GEAR = {};
-  const SLOT_LIST = ['offhand', 'head', 'armor', 'cloak', 'boots', 'necklace', 'earring', 'ring'];
+  const SLOT_LIST = ['offhand', 'head', 'armor', 'cloak', 'gloves', 'belt', 'boots', 'necklace', 'earring', 'ring'];
   const BIOME_IMP = {
     meadow: [['hpPct', 0.05], ['regenPct', 0.3]], forest: [['aspdPct', 0.035], ['dex', 0.07]], swamp: [['ccRes', 0.05], ['lifesteal', 0.012]],
     beach: [['movePct', 0.03], ['flee', 0.12]], ruins: [['defPct', 0.05], ['mdefPct', 0.05]], desert: [['critDmg', 0.12], ['crit', 0.05]],

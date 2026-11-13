@@ -203,6 +203,7 @@ function spawnFieldBoss(inst) {
   S.announce(`👹 Field Boss [${name}] ปรากฏตัวที่ ${def.name} (Lv ${m.lv})!`, 'boss');
 }
 S.bossAbilities = function (m, t) {
+  if (m.wbm && require('./wbmech').tick(m, t)) return;
   const inst = m.inst;
   const pct = m.hp / m.maxHp;
   for (const th of [0.7, 0.4, 0.15]) if (pct < th && m.phase < [0.7, 0.4, 0.15].indexOf(th) + 1) {
@@ -342,6 +343,7 @@ S.spawnWorldBoss = function (which) {
   const m = W.spawnMonster(inst, { fam: [def.name, def.shape, 'caster', 1, def.element], lv: 220, rank: 4, x: inst.map.spawn.x, y: inst.map.spawn.y - 12, name: def.name, color: def.color, extra: { noRespawn: true, range: 7, spr: D.BOSS_SPRITES.world[def.id] } });
   m.maxHp = m.hp = Math.round(m.maxHp * Math.max(0.05, Math.min(3, online / 10)));
   wb.alive = m; wb.dmg = new Map(); wb.startAt = now();
+  require('./wbmech').start(m, def);
   S.announce(`🌋 WORLD BOSS [${def.name}] ปรากฏแล้วที่ ${inst.def.name}! (PvP เปิดในพื้นที่)`, 'boss');
   return true;
 };

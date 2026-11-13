@@ -122,7 +122,17 @@
     N.listeners.push(draw); draw();
   }
   const lg = $('#login'); if (lg) lg.style.background = "radial-gradient(ellipse at center, rgba(10,8,16,.35), rgba(10,8,16,.88)), url('client/assets/ui/login.webp') center / cover no-repeat";
-  UI.buildMenu = buildMenu2; buildMenu2(); layoutHud(); netPill(); firstRun();
+  // CinderUI pieces: gold glyphs on the menu, a ring around the minimap, HP/SP orbs beside the skill bar
+  const GLYPH = { inv: 'bag', char: 'person', skills: 'book', passive: 'star', map: 'map', dungeon: 'skull', more: 'menu', settings: 'gear', auto: 'refresh', pets: 'paw', quests: 'quest', book: 'scroll', achieve: 'trophy', rank: 'crown', party: 'group', friends: 'chat', guild: 'flag', mail: 'mail', market: 'coin', craft: 'anvil', help: 'question', guide: 'compass', gm: 'shield' };
+  function glyphs() { if (!ART.glyph) return; for (const b of document.querySelectorAll('#menu .mbtn[data-win]')) { const u = ART.glyph(GLYPH[b.dataset.win] || 'star', 48); const sp = b.querySelector('span'); if (u && sp && !sp.querySelector('img')) sp.innerHTML = `<img src="${u}" alt="">`; } }
+  function cinderHud() {
+    const mc = $('#minicv'); if (mc && !mc.parentNode.classList.contains('mapRing')) { const r = document.createElement('div'); r.className = 'mapRing'; mc.parentNode.insertBefore(r, mc); r.appendChild(mc); r.insertAdjacentHTML('beforeend', '<i class="ring"></i>'); }
+    const hb = $('#bottom .hotbars'); if (hb && !hb.querySelector('.orb')) { hb.style.position = 'relative'; hb.insertAdjacentHTML('beforeend', '<div class="orb hp"><i class="back"></i><i class="fill"></i><i class="oglass"></i><i class="frame"></i><b></b><small>HP</small></div><div class="orb sp"><i class="back"></i><i class="fill"></i><i class="oglass"></i><i class="frame"></i><b></b><small>SP</small></div>'); }
+    glyphs();
+  }
+  UI.refreshIcons = () => { glyphs(); for (const n in UI.wins) if (UI.wins[n] && !UI.wins[n].hidden) UI.renderWin(n); if (UI.renderHotbar) UI.renderHotbar(); };
+  const _hud2 = UI.hud; UI.hud = function () { _hud2.apply(this, arguments); const me = G.sme; if (!me) return; for (const [k, v, mx] of [['hp', me.hp, me.mhp], ['sp', me.sp, me.msp]]) { const o = $('.orb.' + k); if (!o) continue; o.style.setProperty('--empty', Math.max(0, 100 - v / Math.max(1, mx) * 100) + '%'); o.querySelector('b').textContent = UI.fmt(Math.round(v)); } };
+  UI.buildMenu = buildMenu2; buildMenu2(); layoutHud(); netPill(); setTimeout(cinderHud, 300); firstRun();
   // the AUTO button keeps its round label
   const _hud = UI.hud; UI.hud = function () { _hud.apply(this, arguments); const at = $('#autoToggle.autoRound'); if (at && G.sme) at.querySelector('b').textContent = G.sme.au ? 'ทำงาน' : 'ออโต้ [`]'; };
 })();

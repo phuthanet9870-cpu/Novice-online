@@ -176,6 +176,7 @@
     if (keys.includes('lv')) { renderPortrait(); }
     for (const w of UI.open) renderWin(w);
   };
+  UI.renderHotbar = () => renderHotbar();
   function renderHotbar() {
     if (!G.char) return;
     for (const el of document.querySelectorAll('.hotbar .slot[data-i]')) {
@@ -250,12 +251,12 @@
     if (!e || e.id === G.me || e.k === 'z') { tf.hidden = true; return; }
     tf.hidden = false;
     let badge = '', sub = '';
-    if (e.k === 'm') { badge = e.rk === 4 ? '<span class="badge red">WORLD BOSS</span>' : e.rk >= 2 ? '<span class="badge orange">BOSS</span>' : e.rk === 1 ? '<span class="badge gold">ELITE</span>' : ''; sub = `Lv ${e.lv} · ${(D.ELEMENTS[e.el] || {}).n || ''}`; }
+    if (e.k === 'm') { badge = e.rk === 4 ? '<span class="badge red">WORLD BOSS</span>' : e.rk >= 2 ? '<span class="badge orange">BOSS</span>' : e.rk === 1 ? '<span class="badge gold">ELITE</span>' : ''; sub = `Lv ${e.lv} · ${(D.ELEMENTS[e.el] || {}).n || ''}${e.ws ? ' · ' + e.ws : ''}`; }
     else if (e.k === 'p') { badge = `<span class="badge blue">${D.CLASSES[e.c].name}</span>`; sub = `Lv ${e.lv}${e.g ? ' · <' + esc(e.g) + '>' : ''}`; }
     else if (e.k === 'n') { sub = e.th || ''; }
     else if (e.k === 'c') { badge = '<span class="badge purple">CRYSTAL CORE</span>'; sub = e.g || ''; }
     else if (e.k === 's') { badge = '<span class="badge purple">SUMMON</span>'; }
-    const key = e.id + '|' + e.hp + '|' + e.tags + '|' + e.fl;
+    const key = e.id + '|' + e.hp + '|' + e.tags + '|' + e.fl + '|' + (e.ws || '');
     if (tf.dataset.key === key) return; tf.dataset.key = key;
     $('#tName').innerHTML = `${esc(e.n)} ${badge}`;
     $('#tSub').textContent = sub;
@@ -445,6 +446,8 @@
   function skillTip(id) {
     const sk = SKS()[id]; if (!sk) return '';
     const lv = G.char ? G.skillLv(id) : 0;
+    const parts = String(sk.desc).split(' · ◆ '), base = parts[0].split(' · ✦ ')[0];
+    if (sk.cat) return `<div class="tt sk"><b>${esc(sk.name)}</b> <small>${{ atk: 'โจมตี', buff: 'บัฟ', ult: 'อัลติเมต', set: 'อัลติเมตคลาส' }[sk.cat]} · Lv ${lv}/${sk.maxLv} · ต้อง Lv${sk.reqLv}</small>${skillNumbers(sk, Math.max(1, lv))}<p>${esc(base)}</p>${sk.ability ? `<div class="abil"><b>✦</b> ${esc(sk.ability)}</div>` : ''}${parts[1] ? `<div class="mrole"><b>◆</b> ${esc(parts[1])}</div>` : ''}${skillChips(sk)}</div>`;
     return `<div class="tt sk"><b>${esc(sk.name)}</b> <small>Lv ${lv}/${sk.maxLv} · ต้อง Lv${sk.reqLv}</small>${skillNumbers(sk, Math.max(1, lv))}<p>${esc(sk.desc)}</p>${sk.trait ? `<div class="trait">✦ ${esc(sk.trait.th)}</div>` : ''}${skillChips(sk)}${window.VFX && VFX.ok && VFX.recipes[sk.id] ? `<small>VFX: ${esc(VFX.describe(sk.id))}</small>` : sk.fx ? `<small>เอฟเฟกต์: ${esc(sk.fx.pn)} · ${esc(sk.fx.mn)}</small>` : ''}</div>`;
   }
   function skillNumbers(sk, lv) {
@@ -556,7 +559,7 @@
       const gearN = Object.values(ch.equip).filter(Boolean).length;
       return `<div class="charWin">
         <div class="paper"><div class="pdoll"><img src="${ART.portrait(ch.cls, ch.name, 140)}"><div class="pinfo"><b>${esc(ch.name)}</b><span style="color:${c.color}">${c.name} · Lv ${ch.lv}</span><small>${ch.guild ? '&lt;' + esc(ch.guild.name) + '&gt;' : 'ไม่มีกิลด์'}</small><small>Best Combo ${ch.bestCombo || 0}</small></div></div>
-        <div class="eqgrid">${['head', 'necklace', 'weapon', 'armor', 'offhand', 'earring', 'cloak', 'ring1', 'boots', 'ring2'].map(slot).join('')}</div><small class="hint">คลิกช่องเพื่อถอด · สวม ${gearN}/10 ${p_runesets()}</small></div>
+        <div class="eqgrid">${['head', 'necklace', 'weapon', 'armor', 'offhand', 'earring', 'cloak', 'ring1', 'gloves', 'ring2', 'boots', 'belt'].map(slot).join('')}</div><small class="hint">คลิกช่องเพื่อถอด · สวม ${gearN}/12 ${p_runesets()}</small></div>
         <div class="statCol"><div class="pts">ค่าสเตตัสเพิ่มขึ้นอัตโนมัติทุกเลเวล · Passive คงเหลือ <b>${ch.passivePts || 0}</b> <button class="btn tiny gold" data-act="tree">🌌 Passive Tree</button></div>
         ${(() => { const au = F.autoStats(ch.cls, ch.lv), gr = F.statGrowth(ch.cls), sb = ch.statBonus || {}, pm = (window.NO_PASSIVE ? NO_PASSIVE.modsOf(ch.passives) : {}); return D.STATS.map((s) => { const extra = (G.char.gear && G.char.gear[s] || 0) + (pm[s] || 0) + (sb[s] || 0); return `<div class="statRow auto" data-tip="${D.STAT_INFO[s]}"><b>${s.toUpperCase()}</b><span>${au[s] + extra}${extra ? `<em>(${au[s]} +${Math.round(extra)})</em>` : ''}</span><small>+${gr[s]}/เลเวล</small><i class="gbar" style="--w:${gr[s] / 0.8 * 100}%"></i></div>`; }).join(''); })()}
         <div class="derived">${derived.map(([k, v]) => `<div><small>${k}</small><b>${typeof v === 'number' ? fmt(v) : v}</b></div>`).join('')}</div>
@@ -614,30 +617,43 @@
 
   // ---------------------------------------------------------------- skills
   WIN.skills = {
-    title: '📖 ตำราสกิล — Active 40 · Ultimate 5 · Buff 5', w: 800,
+    title: '📖 ตำราสกิล — โจมตี 15 · บัฟ 5 · อัลติเมต 5 · พาสซีฟ 5', w: 820,
     render(o) {
-      const ch = G.char;
-      const cat = o.cat || 'attack';
+      const ch = G.char, C0 = D.CLASSES[ch.cls];
+      const cat = o.cat || 'atk';
       const every = CSK()[ch.cls].map((id) => SKS()[id]);
-      const all = every.filter((s) => s.kind === cat).sort((a, b) => a.reqLv - b.reqLv || a.id.localeCompare(b.id));
-      const catTabs = `<div class="tabs">${[['attack', '⚔ Active'], ['ult', '★ Ultimate'], ['buff', '✚ Buff']].map(([k, n]) => `<button class="${cat === k ? 'on' : ''}" data-act="cat" data-k="${k}">${n} <small>${every.filter((s) => s.kind === k).length}</small></button>`).join('')}</div>`;
-      const q = (o.q || '').toLowerCase();
-      const list = all.filter((s) => !q || s.name.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q) || (s.trait && s.trait.th.toLowerCase().includes(q)) || (s.fx && s.fx.pn.includes(q)));
+      const inCat = (s, k) => (k === 'ult' ? s.cat === 'ult' || s.cat === 'set' : s.cat === k);
+      const tabs = [['atk', '⚔ โจมตี'], ['buff', '✚ บัฟ'], ['ult', '★ อัลติเมต'], ['passive', '◈ พาสซีฟ']];
+      const catTabs = `<div class="tabs">${tabs.map(([k, n]) => `<button class="${cat === k ? 'on' : ''}" data-act="cat" data-k="${k}">${n} <small>${k === 'passive' ? (C0.passives || []).length : every.filter((s) => inCat(s, k)).length}</small></button>`).join('')}</div>`;
       const learned = Object.keys(ch.skills).length;
-      return `<div class="skHead"><span>แต้มสกิล: <b class="big">${ch.skillPts}</b></span><span>เรียนแล้ว ${learned}/50</span><span>Lv ${ch.lv}</span><input id="skQ" placeholder="ค้นหาชื่อ / ความสามารถ / เอฟเฟกต์" value="${esc(o.q || '')}"><button class="btn tiny" data-act="reset">รีเซ็ตสกิล</button></div>
-      <p class="hint">ทุกสกิลมีคุณสมบัติเฉพาะ ✦ เอฟเฟกต์ และเสียงของตัวเองที่ไม่ซ้ำกับสกิลใดในเกม · ลากไอคอนไปวางที่ Hotbar · คลิกขวาที่ Hotbar เพื่อลบ</p>
-      ${catTabs}<div class="skList scrollKeep">${list.map((s) => {
+      const m = C0.mech || {};
+      const head = `<div class="skHead"><span>แต้มสกิล: <b class="big">${ch.skillPts}</b></span><span>เรียนแล้ว ${learned}/${every.length}</span><span>Lv ${ch.lv}</span><input id="skQ" placeholder="ค้นหาชื่อ / ความสามารถ" value="${esc(o.q || '')}"><button class="btn tiny" data-act="reset">รีเซ็ตสกิล</button></div>
+      <div class="cmbox" style="--c:${m.c || C0.color}"><b>◆ กลไกประจำคลาส: ${esc(m.n || '')}</b> <small>(สูงสุด ${m.max || 0})</small><span>${esc(m.d || '')}</span></div>`;
+      if (cat === 'passive') {
+        const ps = C0.passives || [];
+        return head + catTabs + `<div class="skList scrollKeep">${ps.map((q, i) => { const on = ch.lv >= q.lv; return `<div class="skCard pas ${on ? '' : 'lock'}"><div class="pasIc" style="--c:${C0.color}"><b>${['I', 'II', 'III', 'IV', 'V'][i] || i + 1}</b></div><div class="skMain"><div class="skTitle"><b>${esc(q.name)}</b><span class="tagk pas">พาสซีฟ</span><span class="req ${on ? 'ok' : 'bad'}">${on ? '✔ ทำงานแล้ว' : 'ปลดล็อก Lv' + q.lv}</span></div><div class="abil"><b>◈</b> ${esc(q.th)}</div></div></div>`; }).join('')}
+          <div class="skCard pas"><div class="pasIc" style="--c:#9a7aff"><b>🌌</b></div><div class="skMain"><div class="skTitle"><b>Passive Tree</b><span class="tagk pas">ต้นไม้พาสซีฟ</span></div><div class="abil">แต้มพาสซีฟได้ทุกเลเวล · เลือกเส้นทางบนต้นไม้ร่วมของ 30 คลาส เพื่อเพิ่มค่าพลังและเอฟเฟกต์พิเศษ</div></div><div class="skBtns"><button class="btn gold" data-act="opentree">เปิดต้นไม้ ([)</button></div></div></div>`;
+      }
+      const q = (o.q || '').toLowerCase();
+      const list = every.filter((s) => inCat(s, cat)).filter((s) => !q || s.name.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q));
+      const KTAG = { atk: ['โจมตี', 'atk'], buff: ['บัฟ', 'buff'], ult: ['อัลติเมต', 'ult'], set: ['อัลติเมตคลาส', 'set'] };
+      return head + catTabs + `<div class="skList scrollKeep">${list.map((s) => {
         const lv = ch.skills[s.id] || 0; const cost = s.kind === 'ult' ? 2 : 1; const can = ch.lv >= s.reqLv && lv < s.maxLv && ch.skillPts >= cost;
-        const fx = s.fx || { c: ['#fff', '#fff', '#fff'], pn: '', mn: '' };
-        return `<div class="skCard ${lv ? '' : 'unl'} ${ch.lv < s.reqLv ? 'lock' : ''}" style="--f1:${fx.c[0]};--f2:${fx.c[1]};--f3:${fx.c[2]}"><img src="${ART.skillIcon(s)}" draggable="true" data-skill="${s.id}" ondragstart="event.dataTransfer.setData('text/plain','${s.id}');event.dataTransfer.setData('from','')">
-          <div class="skMain"><div class="skTitle"><b>${esc(s.name)}</b><span class="lv">Lv ${lv}/${s.maxLv}</span>${s.role && 'SLF'.includes(s.role) ? `<span class="role r${s.role}">${{ S: 'STARTER', L: 'LINKER', F: 'FINISHER' }[s.role]}</span>` : ''}<span class="req ${ch.lv < s.reqLv ? 'bad' : ''}">ต้อง Lv${s.reqLv}</span></div>
-          ${skillNumbers(s, Math.max(1, lv))}${UI.mechInfo && UI.mechInfo(s) ? ((m) => `<div class="mechChip"><b>${m[0]} ${m[1]}</b><span>${esc(m[2])}</span></div>`)(UI.mechInfo(s)) : ''}<p>${esc(s.desc)}</p>${s.trait ? `<div class="trait">✦ ${esc(s.trait.th)}</div>` : ''}${skillChips(s)}
-          ${window.VFX && VFX.ok && VFX.recipes[s.id] ? `<div class="fxSig px">${VFX.swatch(s.id).map((c) => `<b style="background:${c}"></b>`).join('')}<span>VFX: ${esc(VFX.describe(s.id))}</span><button class="btn tiny" data-act="vfx" data-id="${s.id}" title="ดูเอฟเฟกต์สกิลนี้รอบตัวละคร">▶ ดู</button></div>` : `<div class="fxSig"><i></i><i></i><i></i><span>เอฟเฟกต์: ${esc(fx.pn)} · ${esc(fx.mn)}</span></div>`}</div>
+        const parts = s.desc.split(' · ◆ '), mechTxt = parts[1] || '', base = parts[0].split(' · ✦ ')[0];
+        const ab = s.ability || '', abW = ab.includes(' → ') ? ab.split(' → ') : ['', ab];
+        const kt = KTAG[s.cat] || KTAG.atk;
+        return `<div class="skCard ${lv ? '' : 'unl'} ${ch.lv < s.reqLv ? 'lock' : ''}"><img src="${ART.skillIcon(s)}" draggable="true" data-skill="${s.id}" ondragstart="event.dataTransfer.setData('text/plain','${s.id}');event.dataTransfer.setData('from','')">
+          <div class="skMain"><div class="skTitle"><b>${esc(s.name)}</b><span class="tagk ${kt[1]}">${kt[0]}</span><span class="lv">Lv ${lv}/${s.maxLv}</span><span class="req ${ch.lv < s.reqLv ? 'bad' : ''}">ต้อง Lv${s.reqLv}</span></div>
+          ${skillNumbers(s, Math.max(1, lv))}<p class="base">${esc(base)}</p>
+          ${ab ? `<div class="abil"><b>✦ ความสามารถเฉพาะ</b>${abW[0] ? `<span class="when">${esc(abW[0])}</span>→ ` : ''}${esc(abW[1])}</div>` : ''}
+          ${mechTxt ? `<div class="mrole" style="--c:${m.c || C0.color}"><b>◆</b> ${esc(mechTxt)}</div>` : ''}${skillChips(s)}
+          ${window.VFX && VFX.ok && VFX.recipes[s.id] ? `<div class="fxSig px">${VFX.swatch(s.id).map((c) => `<b style="background:${c}"></b>`).join('')}<span>VFX: ${esc(VFX.describe(s.id))}</span><button class="btn tiny" data-act="vfx" data-id="${s.id}" title="ดูเอฟเฟกต์สกิลนี้รอบตัวละคร">▶ ดู</button></div>` : ''}</div>
           <div class="skBtns"><button class="btn gold" data-act="learn" data-id="${s.id}" ${can ? '' : 'disabled'}>+${cost > 1 ? ' (2 แต้ม)' : ''}</button><button class="btn tiny" data-act="slot" data-id="${s.id}" ${lv ? '' : 'disabled'}>ใส่ปุ่ม</button></div></div>`;
       }).join('') || '<p class="hint">ไม่พบสกิลที่ตรงกับคำค้นหา</p>'}</div>`;
     },
     act(a, d) {
       if (a === 'cat') { UI.wins.skills.opts.cat = d.k; renderWin('skills'); }
+      if (a === 'opentree') { UI.show('passive'); }
       if (a === 'learn') G.send({ t: 'learn', id: d.id });
       if (a === 'vfx' && window.VFX && VFX.ok) { const sk = SKS()[d.id], me = G.self, dir = Math.cos(G.ents.get(G.me) && G.ents.get(G.me).dir || 0) >= 0 ? 1 : -1; const reach = sk.shape === 'circle' && sk.self ? 0 : Math.min(6, sk.range || 4); VFX.cast({ s: G.me, sk: d.id, x: me.x, y: me.y, tx: me.x + dir * Math.max(1.5, reach), ty: me.y, sh: sk.shape, r: sk.radius || 0, self: sk.self ? 1 : 0, u: sk.kind === 'ult' ? 1 : 0 }); }
       if (a === 'reset') UI.ask('รีเซ็ตสกิลทั้งหมด? (ฟรีถึง Lv100)').then((y) => y && G.send({ t: 'resetSkills' }));

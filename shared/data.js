@@ -169,8 +169,8 @@
     { id: 'legendary', n: 'Legendary', th: 'ตำนาน', color: '#ff9a2a', opts: 4, mult: 1.7 },
     { id: 'mythic', n: 'Mythic', th: 'เทพนิยาย', color: '#ff3a4a', opts: 5, mult: 2.0 }
   ];
-  const SLOTS = ['weapon', 'offhand', 'head', 'armor', 'cloak', 'boots', 'necklace', 'earring', 'ring1', 'ring2'];
-  const SLOT_TH = { weapon: 'อาวุธ', offhand: 'มือรอง', head: 'หมวก', armor: 'เกราะ', cloak: 'ผ้าคลุม', boots: 'รองเท้า', necklace: 'สร้อยคอ', earring: 'ต่างหู', ring1: 'แหวน', ring2: 'แหวน' };
+  const SLOTS = ['weapon', 'offhand', 'head', 'armor', 'cloak', 'gloves', 'belt', 'boots', 'necklace', 'earring', 'ring1', 'ring2'];
+  const SLOT_TH = { weapon: 'อาวุธ', offhand: 'มือรอง', head: 'หมวก', armor: 'เกราะ', cloak: 'ผ้าคลุม', gloves: 'ถุงมือ', belt: 'เข็มขัด', boots: 'รองเท้า', necklace: 'สร้อยคอ', earring: 'ต่างหู', ring1: 'แหวน', ring2: 'แหวน' };
   const ACCESSORY_SLOTS = ['necklace', 'earring', 'ring1', 'ring2'];
   const WEAPON_NAMES = {
     sword: ['Short Sword', 'Knight Blade', 'Claymore', 'Runeblade', 'Dragonfang Sword', 'Starsteel Saber', 'Excelsior', 'Sunsplitter', 'Celestial Edge', 'Worldcleaver'],
@@ -194,6 +194,8 @@
     head: ['Cap', 'Helm', 'Great Helm', 'Rune Circlet', 'Dragon Helm', 'Crown of Valor', 'Seraph Halo', 'Storm Crown', 'Star Diadem', 'Godhead'],
     armor: ['Cloth Tunic', 'Leather Armor', 'Chain Mail', 'Rune Plate', 'Dragon Scale', 'Mithril Plate', 'Seraph Robe', 'Storm Armor', 'Astral Plate', 'Eternal Armor'],
     cloak: ['Cape', 'Traveler Cloak', 'Shadow Cape', 'Rune Mantle', 'Dragon Wings', 'Phoenix Cloak', 'Seraph Mantle', 'Storm Cape', 'Nebula Shroud', 'Void Mantle'],
+    gloves: ['Cloth Wraps', 'Leather Gloves', 'Iron Gauntlets', 'Rune Bracers', 'Dragon Claws', 'Mithril Gauntlets', 'Seraph Grips', 'Storm Bracers', 'Astral Gauntlets', 'Hands of Eternity'],
+    belt: ['Rope Belt', 'Leather Belt', 'Studded Girdle', 'Rune Sash', 'Dragon Girdle', 'Mithril Belt', 'Seraph Sash', 'Storm Girdle', 'Astral Belt', 'Girdle of Eternity'],
     boots: ['Sandals', 'Boots', 'Greaves', 'Rune Boots', 'Dragon Greaves', 'Windwalkers', 'Seraph Steps', 'Storm Treads', 'Starwalkers', 'Eternal Greaves'],
     necklace: ['Pendant', 'Silver Chain', 'Amulet', 'Rune Locket', 'Dragon Heart', 'Phoenix Tear', 'Seraph Charm', 'Storm Talisman', 'Star Pendant', 'Heart of Eternity'],
     earring: ['Stud', 'Hoop Earring', 'Gem Earring', 'Rune Earring', 'Dragon Earring', 'Moon Drop', 'Seraph Feather', 'Storm Earring', 'Starlight Drop', 'Echo of Gods'],

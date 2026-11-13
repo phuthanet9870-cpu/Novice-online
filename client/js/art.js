@@ -322,7 +322,18 @@
     g.restore();
     return true;
   }
+  // boss seal pillar: a rune crystal on a stone base that glows in the boss's colour
+  function drawPillar(g, e, x, y, t) {
+    const c = e.col || '#8af', pulse = 0.6 + Math.sin((t || 0) * 3 + e.id) * 0.25;
+    g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(x, y + 2, 14, 5, 0, 0, 7); g.fill();
+    g.fillStyle = '#4a4656'; g.fillRect(x - 12, y - 6, 24, 8); g.fillStyle = '#6a6678'; g.fillRect(x - 12, y - 8, 24, 3);
+    g.fillStyle = c; g.globalAlpha = 0.9; g.beginPath(); g.moveTo(x, y - 52); g.lineTo(x + 9, y - 30); g.lineTo(x + 6, y - 8); g.lineTo(x - 6, y - 8); g.lineTo(x - 9, y - 30); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.55)'; g.beginPath(); g.moveTo(x, y - 50); g.lineTo(x + 3, y - 30); g.lineTo(x, y - 12); g.lineTo(x - 2, y - 30); g.closePath(); g.fill();
+    g.globalAlpha = pulse * 0.5; const gr = g.createRadialGradient(x, y - 30, 2, x, y - 30, 28); gr.addColorStop(0, c); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x - 28, y - 58, 56, 56); g.globalAlpha = 1;
+    const ord = /#(\d+)/.exec(e.n || ''); if (ord) { g.fillStyle = '#1a1220'; g.beginPath(); g.arc(x, y - 30, 7, 0, 7); g.fill(); g.fillStyle = '#ffe08a'; g.font = 'bold 10px sans-serif'; g.textAlign = 'center'; g.fillText(ord[1], x, y - 26.5); }
+  }
   ART.drawMonster = function (g, e, x, y, t) {
+    if (e.sh === 'pillar') return drawPillar(g, e, x, y, t);
     if (e.spr && window.BOSS_ART && BOSS_ART[e.spr] && drawBossSprite(g, e, x, y)) return;
     const s = (e.sz || 1) * (e.rk === 5 ? 0.85 : 1);
     const col = e.col || '#8a8';

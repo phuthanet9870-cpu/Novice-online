@@ -79,7 +79,7 @@
       if (Math.abs(nx - e.tx) > 0.01 || Math.abs(ny - e.ty) > 0.01) { e.dir = Math.atan2(ny - e.ty, nx - e.tx); e.movedAt = G.t; }
       e.tx = nx; e.ty = ny;
       if (e.hp !== u[3] && u[3] < e.hp) e.hitAt = G.t;
-      e.hp = u[3]; e.tags = u[4]; e.fl = u[5];
+      e.hp = u[3]; e.tags = u[4]; e.fl = u[5]; if (u[6] !== undefined) e.ws = u[6];
     }
     const me = m.me;
     if (me) {
@@ -378,7 +378,7 @@
       case 'tag': { if (!ent) break; const d = D.TAGS[f.tag]; G.texts.push({ x: f.x, y: f.y - 1.6, txt: d.n.toUpperCase(), col: d.color, size: 12, t0: t, d: 0.9, vy: -0.6 }); break; }
       case 'react': if (window.SFX) SFX.react(); if (window.VFX && VFX.ok) { const rc = D.REACTIONS[f.r] ? D.REACTIONS[f.r].color : '#ffffff'; VFX.one('react', f.x, f.y, { pal: VFX.ramp(VFX.hue(rc)) }); G.shake = Math.max(G.shake, 5); break; } burst(f.x, f.y - 0.6, D.REACTIONS[f.r] ? D.REACTIONS[f.r].color : '#fff', 30, 7, 0.7, 4); G.shake = Math.max(G.shake, 5); G.anims.push({ k: 'ring', x: f.x, y: f.y, r: 2.2, col: D.REACTIONS[f.r] ? D.REACTIONS[f.r].color : '#fff', t0: t, d: 0.5 }); break;
       case 'txt': G.texts.push({ x: f.x, y: f.y - 2, txt: f.m, col: f.c || '#fff', size: f.big ? 20 : 13, t0: t, d: 1.3, vy: -0.7, stroke: 1 }); break;
-      case 'tele': G.tele.push({ x: f.x, y: f.y, r: f.r, t0: t, d: f.d }); break;
+      case 'tele': G.tele.push({ x: f.x, y: f.y, r: f.r, ri: f.ri, tx: f.tx, ty: f.ty, w: f.w, fo: f.f, t0: t, d: f.d }); break;
       case 'boom': if (window.VFX && VFX.ok) { VFX.one('boom', f.x, f.y, { el: f.el, r: f.r || 2 }); G.shake = Math.max(G.shake, 3); break; } G.anims.push({ k: 'ring', x: f.x, y: f.y, r: f.r || 2, col: ELC(f.el), t0: t, d: 0.45 }); burst(f.x, f.y, ELC(f.el), 20, (f.r || 2) * 3, 0.5, 4); G.shake = Math.max(G.shake, 3); break;
       case 'bolt': if (window.VFX && VFX.ok) { VFX.one('zap', f.x, f.y, { tx: f.tx, ty: f.ty }); break; } G.anims.push({ k: 'bolt', x: f.x, y: f.y - 0.6, tx: f.tx, ty: f.ty - 0.6, col: '#fff35a', t0: t, d: 0.3 }); break;
       case 'lvup': if (window.SFX && f.t === G.me) SFX.level(); if (window.VFX && VFX.ok) { VFX.one('levelup', f.x, f.y, { follow: f.t }); G.texts.push({ x: f.x, y: f.y - 2.5, txt: 'LEVEL UP!', col: '#ffd34a', size: 22, t0: t, d: 2, vy: -0.4, stroke: 1 }); break; } G.anims.push({ k: 'pillar', x: f.x, y: f.y, col: '#ffd34a', t0: t, d: 1.6, big: 1 }); burst(f.x, f.y - 1, '#ffd34a', 40, 3, 1.4, 3, -1); G.texts.push({ x: f.x, y: f.y - 2.5, txt: 'LEVEL UP!', col: '#ffd34a', size: 22, t0: t, d: 2, vy: -0.4, stroke: 1 }); break;
@@ -429,9 +429,18 @@
     G.tele = G.tele.filter((tl) => G.t - tl.t0 < tl.d);
     for (const tl of G.tele) {
       const p = (G.t - tl.t0) / tl.d;
-      g.fillStyle = 'rgba(255,40,40,0.18)'; g.beginPath(); g.arc(tl.x, tl.y, tl.r, 0, 7); g.fill();
-      g.fillStyle = 'rgba(255,60,40,0.35)'; g.beginPath(); g.arc(tl.x, tl.y, tl.r * p, 0, 7); g.fill();
+      if (tl.fo) { const fe = G.ents.get(tl.fo); if (fe) { tl.x = fe.x; tl.y = fe.y; } }
+      if (tl.tx !== undefined) {
+        // line telegraph: a lane from (x,y) to (tx,ty), filling as it charges
+        const a = Math.atan2(tl.ty - tl.y, tl.tx - tl.x), L = Math.hypot(tl.tx - tl.x, tl.ty - tl.y), hw = (tl.w || 2) / 2;
+        g.save(); g.translate(tl.x, tl.y); g.rotate(a);
+        g.fillStyle = 'rgba(255,40,40,0.18)'; g.fillRect(0, -hw, L, hw * 2); g.fillStyle = 'rgba(255,60,40,0.35)'; g.fillRect(0, -hw, L * p, hw * 2);
+        g.strokeStyle = '#ff4030'; g.lineWidth = 0.08; g.strokeRect(0, -hw, L, hw * 2); g.restore(); continue;
+      }
+      g.fillStyle = 'rgba(255,40,40,0.18)'; g.beginPath(); g.arc(tl.x, tl.y, tl.r, 0, 7); if (tl.ri) g.arc(tl.x, tl.y, tl.ri, 0, 7, true); g.fill();
+      g.fillStyle = 'rgba(255,60,40,0.35)'; g.beginPath(); if (tl.ri) { g.arc(tl.x, tl.y, tl.ri + (tl.r - tl.ri) * p, 0, 7); g.arc(tl.x, tl.y, tl.ri, 0, 7, true); } else g.arc(tl.x, tl.y, tl.r * p, 0, 7); g.fill();
       g.strokeStyle = '#ff4030'; g.lineWidth = 0.08; g.beginPath(); g.arc(tl.x, tl.y, tl.r, 0, 7); g.stroke();
+      if (tl.ri) { g.strokeStyle = '#6aff8a'; g.setLineDash([0.3, 0.2]); g.beginPath(); g.arc(tl.x, tl.y, tl.ri, 0, 7); g.stroke(); g.setLineDash([]); }
     }
     const tg = G.ents.get(G.target);
     if (tg) { g.strokeStyle = G.isEnemy(tg) ? '#ff5050' : '#5ad0ff'; g.lineWidth = 0.07; g.setLineDash([0.25, 0.15]); g.lineDashOffset = -G.t; g.beginPath(); g.ellipse(tg.x, tg.y, 0.8 * (tg.sz || 1), 0.4 * (tg.sz || 1), 0, 0, 7); g.stroke(); g.setLineDash([]); }

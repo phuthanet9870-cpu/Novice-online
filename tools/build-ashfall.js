@@ -36,6 +36,59 @@ const ROLE_TH = { b1: 'สะสม +1', b2: 'สะสม +2', s2: 'ใช้ 2
 // rewrite "N% ATK" amounts in a description to the damage the game really deals
 const scaleDesc = (s) => s.replace(/(\d+(?:\.\d+)?)% ATK/g, (m, n) => `${Math.round(+n * K)}% ATK`).replace(/(\d+(?:\.\d+)?) ช่อง/g, (m, n) => `${r1(+n * DS)} ช่อง`).replace(/\(ระยะ (\d+(?:\.\d+)?)\)/g, (m, n) => `(ระยะ ${r1(+n * DS)})`).replace(/\(ระยะ (\d+(?:\.\d+)?) ช่อง\)/g, (m, n) => `(ระยะ ${r1(+n * DS)} ช่อง)`);
 
+// ---------------------------------------------------------------- unique abilities (✦)
+// Every skill gets one signature ability = an effect (rider) + the condition that fires it. The pair is unique across
+// all 750 skills, and no class uses the same effect twice. Ashfall's own pick is kept when it still fits.
+const OFF = ['stack', 'echo', 'knockup', 'swift', 'backstab', 'splash', 'pierceUp', 'critUp', 'critDmg', 'sunder', 'bleed', 'execute', 'purge', 'crush', 'refund', 'slowField', 'guard', 'shatter', 'mend', 'weaken', 'taunt', 'vortex', 'burn', 'fear', 'leech', 'trueDmg', 'steal', 'mark', 'amp', 'burnField', 'chill', 'toxin', 'blind', 'far', 'near', 'cdr', 'timeLock', 'starMark', 'detonate', 'reset', 'fury', 'trail', 'spirit'];
+const SUP = ['rally', 'reflect', 'resetMove', 'thorns', 'regen', 'immune', 'cleanse', 'lastStand', 'overheal', 'haste', 'empower', 'invuln', 'decoy', 'explodeOnEnd', 'amp', 'swift', 'stack'];
+const SUPPORT_ARCH = { buff: 1, shield: 1, heal: 1, stealth: 1, summon: 1, turret: 1, blink: 1 };
+const THEME = {
+  fire: ['burn', 'burnField', 'detonate', 'splash'], infernal: ['burn', 'fury', 'detonate', 'burnField'], ice: ['chill', 'shatter', 'slowField', 'timeLock'], lightning: ['echo', 'cdr', 'knockup', 'splash'], tech: ['splash', 'burnField', 'explodeOnEnd', 'mark'],
+  poison: ['toxin', 'weaken', 'execute', 'blind'], fel: ['toxin', 'weaken', 'steal', 'fear'], blood: ['bleed', 'leech', 'fury', 'execute'], holy: ['mend', 'cleanse', 'blind', 'mark'], light: ['blind', 'mark', 'pierceUp', 'invuln'], divine: ['mark', 'shatter', 'regen', 'invuln'], celestial: ['mend', 'guard', 'knockup', 'regen'],
+  dark: ['fear', 'leech', 'execute', 'vortex'], shadow: ['fear', 'backstab', 'blind', 'steal'], umbra: ['steal', 'fear', 'detonate', 'vortex'], death: ['execute', 'reset', 'leech', 'fear'], nature: ['toxin', 'regen', 'thorns', 'vortex'], wind: ['swift', 'knockup', 'vortex', 'far'],
+  time: ['timeLock', 'cdr', 'echo', 'reset'], star: ['starMark', 'far', 'mark', 'pierceUp'], phys: ['sunder', 'crush', 'stack', 'critDmg'], chi: ['stack', 'echo', 'refund', 'knockup'], arcane: ['amp', 'empower', 'steal', 'mark'], jester: ['decoy', 'blind', 'fear', 'reset'], chaos: ['decoy', 'steal', 'fear', 'echo']
+};
+const T_OFF = ['always', 'crit', 'tgtLow', 'tgtHigh', 'selfLow', 'selfHigh', 'mechHalf', 'mechEmpty', 'cc', 'dot', 'boss', 'crowd', 'single', 'third', 'combo', 'close', 'far', 'moving', 'lowSp', 'shielded'];
+const T_SUP = ['always', 'selfLow', 'selfHigh', 'mechHalf', 'mechEmpty', 'third', 'combo', 'party', 'crowdNear', 'moving', 'bossNear', 'afterUlt', 'lowSp', 'highSp', 'shielded'];
+const T_MULT = { always: 1, crit: 1.25, tgtHigh: 1.25, selfHigh: 1.25, single: 1.2, close: 1.2, crowd: 1.3, party: 1.25, highSp: 1.25 };
+const DEFV = {}; for (const c of A.classes) for (const s of [...c.skills, c.setUlt]) for (const r of [s.rider, s.rider2]) if (r && r.k && DEFV[r.k] === undefined) DEFV[r.k] = r.v;
+Object.assign(DEFV, { explodeOnEnd: DEFV.explodeOnEnd || 120, spirit: 1, decoy: 1, trail: DEFV.trail || 60, reset: 1, resetMove: 1, cleanse: 1, purge: 1, overheal: 1 });
+const hsh = (str) => { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+const usedPair = new Set();
+function fits(k, s) {
+  const sup = !!SUPPORT_ARCH[s.arch];
+  if (k === 'rally') return s.arch === 'buff';
+  if (k === 'explodeOnEnd') return s.arch === 'summon' || s.arch === 'turret';
+  if (k === 'trail') return s.arch === 'dash' || s.arch === 'blink' || s.arch === 'leap';
+  if (k === 'pierceUp') return !sup && (s.arch === 'thrust' || s.arch === 'beam' || s.arch === 'chain' || (s.arch === 'proj' && s.pi));
+  if (k === 'spirit' || k === 'reset' || k === 'detonate') return !sup;
+  if (sup) return SUP.includes(k);
+  return OFF.includes(k) || ['reflect', 'thorns', 'regen', 'immune', 'cleanse', 'haste', 'empower', 'invuln', 'lastStand'].includes(k);
+}
+function pickAbility(c, s, usedK) {
+  const el = s.elem || c.elem;
+  const cand = [s.rider && s.rider.k, s.rider2 && s.rider2.k, ...(THEME[el] || []), ...(THEME[c.elem] || [])].filter(Boolean);
+  const all = [...OFF, ...SUP]; const off = hsh(c.id + s.idx) % all.length;
+  for (let i = 0; i < all.length; i++) cand.push(all[(off + i) % all.length]);
+  for (const k of cand) {
+    if (usedK.has(k) || !fits(k, s)) continue;
+    const trig = SUPPORT_ARCH[s.arch] ? T_SUP : T_OFF;
+    const start = k === (s.rider && s.rider.k) ? 0 : 1 + (hsh(s.cls + s.name) % (trig.length - 1));
+    for (let j = 0; j < trig.length; j++) {
+      const w = trig[(start + j) % trig.length];
+      if (usedPair.has(k + '@' + w)) continue;
+      usedPair.add(k + '@' + w); usedK.add(k);
+      const base = s.rider && s.rider.k === k ? s.rider.v : s.rider2 && s.rider2.k === k ? s.rider2.v : DEFV[k] !== undefined ? DEFV[k] : 1;
+      const m = T_MULT[w] || 1.5;
+      const v = base <= 1.01 && ['resetMove', 'cleanse', 'purge', 'overheal', 'reset', 'spirit', 'decoy'].includes(k) ? base : base * m >= 5 ? Math.round(base * m) : Math.round(base * m * 10) / 10;
+      return { k, v, w };
+    }
+  }
+  return null;
+}
+const WHEN_TH = { always: '', crit: 'เมื่อคริติคอล', tgtLow: 'ถ้าเป้า HP < 50%', tgtHigh: 'ถ้าเป้า HP > 70%', selfLow: 'ขณะ HP ตัวเอง < 50%', selfHigh: 'ขณะ HP ตัวเอง > 80%', mechHalf: 'ถ้าแต้มกลไก ≥ ครึ่ง', mechEmpty: 'ถ้าแต้มกลไก = 0', cc: 'ถ้าเป้าติดสตัน/ตรึง/ชะลอ/แช่แข็ง', dot: 'ถ้าเป้าติดเผา/พิษ/เลือดไหล', boss: 'ใส่บอส/Elite', crowd: 'ถ้าโดน 3 เป้าขึ้นไป', single: 'ถ้าโดนเป้าเดียว', third: 'ทุกการใช้ครั้งที่ 3', combo: 'ขณะคอมโบ ≥ 10', close: 'ถ้าเป้าอยู่ใกล้ ≤ 3 ช่อง', far: 'ถ้าเป้าอยู่ไกล ≥ 5 ช่อง', moving: 'ขณะ/หลังเคลื่อนที่', lowSp: 'ขณะ SP < 30%', highSp: 'ขณะ SP > 80%', shielded: 'ขณะมีโล่', party: 'ถ้ามีพันธมิตรใกล้', crowdNear: 'ถ้าศัตรูรอบตัว ≥ 3', bossNear: 'ถ้ามีบอสในระยะ 8 ช่อง', afterUlt: 'ภายใน 10 วิหลังใช้อัลติเมต' };
+const riderText = (r) => { let t = scaleDesc(String(RTH[r.k] || r.k).replace('{v}', r.v)); if (r.k === 'explodeOnEnd') t = 'เมื่อหมดเวลา ระเบิดรอบตัว 2 ช่อง ' + Math.round(r.v * K) + '% ATK'; if (r.k === 'spirit') t = 'ฆ่าเป้าได้ อัญเชิญวิญญาณช่วยสู้ 8 วิ'; if (r.k === 'decoy') t = 'ทิ้งร่างลวง ศัตรูรอบตัวเลิกเล็งผู้ใช้'; if (r.k === 'trail') t = 'ทิ้งรอยพลังตามทางที่เคลื่อนที่ ' + Math.round(r.v * K) + '% ATK'; return t; };
+const abilityText = (r) => (WHEN_TH[r.w] ? WHEN_TH[r.w] + ' → ' : '') + riderText(r);
 const CLASSES = {};
 const SKILLS = {};
 const CLASS_SKILLS = {};
@@ -58,6 +111,10 @@ for (const c of A.classes) {
   };
   const list = [...c.skills, c.setUlt];
   CLASS_SKILLS[c.id] = [];
+  const usedK = new Set();
+  // the ultimates and class ultimate pick first so they keep their headline effects
+  const ability = {};
+  for (const s of [...list].sort((a2, b2) => (b2.idx >= 20) - (a2.idx >= 20) || a2.idx - b2.idx)) ability[s.idx] = pickAbility(c, Object.assign({ cls: c.id }, s), usedK);
   for (const s of list) {
     const slot = SLOT(s.idx);
     const id = `${c.id}_${String(s.idx).padStart(2, '0')}`;
@@ -105,14 +162,13 @@ for (const c of A.classes) {
     }
     if (applies.length) sk.applies = applies;
     if (s.flags && s.flags.grav) sk.pull = sk.pull || 2;
-    const riders = [];
-    if (s.rider && s.rider.k) riders.push({ k: s.rider.k, v: s.rider.v });
-    if (s.rider2 && s.rider2.k) riders.push({ k: s.rider2.k, v: s.rider2.v });
+    const ab = ability[s.idx];
+    const riders = ab ? [ab] : [];
     if (riders.length) sk.riders = riders;
-    if (slot === 'set') {
-      sk.setUlt = { dur: 5, tick: 0.45, mult: r2(dmg * 0.25), end: r2(dmg * 1.25), r: Math.max(sk.radius || 3, 3.5) };
-      sk.desc = String(s.suTh || '').replace(/(\d+)%/g, (m, n) => `${Math.round(+n * K)}% ATK`) + riders.map((r) => ' · ✦ ' + scaleDesc(String(RTH[r.k] || r.k).replace('{v}', r.v))).join('') + ` · ◆ ${mech.n}: ${ROLE_TH.fin2}`;
-    } else sk.desc = scaleDesc(String(s.desc || ''));
+    const head = slot === 'set' ? String(s.suTh || '').replace(/(\d+)%/g, (m, n) => `${Math.round(+n * K)}% ATK`) : scaleDesc(String(s.desc || '').split(' · ✦')[0].split(' · ◆')[0]);
+    if (slot === 'set') sk.setUlt = { dur: 5, tick: 0.45, mult: r2(dmg * 0.25), end: r2(dmg * 1.25), r: Math.max(sk.radius || 3, 3.5) };
+    sk.ability = ab ? abilityText(ab) : '';
+    sk.desc = head + (ab ? ' · ✦ ' + sk.ability : '') + ` · ◆ ${mech.n}: ${ROLE_TH[s.cmRole] || ROLE_TH.fin2}`;
     if (kind === 'buff') { sk.cd = r2(Math.max(4, s.c)); }
     SKILLS[id] = sk;
     CLASS_SKILLS[c.id].push(id);
@@ -124,4 +180,5 @@ fs.writeFileSync(path.join(__dirname, '../shared/skills.js'), header + `(functio
 fs.writeFileSync(path.join(__dirname, '../shared/classes.js'), header + `(function (root, data) { if (typeof module === 'object' && module.exports) module.exports = data; else root.NO_CLASSES = data; })(typeof self !== 'undefined' ? self : this, ${JSON.stringify(CLASSES)});\n`);
 const n = Object.keys(SKILLS).length;
 const names = new Set(Object.values(SKILLS).map((s) => s.name));
-console.log(`classes ${Object.keys(CLASSES).length} · skills ${n} · unique names ${names.size}`);
+const pairs = new Set(Object.values(SKILLS).map((x) => (x.riders || []).map((r) => r.k + '@' + r.w).join(',')));
+console.log(`classes ${Object.keys(CLASSES).length} · skills ${n} · unique names ${names.size} · unique abilities ${pairs.size} · no-ability ${Object.values(SKILLS).filter((x) => !x.riders).length}`);

@@ -68,7 +68,7 @@
       it.sockets = 0; it.jewelSlots = rarity >= 4 ? 2 : 1;
     } else {
       it.name = D.ARMOR_NAMES[slot][tier];
-      const w = { offhand: [1.2, 0.5, 2], head: [0.7, 0.6, 3], armor: [1.3, 0.8, 6], cloak: [0.5, 1.0, 2], boots: [0.6, 0.4, 2] }[slot];
+      const w = { offhand: [1.2, 0.5, 2], head: [0.7, 0.6, 3], armor: [1.3, 0.8, 6], cloak: [0.5, 1.0, 2], boots: [0.6, 0.4, 2], gloves: [0.5, 0.4, 1.5], belt: [0.4, 0.5, 2.2] }[slot];
       it.def = Math.round((4 + ilv * 1.4) * R.mult * w[0]);
       it.mdef = Math.round((2 + ilv * 0.9) * R.mult * w[1]);
       it.hp = Math.round((15 + ilv * w[2] * 2.2) * R.mult);

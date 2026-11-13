@@ -145,10 +145,45 @@ AF.tick = function (p, dt, t, sec) {
 
 // ================================================================== riders (✦)
 const RK = (sk, k) => { for (const r of sk.riders || []) if (r.k === k) return r.v; return 0; };
+// the condition half of a skill's signature ability (r.w); o = the target being hit (null at cast time)
+const CCT = ['stun', 'root', 'slow', 'freeze', 'airborne', 'knockdown', 'fear', 'chill'], DOTT = ['burn', 'poison', 'bleed'];
+AF.when = function (p, r, o, ctx) {
+  const w = r.w; if (!w || w === 'always') return true;
+  const tg = o && o.kind ? o : null, m = mech(p) || { max: 1 };
+  switch (w) {
+    case 'crit': return r.k === 'critUp' || r.k === 'critDmg' ? true : !!p._lastCrit;
+    case 'tgtLow': return !tg || tg.hp / tg.maxHp < 0.5;
+    case 'tgtHigh': return !tg || tg.hp / tg.maxHp > 0.7;
+    case 'selfLow': return p.hp / p.maxHp < 0.5;
+    case 'selfHigh': return p.hp / p.maxHp > 0.8;
+    case 'mechHalf': return (ctx.mechN !== undefined ? ctx.mechN : (p.cm ? p.cm.n : 0)) >= m.max / 2;
+    case 'mechEmpty': return (ctx.mechN !== undefined ? ctx.mechN : (p.cm ? p.cm.n : 0)) < 1;
+    case 'cc': return !!tg && CCT.some((x) => tg.tags.has(x));
+    case 'dot': return !!tg && DOTT.some((x) => tg.tags.has(x));
+    case 'boss': return !!tg && ((tg.kind === 'm' && tg.rank >= 1) || tg.kind === 'p');
+    case 'crowd': return (ctx.nT || 0) >= 3;
+    case 'single': return (ctx.nT || 1) === 1;
+    case 'third': return !!ctx.third;
+    case 'combo': return (p.combo || 0) >= 10;
+    case 'close': return !tg || W.dist(p, tg) <= 3.2;
+    case 'far': return !!tg && W.dist(p, tg) >= 5;
+    case 'moving': return !!ctx.moving;
+    case 'lowSp': return p.sp < p.maxSp * 0.3;
+    case 'highSp': return p.sp > p.maxSp * 0.8;
+    case 'shielded': return (p.shield || 0) > 0;
+    case 'party': return C.partyNear(p, 8).length > 1;
+    case 'crowdNear': return foes(p, p.x, p.y, 4.5).length >= 3;
+    case 'bossNear': return foes(p, p.x, p.y, 8).some((e) => e.kind === 'm' && e.rank >= 2);
+    case 'afterUlt': return now() - (p._ultAt || 0) < 10;
+  }
+  return true;
+};
 // before the hits: once per cast
 AF.preCast = function (p, sk, lv, tgt, ax, ay) {
   const m = mech(p), c = st(p), t = now();
-  const ctx = { nb: 1, crit: 0, critDmg: 0, n: 0 };
+  const ctx = { nb: 1, crit: 0, critDmg: 0, n: 0, mechN: p.cm ? Math.floor(p.cm.n) : 0, moving: !!sk.move || t - (p.movedAt || 0) < 1 };
+  p._afUse = p._afUse || {}; p._afUse[sk.id] = (p._afUse[sk.id] || 0) + 1; ctx.third = p._afUse[sk.id] % 3 === 0;
+  if (sk.kind === 'ult') p._ultAt = t;
   if (m) {
     if (m.g.alt) { if (c.last === sk.id) { c.n = 0; sync(p); } else add(p, 1); }
     c.last = sk.id;
@@ -169,6 +204,7 @@ AF.preCast = function (p, sk, lv, tgt, ax, ay) {
   ctx.crit = RK(sk, 'critUp'); ctx.critDmg = RK(sk, 'critDmg');
   // support riders resolved at cast time
   for (const r of sk.riders || []) {
+    if (!AF.when(p, r, null, ctx)) continue;
     const v = r.v;
     switch (r.k) {
       case 'rally': if (sk.mods) for (const q of C.partyNear(p, 6.3)) if (q !== p) C.addBuff(q, 'rally:' + sk.id, Object.fromEntries(Object.entries(sk.mods).map(([k2, x]) => [k2, Math.round(x * v / 100)])), sk.dur || 8, sk.name, D.CLASSES[p.cls].color); break;
@@ -198,6 +234,7 @@ AF.preCast = function (p, sk, lv, tgt, ax, ay) {
 AF.tgtMult = function (p, sk, o, i, ctx) {
   let k = 1; const hp = o.hp / o.maxHp;
   for (const r of sk.riders || []) {
+    if (!AF.when(p, r, o, ctx)) continue;
     const v = r.v;
     switch (r.k) {
       case 'backstab': { const a = Math.atan2(p.y - o.y, p.x - o.x); let d = Math.abs(a - (o.dir || 0)); if (d > Math.PI) d = 2 * Math.PI - d; if ((o.target && o.target !== p) || d > Math.PI * 0.6) k *= 1 + v / 100; break; }
@@ -214,11 +251,12 @@ AF.tgtMult = function (p, sk, o, i, ctx) {
   if (p.cpx) { if (p.cpx.execute && hp < 0.3) k *= 1 + p.cpx.execute / 100; if (p.cpx.first && hp > 0.9) k *= 1 + p.cpx.first / 100; }
   return k;
 };
-AF.hitOpts = (sk, ctx) => ({ critBonus: ctx.crit || 0, critDmgBonus: ctx.critDmg || 0, pierce: RK(sk, 'trueDmg') / 100 || undefined });
+AF.hitOpts = (sk, ctx, p, o) => { const ok = (k) => { const r = (sk.riders || []).find((x) => x.k === k); return r && (!p || AF.when(p, r, o, ctx)) ? r.v : 0; }; return { critBonus: ok('critUp'), critDmgBonus: ok('critDmg'), pierce: ok('trueDmg') / 100 || undefined }; };
 // after one target was hit
 AF.afterHit = function (p, sk, o, dealt, ctx, el) {
   const t = ctx.t;
   for (const r of sk.riders || []) {
+    if (!AF.when(p, r, o, ctx)) continue;
     const v = r.v;
     switch (r.k) {
       case 'stack': { const b = p.buffs.get('stack:' + sk.id); const n = Math.min(5, ((b && b.n) || 0) + 1); C.addBuff(p, 'stack:' + sk.id, { atkPct: v * n, matkPct: v * n }, 6, sk.name + ' ×' + n, '#fc6'); p.buffs.get('stack:' + sk.id).n = n; break; }
@@ -260,6 +298,7 @@ AF.postCast = function (p, sk, lv, tgt, ax, ay, targets, el, ctx) {
   const cx = tgt ? tgt.x : ax, cy = tgt ? tgt.y : ay;
   const color = (D.ELEMENTS[el] || D.ELEMENTS.neutral).color;
   for (const r of sk.riders || []) {
+    if (!AF.when(p, r, tgt && !tgt.dead ? tgt : null, ctx)) continue;
     const v = r.v;
     switch (r.k) {
       case 'vortex': { const ox = sk.self ? p.x : cx, oy = sk.self ? p.y : cy; for (const e of foes(p, ox, oy, v * 1.25 + 1)) if (!isBoss(e)) { const a = Math.atan2(oy - e.y, ox - e.x), d = Math.max(0, Math.hypot(ox - e.x, oy - e.y) - 0.6); for (let i = 0; i < d * 4; i++) { const nx = e.x + Math.cos(a) * 0.25, ny = e.y + Math.sin(a) * 0.25; if (!M.walkable(inst.map, nx, ny)) break; inst.moveTo(e, nx, ny); } if (e.kind === 'p') e.forcePos = true; } fx(p, ox, oy, 'vortex', null, v * 1.25 + 1); break; }

@@ -11,10 +11,10 @@ const html = read('client/index.html');
 // build id: guests only join a host running the very same build
 const VER = require('crypto').createHash('sha1').update([...['shared/skills.js', 'shared/classes.js', 'server/combat.js', 'server/ashfall.js', 'server/index.js'].map(read)].join('')).digest('hex').slice(0, 10);
 const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('<script src='));
-const css = read('client/style.css');
+const css = read('client/style.css').replace(/url\(assets\//g, 'url(client/assets/');
 const shared = ['shared/rng.js', 'shared/classes.js', 'shared/data.js', 'shared/data2.js', 'shared/itemdb.js', 'shared/formulas.js', 'shared/mapgen.js', 'shared/skills.js', 'shared/passives.js'];
-const client = ['client/js/vfx.js', 'client/js/sfx.js', 'client/js/bossart.js', 'client/js/art.js', 'client/js/pixicons.js', 'client/js/terrain_man.js', 'client/js/terrain.js', 'client/js/game.js', 'client/js/ui.js', 'client/js/ui2.js', 'client/js/ui3.js', 'client/js/ui4.js', 'client/js/ui5.js'];
-const serverMods = ['world', 'ashfall', 'combat', 'items', 'auto', 'social', 'progress', 'econ', 'gm', 'index'];
+const client = ['client/js/vfx.js', 'client/js/sfx.js', 'client/js/bossart.js', 'client/js/art.js', 'client/js/pixicons.js', 'client/js/iconpool.js', 'client/js/cinder_icons.js', 'client/js/itemicons.js', 'client/js/terrain_man.js', 'client/js/terrain.js', 'client/js/game.js', 'client/js/ui.js', 'client/js/ui2.js', 'client/js/ui3.js', 'client/js/ui4.js', 'client/js/ui5.js'];
+const serverMods = ['world', 'ashfall', 'wbmech', 'combat', 'items', 'auto', 'social', 'progress', 'econ', 'gm', 'index'];
 
 const browserDb = `
 const KEY = 'novice_online_db_v1';

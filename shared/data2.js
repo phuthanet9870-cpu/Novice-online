@@ -181,6 +181,36 @@
     ['wb_bloodfire', 'Bloodfire Fiend', 'imp', 'fire', '#ff7a2a', 'unhallowed'], ['wb_palewraith', 'Pale Wraith', 'spirit', 'ice', '#e8e8ff', 'wraith']
   ]) { D.WORLD_BOSSES.push({ id, name, shape, element, color }); D.BOSS_SPRITES.world[id] = spr; }
 
+  // ---------------------------------------------------------------- world boss mechanics
+  // seal: what must be done before the boss can be hurt · phases: what happens at each HP mark · attacks: telegraphed patterns
+  // seal types: pillars (destroy n), order (destroy in numbered order), regen (destroyed pillars rise again after 45 s unless all fall),
+  //             heal (living pillars heal the boss), elemental (pillars only take damage from one element), guards (elite guards)
+  const P = (type, n, name, extra) => Object.assign({ type, n, name }, extra || {});
+  D.WB_MECH = {
+    wb_kraken: { seal: P('pillars', 5, 'Tidal Totem'), phases: [[0.7, 'shield', 6], [0.4, 'swap'], [0.15, 'enrage']], attacks: ['donut', 'chase', 'ring'], th: 'ทำลายเสาน้ำวน 5 ต้นก่อน บอสถึงจะโดนดาเมจ · 70% สร้างโล่น้ำ ต้องฆ่าลูกสมุน 6 ตัว · ระวังวงโดนัท (หลบเข้าใต้ตัวบอส)' },
+    wb_dragon: { seal: P('heal', 4, 'Ember Brazier', { heal: 1.5 }), phases: [[0.6, 'reseal'], [0.3, 'enrage']], attacks: ['cross', 'meteor', 'ring'], th: 'กระถางไฟ 4 ต้นฮีลบอส 1.5%/วิ จนกว่าจะถูกทำลาย · 60% กระถางกลับมาอีกรอบ · ลมหายใจเป็นแนวกากบาท ยืนเยื้องทแยง' },
+    wb_titan: { seal: P('order', 4, 'Rune Monolith'), phases: [[0.5, 'shield', 4], [0.2, 'enrage']], attacks: ['ring', 'cross', 'pull'], th: 'ต้องทำลายหินรูนตามลำดับ 1→4 (ตีผิดลำดับไม่เข้า) · 50% เกราะหิน ต้องฆ่าผู้พิทักษ์ 4 ตัว · ระวังดึงเข้าแล้วกระแทกพื้น' },
+    wb_lich: { seal: P('regen', 5, 'Soul Phylactery'), phases: [[0.66, 'swap'], [0.33, 'shield', 8], [0.1, 'enrage']], attacks: ['chase', 'meteor', 'donut'], th: 'โถวิญญาณ 5 ใบ ถ้าทำลายไม่ครบใน 45 วิ จะฟื้นกลับมา · 33% โล่วิญญาณ ฆ่าสมุน 8 ตัว · เป้าที่ถูกตามล่าให้วิ่งออกห่างกลุ่ม' },
+    wb_swarm: { seal: P('guards', 6, 'Hive Guard'), phases: [[0.75, 'shield', 10], [0.4, 'shield', 10], [0.15, 'enrage']], attacks: ['meteor', 'ring'], th: 'ฆ่าราชองครักษ์รัง 6 ตัวก่อน · 75% และ 40% ปล่อยฝูงแมลง 10 ตัว บอสอมตะจนกว่าฝูงจะหมด · ฝนกรดตกตามผู้เล่น' },
+    wb_frostgift: { seal: P('elemental', 4, 'Frozen Gift', { el: 'fire' }), phases: [[0.5, 'reseal'], [0.2, 'enrage']], attacks: ['donut', 'cross'], th: 'กล่องน้ำแข็ง 4 กล่องเสียหายจากธาตุไฟเท่านั้น · 50% กล่องกลับมาใหม่ · วงโดนัทน้ำแข็ง ให้เข้าใกล้บอส' },
+    wb_spire: { seal: P('heal', 6, 'Blood Obelisk', { heal: 1 }), phases: [[0.7, 'swap'], [0.35, 'reseal'], [0.1, 'enrage']], attacks: ['ring', 'chase', 'meteor'], th: 'เสาเลือด 6 ต้นฮีลบอส · 35% เสาเลือดกลับมาอีกครั้ง · ยิ่งช้ายิ่งยาก' },
+    wb_seer: { seal: P('order', 5, 'Gear Pylon'), phases: [[0.6, 'shield', 6], [0.25, 'enrage']], attacks: ['cross', 'chase', 'ring'], th: 'ทำลายเสาฟันเฟือง 5 ต้นตามลำดับเลข · 60% สร้างเกราะ ต้องทำลายโดรน 6 ตัว · ลำแสงกากบาทหมุนตามเวลา' },
+    wb_chassis: { seal: P('pillars', 4, 'Power Core'), phases: [[0.5, 'reseal'], [0.25, 'shield', 6], [0.1, 'enrage']], attacks: ['pull', 'ring', 'meteor'], th: 'ทำลายแกนพลังงาน 4 ลูก · 50% แกนพลังงานเกิดใหม่ · 25% ฆ่าเครื่องจักร 6 ตัว' },
+    wb_bladesentinel: { seal: P('guards', 4, 'Blade Acolyte'), phases: [[0.5, 'swap'], [0.2, 'enrage']], attacks: ['cross', 'chase', 'donut'], th: 'สาวกดาบ 4 คนปกป้องบอส ต้องโค่นก่อน · ดาบกากบาทและดาบไล่ล่า ให้กระจายตัว' },
+    wb_skyraptor: { seal: P('regen', 4, 'Wind Anchor'), phases: [[0.6, 'shield', 6], [0.3, 'enrage']], attacks: ['meteor', 'pull', 'ring'], th: 'สมอลม 4 ต้นจะฟื้นใน 45 วิ ถ้าทำลายไม่ครบ · พายุดูดผู้เล่นเข้ากลางแล้วระเบิด' },
+    wb_echowitch: { seal: P('elemental', 5, 'Echo Mirror', { el: 'holy' }), phases: [[0.66, 'swap'], [0.33, 'reseal'], [0.1, 'enrage']], attacks: ['chase', 'donut', 'cross'], th: 'กระจกเสียงสะท้อน 5 บานแตกได้ด้วยธาตุแสงเท่านั้น · 33% กระจกกลับมา · เสียงไล่ล่าผู้เล่นแบบสุ่ม' },
+    wb_ruingolem: { seal: P('order', 6, 'Ruin Keystone'), phases: [[0.5, 'shield', 5], [0.15, 'enrage']], attacks: ['ring', 'pull', 'meteor'], th: 'หินกุญแจ 6 ก้อนต้องทำลายตามลำดับ · 50% เกราะซากปรักหักพัง ต้องฆ่าผู้พิทักษ์ 5 ตัว' },
+    wb_hollowking: { seal: P('heal', 5, 'Hollow Throne', { heal: 1.2 }), phases: [[0.6, 'shield', 8], [0.3, 'swap'], [0.1, 'enrage']], attacks: ['donut', 'chase', 'meteor'], th: 'บัลลังก์กลวง 5 ที่ฮีลราชา · 60% อัญเชิญอัศวินกลวง 8 ตัว' },
+    wb_nightmare: { seal: P('pillars', 6, 'Dream Lantern'), phases: [[0.5, 'reseal'], [0.2, 'enrage']], attacks: ['chase', 'chase', 'ring'], th: 'โคมความฝัน 6 ดวง · 50% โคมจุดใหม่ · หมาฝันร้ายล่าเป้าถึง 2 คนพร้อมกัน' },
+    wb_hermit: { seal: P('elemental', 4, 'Arcane Prism', { el: 'dark' }), phases: [[0.5, 'swap'], [0.25, 'shield', 6], [0.1, 'enrage']], attacks: ['cross', 'donut', 'meteor'], th: 'ปริซึมเวท 4 อันแตกด้วยธาตุมืดเท่านั้น · 25% เกราะเวท ทำลายวิญญาณ 6 ดวง' },
+    wb_ravager: { seal: P('guards', 5, 'Wyrm Brood'), phases: [[0.6, 'reseal'], [0.3, 'enrage']], attacks: ['meteor', 'cross', 'ring'], th: 'ลูกมังกร 5 ตัวปกป้องแม่ · 60% ลูกมังกรฟักใหม่ · อุกกาบาตตกตามผู้เล่น' },
+    wb_overseer: { seal: P('regen', 6, 'Tide Gate'), phases: [[0.5, 'shield', 8], [0.2, 'enrage']], attacks: ['pull', 'donut', 'chase'], th: 'ประตูกระแสน้ำ 6 บาน ต้องปิดให้ครบใน 45 วิ · คลื่นดูดเข้าแล้ววงโดนัท' },
+    wb_bloodfire: { seal: P('heal', 4, 'Sacrificial Pyre', { heal: 2 }), phases: [[0.66, 'reseal'], [0.33, 'shield', 6], [0.1, 'enrage']], attacks: ['ring', 'meteor', 'cross'], th: 'กองไฟบูชายัญ 4 กองฮีลบอส 2%/วิ · 66% กองไฟลุกใหม่ · 33% ฆ่าสาวก 6 คน' },
+    wb_palewraith: { seal: P('order', 5, 'Grave Candle'), phases: [[0.5, 'swap'], [0.25, 'reseal'], [0.1, 'enrage']], attacks: ['chase', 'donut', 'meteor'], th: 'เทียนหลุมศพ 5 เล่มต้องดับตามลำดับ · 25% เทียนจุดใหม่ ต้องดับซ้ำ' }
+  };
+  D.WB_ATTACK_TH = { ring: 'วงระเบิดรอบบอส — วิ่งออก', donut: 'วงโดนัท — เข้าใกล้บอส', cross: 'แนวกากบาท — ยืนเยื้องทแยง', meteor: 'อุกกาบาตตามผู้เล่น — ขยับออก', chase: 'เครื่องหมายไล่ล่า — วิ่งห่างเพื่อน', pull: 'ดึงทุกคนเข้ากลาง — แล้ววิ่งออกทันที' };
+  D.WB_PHASE_TH = { shield: 'โล่อมตะ ต้องฆ่าสมุนให้หมด', swap: 'เปลี่ยนธาตุ', reseal: 'ผนึกกลับมา ต้องทำลายใหม่', enrage: 'คลั่ง: ดาเมจ +50% ตีเร็วขึ้น' };
+
   // shops also sell the extra consumables
   for (const k in D.SHOP) D.SHOP[k].push('pet_food');
 });

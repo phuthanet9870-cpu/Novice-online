@@ -11,7 +11,9 @@ const P = require('./progress');
 const C = module.exports;
 const T = require('../shared/passives.js');
 const AF = require('./ashfall');
+const WMx = require('./wbmech');
 AF.init(C, W, M);
+WMx.init(C, W, S);
 const now = () => Date.now() / 1000;
 const HARD = new Set(D.TAG_IDS.filter((t) => D.TAGS[t].cc === 'hard'));
 const DOT = { bleed: 1, poison: 1, burn: 1 };
@@ -217,6 +219,7 @@ C.dealDamage = function (src, tgt, o) {
     return 0;
   }
   if (tgt.kind === 'p' && o.kind !== 'dot' && o.kind !== 'true' && o.kind !== 'reflect' && AF.dodge(tgt)) { inst.emit({ k: 'txt', t: tgt.id, x: tgt.x, y: tgt.y, m: 'DODGE', c: '#9cf' }); return 0; }
+  if ((tgt.wbSealed || tgt.sealOf) && o.kind !== 'reflect') { const why = WMx.gate(tgt, o); if (why) { if ((tgt._gateMsgAt || 0) < t - 0.6) { tgt._gateMsgAt = t; inst.emit({ k: 'txt', t: tgt.id, x: tgt.x, y: tgt.y, m: why, c: '#ffcc33' }); } return 0; } }
   const mag = o.mag !== undefined ? o.mag : (src.kind === 'p' ? src.st.dmgType === 'mag' : false);
   let dmg;
   if (o.flat !== undefined) dmg = o.flat;
@@ -231,7 +234,7 @@ C.dealDamage = function (src, tgt, o) {
   }
   let crit = false;
   if (o.kind !== 'dot' && o.kind !== 'true') {
-    if (srcP && src.kind === 'p') { if (src.nextCrit || W.rand() * 100 < src.st.crit + (o.critBonus || 0)) { src.nextCrit = false; crit = true; dmg *= 1 + (src.st.critDmg + (o.critDmgBonus || 0)) / 100; } }
+    if (srcP && src.kind === 'p') { if (src.nextCrit || W.rand() * 100 < src.st.crit + (o.critBonus || 0)) { src.nextCrit = false; crit = true; dmg *= 1 + (src.st.critDmg + (o.critDmgBonus || 0)) / 100; } src._lastCrit = crit; }
     else if (src.kind === 'm' && W.rand() < 0.05) { crit = true; dmg *= 1.5; }
     dmg *= elementMod(o.el, tgt.element);
     const elk = o.el || 'neutral';
@@ -804,7 +807,7 @@ const execCore = function (p, sk, lv, tgt, ax, ay) {
   // ---- direct hits
   let anyHit = false;
   const targets = sk.dmg || sk.perUnit || sk.applies ? targetsFor(p, sk, tgt, ax, ay) : [];
-  p._lastTargets = targets;
+  p._lastTargets = targets; actx.nT = targets.length;
   let nb = p.nextBonus && sk.dmg ? 1 + p.nextBonus / 100 : 1;
   if (sk.overcharge && !p.god && !gf.nosp) { const extra = p.maxSp * sk.overcharge.sp / 100; if (p.sp >= extra) { p.sp -= extra; nb *= sk.overcharge.mult; inst.emit({ k: 'txt', t: p.id, x: p.x, y: p.y, m: 'OVERCHARGE', c: '#6af' }); } }
   else if (sk.overcharge) nb *= sk.overcharge.mult;
@@ -813,7 +816,7 @@ const execCore = function (p, sk, lv, tgt, ax, ay) {
   for (const o of targets) {
     if (o.dead) continue;
     let mult = computeMult(p, sk, lv, o, t) * nb * actx.nb * AF.tgtMult(p, sk, o, actx.n, actx);
-    const aopt = AF.hitOpts(sk, actx); let dealtO = 0;
+    const aopt = AF.hitOpts(sk, actx, p, o); let dealtO = 0;
     const reaction = reactionFor(sk, el, o);
     let rmult = 1;
     if (reaction) {
