@@ -190,7 +190,7 @@ W.populate = function (inst) {
     let n = 0;
     for (let i = 1; i < map.rooms.length; i++) {
       const rm = map.rooms[i];
-      const per = Math.max(1, Math.round(count / (map.rooms.length - 1)));
+      const per = Math.max(2, Math.round(count / (map.rooms.length - 1) * Math.min(2.2, rm.w * rm.h / 150))); // bigger halls hold bigger packs
       for (let k = 0; k < per; k++) {
         const x = r.int(rm.x + 1, rm.x + rm.w - 1) + 0.5, y = r.int(rm.y + 1, rm.y + rm.h - 1) + 0.5;
         if (!M.walkable(map, x, y)) continue;

@@ -20,7 +20,7 @@
     if (dm) {
       const dg = D.DUNGEONS.find((d) => d.id === dm[1]);
       const floor = +dm[2];
-      const size = 64 + Math.floor(Math.min(floor, 1000) / 11);
+      const size = 120 + Math.floor(Math.min(floor, 1000) / 10); // wide floors: 120 tiles at F1 up to 220 at F1000
       return { id, kind: 'dungeon', dungeon: dg.id, floor, name: `${dg.name} F${floor}`, th: `${dg.th} ชั้น ${floor}`, biome: dg.biome,
         w: size, h: size, lv: D.dungeonLevel(dg, floor), boss: floor % 10 === 0, element: dg.element };
     }
@@ -175,17 +175,18 @@
     const { w, h } = m;
     m.tiles.fill(T.WALL);
     const maze = m.def.dungeon === 'shadow_labyrinth';
-    const nRooms = Math.min(26, 7 + Math.floor(w / 9) + (maze ? 6 : 0));
+    // big halls (14–30 wide) joined by wide corridors; the labyrinth keeps more, smaller rooms
+    const nRooms = Math.min(34, 8 + Math.floor(w / 10) + (maze ? 8 : 0));
     let guard = 0;
-    while (m.rooms.length < nRooms && guard++ < 600) {
-      const rw = r.int(maze ? 6 : 8, maze ? 11 : 17), rh = r.int(maze ? 6 : 8, maze ? 11 : 15);
+    while (m.rooms.length < nRooms && guard++ < 1500) {
+      const rw = r.int(maze ? 9 : 14, maze ? 16 : 30), rh = r.int(maze ? 8 : 12, maze ? 14 : 24);
       const x = r.int(3, w - rw - 4), y = r.int(3, h - rh - 4);
       if (m.rooms.some((o) => x < o.x + o.w + 3 && x + rw + 3 > o.x && y < o.y + o.h + 3 && y + rh + 3 > o.y)) continue;
       m.rooms.push({ x, y, w: rw, h: rh, cx: x + (rw >> 1), cy: y + (rh >> 1) });
     }
     m.rooms.sort((a, b) => (a.cx + a.cy) - (b.cx + b.cy));
     for (const rm of m.rooms) fillRect(m, rm.x, rm.y, rm.x + rm.w, rm.y + rm.h, T.FLOOR);
-    const cw = maze ? 1 : 2;
+    const cw = maze ? 2 : 3;
     for (let i = 1; i < m.rooms.length; i++) {
       const a = m.rooms[i - 1], b = m.rooms[i];
       if (r() < 0.5) { fillRect(m, Math.min(a.cx, b.cx), a.cy - cw + 1, Math.max(a.cx, b.cx), a.cy + cw - 1 + (cw > 1 ? 0 : 0), T.FLOOR); fillRect(m, b.cx - cw + 1, Math.min(a.cy, b.cy), b.cx + cw - 1, Math.max(a.cy, b.cy), T.FLOOR); }
@@ -199,8 +200,8 @@
     }
     // pillars & hazards
     for (const rm of m.rooms) {
-      if (rm.w > 10 && rm.h > 10 && r() < 0.6) { fillRect(m, rm.x + 3, rm.y + 3, rm.x + 3, rm.y + 3, T.ROCK); fillRect(m, rm.x + rm.w - 3, rm.y + rm.h - 3, rm.x + rm.w - 3, rm.y + rm.h - 3, T.ROCK); fillRect(m, rm.x + rm.w - 3, rm.y + 3, rm.x + rm.w - 3, rm.y + 3, T.ROCK); fillRect(m, rm.x + 3, rm.y + rm.h - 3, rm.x + 3, rm.y + rm.h - 3, T.ROCK); }
-      for (let k = 0; k < 4; k++) { const x = r.int(rm.x + 1, rm.x + rm.w - 1), y = r.int(rm.y + 1, rm.y + rm.h - 1); if (m.tiles[y * w + x] === T.FLOOR) m.tiles[y * w + x] = T.DECO; }
+      if (rm.w > 12 && rm.h > 11 && r() < 0.7) { fillRect(m, rm.x + 3, rm.y + 3, rm.x + 3, rm.y + 3, T.ROCK); fillRect(m, rm.x + rm.w - 3, rm.y + rm.h - 3, rm.x + rm.w - 3, rm.y + rm.h - 3, T.ROCK); fillRect(m, rm.x + rm.w - 3, rm.y + 3, rm.x + rm.w - 3, rm.y + 3, T.ROCK); fillRect(m, rm.x + 3, rm.y + rm.h - 3, rm.x + 3, rm.y + rm.h - 3, T.ROCK); }
+      for (let k = 0; k < 4 + Math.floor(rm.w * rm.h / 60); k++) { const x = r.int(rm.x + 1, rm.x + rm.w - 1), y = r.int(rm.y + 1, rm.y + rm.h - 1); if (m.tiles[y * w + x] === T.FLOOR) m.tiles[y * w + x] = T.DECO; }
     }
     const first = m.rooms[0], last = m.rooms[m.rooms.length - 1];
     m.spawn = { x: first.cx + 0.5, y: first.cy + 0.5 };
