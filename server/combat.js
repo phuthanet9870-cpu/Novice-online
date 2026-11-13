@@ -10,6 +10,8 @@ const P = require('./progress');
 
 const C = module.exports;
 const T = require('../shared/passives.js');
+const AF = require('./ashfall');
+AF.init(C, W, M);
 const now = () => Date.now() / 1000;
 const HARD = new Set(D.TAG_IDS.filter((t) => D.TAGS[t].cc === 'hard'));
 const DOT = { bleed: 1, poison: 1, burn: 1 };
@@ -56,6 +58,8 @@ C.recalc = function (p) {
       mods[k] = (mods[k] || 0) + v;
     }
   }
+  const amods = Object.assign({}, AF.passiveMods(p)); const mm = AF.mechMods(p); if (mm) for (const k in mm) amods[k] = (amods[k] || 0) + mm[k];
+  for (const k in amods) { if (k === 'cdr') cdrBonus += amods[k]; else mods[k] = (mods[k] || 0) + amods[k]; }
   const ext = P.extraMods(p);
   for (const k in ext) { if (k === 'cdr') cdrBonus += ext[k]; else if (k !== 'expPct') mods[k] = (mods[k] || 0) + ext[k]; }
   const castle = S.castleBonus(p);
@@ -212,6 +216,7 @@ C.dealDamage = function (src, tgt, o) {
     if (tgt.pfx && tgt.pfx.dodgeHeal) C.heal(tgt, tgt.maxHp * tgt.pfx.dodgeHeal / 100, tgt, true);
     return 0;
   }
+  if (tgt.kind === 'p' && o.kind !== 'dot' && o.kind !== 'true' && o.kind !== 'reflect' && AF.dodge(tgt)) { inst.emit({ k: 'txt', t: tgt.id, x: tgt.x, y: tgt.y, m: 'DODGE', c: '#9cf' }); return 0; }
   const mag = o.mag !== undefined ? o.mag : (src.kind === 'p' ? src.st.dmgType === 'mag' : false);
   let dmg;
   if (o.flat !== undefined) dmg = o.flat;
@@ -226,7 +231,7 @@ C.dealDamage = function (src, tgt, o) {
   }
   let crit = false;
   if (o.kind !== 'dot' && o.kind !== 'true') {
-    if (srcP && src.kind === 'p') { if (src.nextCrit || W.rand() * 100 < src.st.crit + (o.critBonus || 0)) { src.nextCrit = false; crit = true; dmg *= 1 + src.st.critDmg / 100; } }
+    if (srcP && src.kind === 'p') { if (src.nextCrit || W.rand() * 100 < src.st.crit + (o.critBonus || 0)) { src.nextCrit = false; crit = true; dmg *= 1 + (src.st.critDmg + (o.critDmgBonus || 0)) / 100; } }
     else if (src.kind === 'm' && W.rand() < 0.05) { crit = true; dmg *= 1.5; }
     dmg *= elementMod(o.el, tgt.element);
     const elk = o.el || 'neutral';
@@ -242,6 +247,7 @@ C.dealDamage = function (src, tgt, o) {
     if (src.kind === 'p') {
       if (o.kind === 'skill' || o.kind === 'basic') dmg *= 1 + Math.min(20, src.combo) * 0.03 * (pvp ? 0.5 : 1) + (src.combo > 0 ? src.st.comboDmg / 100 : 0);
       dmg *= 1 + src.st.dmgPct / 100;
+      if (!o.cm && o.kind !== 'reflect') dmg *= AF.dmgMod(src);
       if (tgt.kind === 'm' && tgt.rank >= 2) dmg *= 1 + src.st.bossDmg / 100;
       const pf = src.pfx;
       if (pf) {
@@ -284,7 +290,10 @@ C.dealDamage = function (src, tgt, o) {
     tgt.lastStandAt = t; dmg = Math.max(0, tgt.hp - 1); tgt.invulnUntil = t + 2;
     inst.emit({ k: 'txt', t: tgt.id, x: tgt.x, y: tgt.y, m: 'LAST STAND!', c: '#ffd34a', big: 1 });
   }
+  if (tgt.kind === 'p') dmg = AF.lastStand(tgt, dmg);
   tgt.hp -= dmg;
+  if (src.kind === 'p' && tgt !== src) AF.onDealt(src, tgt, dmg, crit, o);
+  if (tgt.kind === 'p' && o.kind !== 'dot') { tgt.lastHurt = t; AF.onHurt(tgt, dmg, src); }
   if (src.kind === 'p' && src.pfx && o.kind !== 'dot' && o.kind !== 'reflect') {
     const pf = src.pfx;
     if (crit && pf.critHeal && (src._critHealAt || 0) < t - 1) { src._critHealAt = t; C.heal(src, src.maxHp * pf.critHeal / 100, src, true); }
@@ -343,6 +352,7 @@ C.onDeath = function (e, killer) {
     if (e.dmgBy.size) { let bd = 0; for (const [pid, d] of e.dmgBy) if (d > bd) { const q = inst.entities.get(pid); if (q) { bd = d; best = q; } } }
     if (best && !e.owner) I.onMonsterKilled(e, best);
     if (kp && kp.pfx) C.onKillFx(kp, e);
+    if (kp) AF.onKill(kp, e);
     for (const p of inst.players) if (p.auto && p.auto.target === e) p.auto.target = null;
     if (e.rank >= 2 && e.rank !== 4) S.onBossDeath(e, best);
     if (e.rank === 4) S.onWorldBossDeath(e, best);
@@ -426,9 +436,7 @@ C.updatePlayer = function (p, dt, t, sec) {
   if (p.combo && t - p.comboT > p.st.comboWin) p.combo = 0;
   // class resource behaviours
   const cls = D.CLASSES[p.cls];
-  if (p.cls === 'gunslinger') { if (t - (p.lastShot || 0) > 1) p.res = Math.max(0, p.res - 14 * dt * (p.flags.resGainPct || p.flags.heatSink ? 2 : 1)); }
-  else if (p.cls === 'ranger') { if (t - p.movedAt > 1 && sec) p.res = Math.min(cls.res.max, p.res + (p.flags.resGainPct ? 1 : 0.5)); }
-  else if (p.cls === 'berserker' && sec && t - (p.lastHit || 0) > 6) p.res = Math.max(0, p.res - 4);
+  AF.tick(p, dt, t, sec);
   // basic attack
   if (p.atkTarget && !p.casting) {
     const tgt = inst.entities.get(p.atkTarget);
@@ -445,7 +453,7 @@ C.updatePlayer = function (p, dt, t, sec) {
           C.dealDamage(p, tgt, { mult: 1, kind: 'basic', el: p.weaponEl || 'neutral' });
           p.ult = Math.min(100, p.ult + 1 * (1 + ((p.pfx && p.pfx.ultCharge) || 0) / 100));
           p.lastHit = t;
-          gainRes(p, 'basic');
+
         } else inst.emit({ k: 'txt', t: tgt.id, x: tgt.x, y: tgt.y, m: 'MISS', c: '#aaa' });
         if (p.stealthUntil > t) p.stealthUntil = 0;
       }
@@ -453,17 +461,6 @@ C.updatePlayer = function (p, dt, t, sec) {
   }
   if (sec) C.secondTick(p, t);
 };
-function gainRes(p, how, sk) {
-  const r = D.CLASSES[p.cls].res;
-  const mul = p.flags.resGainPct ? 2 : 1;
-  if (p.cls === 'gunslinger') { p.res = Math.min(100, p.res + r.gain * (how === 'basic' ? 0.6 : 1)); p.lastShot = now(); if (p.res >= 100) { p.res = 60; C.applyTag(p, 'silence', 1, 2, null); p.sess && p.sess.send({ t: 'notice', k: 'system', m: 'OVERHEAT! ยิงไม่ได้ 2 วินาที' }); } return; }
-  if (p.cls === 'ranger' && how === 'basic') return;
-  if (r.max === 100) { p.res = Math.min(100, p.res + r.gain * (how === 'basic' ? 0.5 : 1) * mul); return; }
-  if (how === 'basic') { p.basicN = (p.basicN || 0) + 1; if (p.basicN % 3) return; }
-  if (p.cls === 'elementalist' && sk) { p.orbEls = p.orbEls || []; if (!p.orbEls.includes(sk.element)) { p.orbEls.push(sk.element); if (p.orbEls.length > 3) p.orbEls.shift(); } p.res = p.orbEls.length; return; }
-  p.res = Math.min(r.max, p.res + (sk && sk.resGain ? sk.resGain : 1) * mul);
-}
-
 C.secondTick = function (e, t) {
   // tags & DoTs
   for (const [k, v] of e.tags) {
@@ -474,7 +471,6 @@ C.secondTick = function (e, t) {
       C.dealDamage(v.src, e, { flat: Math.round(d), kind: 'dot', el: k === 'burn' ? 'fire' : k === 'poison' ? 'poison' : 'blood' });
       if (e.dead) return;
       const sp = C.ownerP(v.src);
-      if (sp && sp.cls === 'warlock' && W.rand() < 0.12) sp.res = Math.min(5, sp.res + 1);
       if (sp && sp.flags && sp.flags.soulSiphon) C.heal(sp, d * 0.02, sp, true);
     }
   }
@@ -509,7 +505,9 @@ C.useSkill = function (p, id, tid, ax, ay) {
   if (p.casting) return err(p, 'กำลังร่ายเวท');
   const gf = p.gmf || {};
   if ((p.cds[id] || 0) > t + 0.05 && !gf.nocd) return err(p, 'คูลดาวน์');
-  if (sk.kind === 'ult' && p.ult < 100 && !p.god && !gf.nosp) return err(p, 'เกจอัลติเมตยังไม่เต็ม');
+  // global cooldown between skills (buffs are off the GCD)
+  if (sk.kind !== 'buff' && (p.gcdUntil || 0) > t + 0.05 && !gf.nocd) return { ok: false, m: 'gcd', gcd: 1 };
+  if (sk.gauge && p.ult < 100 && !p.god && !gf.nosp) return err(p, 'เกจอัลติเมตยังไม่เต็ม');
   const cost = F.skillSp(sk, lv);
   if (p.sp < cost && !p.god && !gf.nosp) return err(p, 'SP ไม่พอ');
   if (sk.needRes && p.res < sk.needRes && !p.god && !gf.nosp) return err(p, `ต้องมี ${D.CLASSES[p.cls].res.name} ≥ ${sk.needRes}`);
@@ -714,11 +712,12 @@ const execCore = function (p, sk, lv, tgt, ax, ay) {
     p.sp -= F.skillSp(sk, lv);
     if (sk.hpCost) p.hp -= p.maxHp * sk.hpCost / 100;
   }
+  if (sk.kind !== 'buff') p.gcdUntil = t + 0.4;
   const cdr = Math.min(90, p.st.cdr + (p.cdrBonus || 0));
   const cd = gf.nocd ? 0 : sk.kind === 'buff' ? sk.cd : F.skillCd(sk, lv) * (1 - cdr / 100);
   p.cds[sk.id] = t + cd;
   p.sess && p.sess.send({ t: 'cd', id: sk.id, d: Math.round(cd * 100) / 100 });
-  if (sk.kind === 'ult' && !p.god && !gf.nosp) p.ult = 0;
+  if (sk.gauge && !p.god && !gf.nosp) p.ult = 0;
   if (p.pfx) {
     if (p.pfx.spRefund && W.rand() * 100 < p.pfx.spRefund) { p.sp = Math.min(p.maxSp, p.sp + F.skillSp(sk, lv)); inst.emit({ k: 'txt', t: p.id, x: p.x, y: p.y, m: 'SP REFUND', c: '#6af' }); }
     if (sk.kind === 'ult' && p.pfx.shieldOnUlt) p.shield = Math.max(p.shield || 0, p.maxHp * p.pfx.shieldOnUlt / 100);
@@ -728,9 +727,10 @@ const execCore = function (p, sk, lv, tgt, ax, ay) {
   else if (ax !== undefined) p.dir = Math.atan2(ay - p.y, ax - p.x);
   const el = (sk.element === 'neutral' && p.weaponEl) ? p.weaponEl : sk.element;
 
+  const actx = AF.preCast(p, sk, lv, tgt, ax, ay);
   // ---- buffs (B)
   if (sk.kind === 'buff') {
-    const sc = F.skillMult(sk, lv);
+    const sc = sk.cat ? 1 + 0.05 * (lv - 1) : F.skillMult(sk, lv);
     const mods = {};
     for (const k in sk.mods) mods[k] = typeof sk.mods[k] === 'number' && !['ccImmune', 'stealth', 'invuln', 'blocks', 'extraStack', 'resGainPct', 'spRegen'].includes(k) ? Math.round(sk.mods[k] * sc * 10) / 10 : sk.mods[k];
     if (sk.mods.element === 'cycle') { const els = ['fire', 'ice', 'lightning', 'wind', 'earth']; p.cycleEl = els[(els.indexOf(p.cycleEl) + 1) % els.length]; }
@@ -739,6 +739,7 @@ const execCore = function (p, sk, lv, tgt, ax, ay) {
     for (const q of tgts) { C.addBuff(q, 'buff:' + sk.id, mods, sk.dur, sk.name, cls.color); if (q !== p) q.inst.emit({ k: 'buffed', t: q.id, x: q.x, y: q.y }); }
     if (mods.soulSiphon) p.flags.soulSiphon = 1;
     inst.emit({ k: 'cast', s: p.id, sk: sk.id, x: p.x, y: p.y, tx: p.x, ty: p.y, sh: 'buff', el: 'holy' });
+    AF.postCast(p, sk, lv, tgt, p.x, p.y, [], el, actx);
     return;
   }
 
@@ -764,7 +765,7 @@ const execCore = function (p, sk, lv, tgt, ax, ay) {
   if (sk.cdShift) { for (const k in p.cds) if (k !== sk.id) p.cds[k] -= sk.cdShift; p.sess && p.sess.send({ t: 'cdshift', d: sk.cdShift, except: sk.id }); }
   if (sk.haste) C.addBuff(p, 'skhaste', { aspdPct: sk.haste, movePct: sk.haste }, 4, 'Accelerate', '⏩');
   if (sk.reflect && !sk.dmg) C.addBuff(p, 'sb:' + sk.id, { reflect: sk.reflect }, 4, sk.name, cls.color);
-  if (sk.shield) { p.shield = Math.max(p.shield, p.maxHp * sk.shield.pct / 100 * F.skillMult(sk, lv) * 0.8); }
+  if (sk.shield) { p.shield = Math.max(p.shield, p.maxHp * sk.shield.pct / 100 * (sk.cat ? 1 + 0.04 * (lv - 1) : F.skillMult(sk, lv) * 0.8)); }
   if (sk.selfHeal && !sk.cond) C.heal(p, p.maxHp * sk.selfHeal / 100, p);
   if (sk.fullRestore) for (const q of partyNear(p, 14)) { q.hp = q.maxHp; q.sp = q.maxSp; if (sk.resetCd) { q.cds = {}; q.sess && q.sess.send({ t: 'cdreset' }); } }
   if (sk.revive) for (const q of partyNear(p, 12, true)) if (q.dead) { q.dead = false; q.hp = q.maxHp * 0.5; q.sp = q.maxSp * 0.3; inst.emit({ k: 'buffed', t: q.id, x: q.x, y: q.y }); q.sess && q.sess.send({ t: 'revived' }); }
@@ -773,7 +774,8 @@ const execCore = function (p, sk, lv, tgt, ax, ay) {
     const n = Math.min(sk.summon.count, 12);
     const shape = p.cls === 'ranger' ? 'beast' : p.cls === 'shadow_assassin' || p.cls === 'void_walker' ? 'shadow' : p.cls === 'gunslinger' ? 'drone' : p.cls === 'divine_sovereign' || p.cls === 'lightbringer' ? 'spirit' : p.cls === 'hellfiend' ? 'imp' : 'undead';
     const color = p.cls === 'ranger' ? '#a08060' : p.cls === 'shadow_assassin' || p.cls === 'void_walker' ? '#4a2a6a' : p.cls === 'gunslinger' ? '#9ab' : p.cls === 'divine_sovereign' || p.cls === 'lightbringer' ? '#ffe9a0' : p.cls === 'hellfiend' ? '#c83a1a' : '#c8c0e0';
-    for (let i = 0; i < n; i++) W.spawnSummon(p, { name: sk.name.replace(/^(Raise|Summon|Army of the)\s*/i, '') || 'Minion', dur: sk.summon.dur, shape: /Knight/.test(sk.name) ? 'knight' : /Wraith/.test(sk.name) ? 'spirit' : shape, color, mult: sk.kind === 'ult' ? 0.8 : 0.55, mag: cls.dmg === 'mag', element: el });
+    const mag2 = cls.dmg === 'mag', sm = sk.summon.mult ? sk.summon.mult * (1 + 0.06 * (lv - 1)) : sk.kind === 'ult' ? 0.8 : 0.55;
+    for (let i = 0; i < n; i++) W.spawnSummon(p, { name: sk.name.replace(/^(Raise|Summon|Army of the)\s*/i, '') || 'Minion', dur: sk.summon.dur, shape: sk.summon.turret ? 'drone' : cls.summonShape || (/Knight/.test(sk.name) ? 'knight' : /Wraith|Spirit/.test(sk.name) ? 'spirit' : shape), color: cls.color || color, mult: sm, mag: mag2, element: el, turret: sk.summon.turret, sk });
   }
   if (sk.detonate === 'trap') {
     for (const z of [...inst.entities.values()]) if (z.kind === 'z' && z.zk === 'trap' && z.owner === p) { z.boost = 1.5; C.triggerTrap(z); }
@@ -790,13 +792,13 @@ const execCore = function (p, sk, lv, tgt, ax, ay) {
     const mine = [...inst.entities.values()].filter((z) => z.kind === 'z' && z.zk === 'trap' && z.owner === p);
     if (mine.length >= 6) { inst.remove(mine[0]); }
     W.spawnZone(inst, { zk: 'trap', owner: p, x: tx, y: ty, r: 1.5, until: t + 40, armedAt: t + 0.4, sk, lv, el, color: (D.ELEMENTS[el] || D.ELEMENTS.neutral).color });
-    if (!tgt || W.dist(tgt, { x: tx, y: ty }) > 1.5) { p.cdTouched = true; return afterCast(p, sk, false); }
+    if (!tgt || W.dist(tgt, { x: tx, y: ty }) > 1.5) { p.cdTouched = true; AF.postCast(p, sk, lv, tgt, ax, ay, [], el, actx); return afterCast(p, sk, false); }
   }
   if (sk.zone || (sk.heal && sk.heal.zone)) {
     const ox = sk.self ? p.x : (tgt ? tgt.x : ax), oy = sk.self ? p.y : (tgt ? tgt.y : ay);
     const z = sk.zone || { mult: 0, tick: 1, dur: 8 };
     W.spawnZone(inst, { zk: 'zone', owner: p, x: ox, y: oy, r: sk.radius || 3, until: t + z.dur, tick: z.tick, mult: z.mult * F.skillMult(sk, lv), sk, lv, el, heal: sk.heal && sk.heal.zone ? sk.heal.pct : 0, color: (D.ELEMENTS[el] || D.ELEMENTS.neutral).color, follow: sk.self && /หมุน|รอบตัว/.test(sk.desc) ? p : null });
-    if (!sk.dmg) return afterCast(p, sk, false);
+    if (!sk.dmg) { AF.postCast(p, sk, lv, tgt, ax, ay, [], el, actx); return afterCast(p, sk, false); }
   }
 
   // ---- direct hits
@@ -810,7 +812,8 @@ const execCore = function (p, sk, lv, tgt, ax, ay) {
   let totalDealt = 0;
   for (const o of targets) {
     if (o.dead) continue;
-    let mult = computeMult(p, sk, lv, o, t) * nb;
+    let mult = computeMult(p, sk, lv, o, t) * nb * actx.nb * AF.tgtMult(p, sk, o, actx.n, actx);
+    const aopt = AF.hitOpts(sk, actx); let dealtO = 0;
     const reaction = reactionFor(sk, el, o);
     let rmult = 1;
     if (reaction) {
@@ -834,10 +837,12 @@ const execCore = function (p, sk, lv, tgt, ax, ay) {
       const shown = Math.min(hits, 8);
       const per = mult * hits / shown;
       for (let h = 0; h < shown && !o.dead; h++) {
-        totalDealt += C.dealDamage(p, o, { mult: per * (h === 0 ? rmult : 1), el, kind: 'skill', pierce: sk.pierce, critBonus: (sk.critBonus || 0) + (sk.fromStealth && p.stealthUntil > t ? 100 : 0), lifesteal: sk.lifesteal, finisher: sk.role === 'F' || sk.kind === 'ult', reaction: h === 0 ? reaction : null, siege: sk.siege, sk });
+        const dd = C.dealDamage(p, o, { mult: per * (h === 0 ? rmult : 1), el, kind: 'skill', pierce: aopt.pierce || (sk.pierce > 1 ? 0 : sk.pierce), critDmgBonus: aopt.critDmgBonus, critBonus: (sk.critBonus || 0) + aopt.critBonus + (sk.fromStealth && p.stealthUntil > t ? 100 : 0), lifesteal: sk.lifesteal, finisher: sk.role === 'F' || sk.kind === 'ult', reaction: h === 0 ? reaction : null, siege: sk.siege, sk });
+        totalDealt += dd; dealtO += dd;
       }
       anyHit = true;
     }
+    AF.afterHit(p, sk, o, dealtO, actx, el);
     if (o.dead) continue;
     if (sk.execute && o.kind !== 'c' && o.hp / o.maxHp * 100 < sk.execute && !(o.kind === 'm' && o.rank >= 2)) C.dealDamage(p, o, { flat: o.hp + 1, kind: 'true', reaction: 'execute' });
     for (const ap of sk.applies || []) {
@@ -854,6 +859,7 @@ const execCore = function (p, sk, lv, tgt, ax, ay) {
     if (/ลดฮีล/.test(sk.desc)) o.healCut = { until: t + 8, pct: 0.4 };
   }
   mechanics(p, sk, lv, tgt, ax, ay, targets, el, t);
+  AF.postCast(p, sk, lv, tgt, ax, ay, targets, el, actx);
   if (sk.taunt && !targets.length) inst.inRadius(p.x, p.y, sk.radius || 4, (o) => { if (o.kind === 'm') { o.target = p; o.tauntBy = p; o.tauntUntil = t + 4; } });
   if (sk.heal && !sk.heal.zone) {
     const sc = F.skillMult(sk, lv);
@@ -883,7 +889,7 @@ function afterCast(p, sk, anyHit) {
       if (ms) { p.ult = Math.min(100, p.ult + ms); p.inst.emit({ k: 'txt', t: p.id, x: p.x, y: p.y, m: `${p.combo} COMBO! +${ms}% ULT`, c: '#ffd34a', big: 1 }); }
       if (sk.kind !== 'ult') p.ult = Math.min(100, p.ult + 3 * (1 + ((p.pfx && p.pfx.ultCharge) || 0) / 100));
       p.lastHit = t;
-      if (!sk.consumeRes) gainRes(p, 'skill', sk);
+
     }
     p.lastSkill = sk.id;
     P.event(p, 'skill');
@@ -937,7 +943,8 @@ C.zoneTick = function (z) {
   if (z.heal) for (const q of C.partyNear(p, 50)) if (Math.hypot(q.x - z.x, q.y - z.y) <= z.r) C.heal(q, q.maxHp * z.heal / 100 * 0.6, p);
   inst.inRadius(z.x, z.y, z.r, (o) => {
     if (o.dead || !C.isEnemy(p, o)) return;
-    if (z.mult > 0) C.dealDamage(p, o, { mult: z.mult, el: z.el, kind: 'skill' });
+    if (z.slow) { C.applyTag(o, 'slow', 1, 1, p, { quiet: true }); return; }
+    if (z.mult > 0) { const d = C.dealDamage(p, o, { mult: z.mult, el: z.el, kind: 'skill' }); if (z.sk && z.sk.riders && !z.trail && z.zf !== 'burn') AF.zoneRider(p, z.sk, o, d); if (z.zf === 'burn') return; }
     else if (z.sk && z.sk.dmg) C.dealDamage(p, o, { mult: 0.35 * F.skillMult(z.sk, z.lv), el: z.el, kind: 'skill' });
     if (z.heal && (o.element === 'dark' || o.shape === 'undead')) C.dealDamage(p, o, { mult: 0.8, el: 'holy', kind: 'skill' });
     for (const ap of (z.sk && z.sk.applies) || []) C.applyTag(o, ap.tag, 1, Math.min(ap.dur || 2, 2.5), p, { quiet: true });

@@ -335,7 +335,8 @@ function updateMonster(m, dt, t) {
 
 function updateSummon(s, dt, t) {
   if (s.dead) return;
-  if (t > s.until || !s.owner || s.owner.dead || s.owner.inst !== s.inst) { W.killQuiet(s); return; }
+  if (t > s.until || !s.owner || s.owner.dead || s.owner.inst !== s.inst) { if (t > s.until && s.sk && s.owner && !s.owner.dead) require('./ashfall').summonEnd(s.owner, s, s.sk); W.killQuiet(s); return; }
+  if (s.turret) { if (s.target && (s.target.dead || W.dist(s, s.target) > 9)) s.target = null; if (!s.target) s.target = nearestEnemy(s, 8.5); if (s.target && t >= s.atkReady) { s.atkReady = t + 0.8; s.inst.emit({ k: 'proj', s: s.id, x: s.x, y: s.y, tx: s.target.x, ty: s.target.y, el: s.element }); C.dealDamage(s, s.target, { mult: s.mult || 0.5, el: s.element, kind: 'summon', mag: s.mag }); } return; }
   if (C.isHardCC(s)) return;
   const o = s.owner;
   if (s.target && (s.target.dead || s.target.inst !== s.inst || W.dist(s, s.target) > 14)) s.target = null;
@@ -361,7 +362,7 @@ W.spawnSummon = function (owner, opts) {
     id: W.nextEnt++, kind: 's', name: opts.name || 'Minion', lv, owner, shape: opts.shape || 'undead', color: opts.color || '#b0a0ff',
     x: owner.x + (W.rand() - 0.5) * 2, y: owner.y + (W.rand() - 0.5) * 2, hp: Math.round(owner.maxHp * 0.45), maxHp: Math.round(owner.maxHp * 0.45),
     atkFlat: atk, def: owner.st ? owner.st.def : 10, mdef: owner.st ? owner.st.mdef : 10, tags: new Map(), until: now() + (opts.dur || 20),
-    range: 1.6, speed: 4.6, atkReady: 0, mult: (opts.mult || 0.55) * (owner.flags && owner.flags.summonBuff ? 1.5 : 1), element: opts.element || 'neutral', mag: opts.mag, slot: W.rand() * 6.28, size: 0.9, ccDR: {}
+    range: 1.6, speed: opts.turret ? 0 : 4.6, turret: opts.turret ? 1 : 0, sk: opts.sk, atkReady: 0, mult: (opts.mult || 0.55) * (owner.flags && owner.flags.summonBuff ? 1.5 : 1), element: opts.element || 'neutral', mag: opts.mag, slot: W.rand() * 6.28, size: 0.9, ccDR: {}
   };
   if (!M.walkable(owner.inst.map, s.x, s.y)) { s.x = owner.x; s.y = owner.y; }
   owner.inst.add(s);

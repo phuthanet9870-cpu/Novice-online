@@ -389,6 +389,7 @@
       case 'mark': G.anims.push({ k: 'mark', id: f.t, t0: t, d: f.d }); break;
       case 'poof': burst(f.x, f.y - 0.4, '#bbb', 8, 2, 0.4); break;
       case 'trait': { const s = SK[f.sk]; const c = s && s.fx ? s.fx.c[1] : '#fff'; G.texts.push({ x: f.x, y: f.y - 2.3, txt: '✦ ' + f.m, col: c, size: 12, t0: t, d: 1.4, vy: -0.5, stroke: 1 }); if (window.VFX && VFX.ok && VFX.recipes[f.sk]) VFX.one('trait', f.x, f.y, { pal: VFX.recipes[f.sk].pal }); else if (s && s.fx) G.anims.push({ k: 'sig', fx: Object.assign({}, s.fx, { s: s.fx.s * 0.6 }), x: f.x, y: f.y, t0: t, d: 0.5, seed: 7 }); break; }
+      case 'afx': if (window.VFX && VFX.ok) { const cl = D.CLASSES[(G.ents.get(f.s) || {}).c] || {}; VFX.one('afx', f.x, f.y, Object.assign({}, f, { pal: cl.pal ? VFX.palOf(cl.pal) : undefined, efx: VFX.efxOf(f.el) })); } break;
       case 'echo': if (window.VFX && VFX.ok) { const R = VFX.recipes[f.sk]; VFX.one('echo', f.x, f.y, { pal: R ? R.pal : undefined, el: f.el }); } break;
       case 'pick': if (window.SFX && f.t === G.me) SFX.loot(); break;
       case 'emote': if (ent) { ent.emote = f.e; ent.emoteT = G.t + 3; } break;

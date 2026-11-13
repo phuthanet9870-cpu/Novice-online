@@ -425,3 +425,82 @@ body.touch #chat { display: none; }
 #tframe #tTags { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; margin-top: 3px; }
 #pframe .bar span, #tframe .bar span { text-shadow: 0 1px 0 #000, 0 0 3px #000; font-weight: 700; }
 #hudGuide .hgN { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); color: #1b1408; font: 700 11px sans-serif; font-style: normal; } #hudGuide .hgBox .hgN { position: absolute; left: -9px; top: -9px; }
+
+/* ---------------- v6: Ashfall-style class select (card carousel) ---------------- */
+#createPanel.createPanel { max-width: 1240px; width: calc(100vw - 32px); }
+#classGrid { display: grid !important; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 8px; }
+#classGrid .cCards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+#classGrid .cCard { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0; background: none; border: 0; cursor: pointer; }
+#classGrid .cArt { position: relative; width: 100%; aspect-ratio: 9 / 20; max-height: 360px; border-radius: 10px; overflow: hidden; border: 2px solid rgba(242, 196, 90, .35); background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--c) 45%, #1a1424), #0c0a12); box-shadow: 0 6px 18px rgba(0, 0, 0, .5); transition: transform .15s, box-shadow .15s, border-color .15s; }
+#classGrid .cArt img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#classGrid .cCard:hover .cArt { transform: translateY(-3px); border-color: var(--gold); }
+#classGrid .cCard.on .cArt { border-color: #ffd86a; box-shadow: 0 0 0 2px #ffd86a, 0 0 26px rgba(255, 216, 106, .6); }
+#classGrid .cName { text-align: center; line-height: 1.15; } #classGrid .cName b { display: block; color: #fff; font-size: 13px; } #classGrid .cName small { color: var(--dim); font-size: 11px; }
+#classGrid .cPick { min-width: 92px; } .btn.green { background: linear-gradient(180deg, #5fd47a, #2f9a4c); color: #fff; border-color: #3fb05e; }
+#classGrid .cArrow { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--gold); background: rgba(20, 16, 30, .85); color: var(--gold); font-size: 16px; cursor: pointer; }
+#classGrid .cArrow:hover { background: rgba(242, 196, 90, .18); }
+#classGrid .cDots { grid-column: 1 / -1; display: flex; gap: 6px; justify-content: center; align-items: center; font-size: 11px; color: var(--dim); }
+#classGrid .cDots i { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--gold); cursor: pointer; } #classGrid .cDots i.on { background: var(--gold); }
+#classInfo.classInfo { display: grid; grid-template-columns: 1fr 1.3fr 1.2fr; gap: 10px; margin-top: 10px; }
+#classInfo .ciBox { border: 1px solid rgba(242, 196, 90, .35); border-radius: 10px; padding: 8px 12px; background: rgba(10, 8, 16, .55); font-size: 12px; }
+#classInfo .ciBox h4 { margin: 0 0 6px; color: var(--gold); font-size: 12px; border-left: 3px solid var(--gold); padding-left: 6px; }
+#classInfo .ciRow { display: flex; gap: 10px; align-items: flex-start; } #classInfo .ciThumb { width: 46px; height: 100px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); }
+#classInfo .ciRow b { font-size: 15px; display: block; } #classInfo .ciRow small { color: var(--dim); }
+#classInfo .mech { border-left: 3px solid var(--c); padding-left: 8px; color: #d8cfe8; } #classInfo .mech b { color: var(--c); }
+#classInfo .skillPreview { display: flex; gap: 6px; flex-wrap: wrap; } #classInfo .skillPreview img { width: 40px; height: 40px; border-radius: 8px; border: 2px solid transparent; cursor: pointer; }
+#classInfo .skillPreview img.on { border-color: var(--gold); box-shadow: 0 0 10px rgba(242, 196, 90, .5); }
+#classInfo .ciSkillTxt { margin-top: 6px; } #classInfo .ciSkillTxt p { margin: 3px 0 0; color: #d6d9e4; }
+@media (max-width: 900px) { #classGrid .cCards { grid-template-columns: repeat(3, minmax(0, 1fr)); } #classGrid .cCards .cCard:nth-child(n+4) { display: none; } #classInfo.classInfo { grid-template-columns: 1fr; } #classGrid .cArt { max-height: 240px; } }
+
+/* ---------------- v6: Ashfall-style HUD (warm dark panels, gold trim) ---------------- */
+#hud.ash { --ap: rgba(18, 13, 20, .9); --ab: #6a5232; --ag: #e8c26a; }
+#hud.ash .glass, #hud.ash .hotbars, #hud.ash #menu.v3 .mgi3, #hud.ash #chat { background: linear-gradient(180deg, rgba(30, 22, 30, .92), rgba(14, 10, 16, .94)); border: 1px solid var(--ab); box-shadow: 0 4px 18px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(232, 194, 106, .12); }
+/* player frame: round portrait in a gold ring */
+#hud.ash #pframe { border-radius: 12px; padding: 8px 12px 8px 8px; align-items: center; }
+#hud.ash #pframe .por img { width: 64px; height: 64px; border-radius: 50%; border: 3px solid var(--ag); box-shadow: 0 0 0 2px #2a1c10, 0 0 12px rgba(232, 194, 106, .45); background: #1a1220; }
+#hud.ash #pframe .lvb { background: linear-gradient(180deg, #f6d27a, #b8862a); color: #2a1a06; border: 2px solid #2a1c10; border-radius: 50%; min-width: 24px; height: 24px; display: grid; place-items: center; font-weight: 800; }
+#hud.ash #pframe .pname b { color: #fff; font-size: 15px; letter-spacing: .02em; } #hud.ash #pframe .pname small { color: var(--ag); }
+#hud.ash .bar.hp i { background: linear-gradient(180deg, #ff6a5a, #c8201c); } #hud.ash .bar.sp i { background: linear-gradient(180deg, #ffb24a, #d06a10); }
+#hud.ash .bar { border: 1px solid #3a2a20; border-radius: 4px; background: #120c10; }
+#hud.ash #resBar { display: flex; gap: 3px; flex-wrap: wrap; } #hud.ash #resBar b { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--c); opacity: .45; background: none; }
+#hud.ash #resBar b.on { background: var(--c); opacity: 1; box-shadow: 0 0 6px var(--c); }
+/* round minimap with a gold ring */
+#hud.ash #miniWrap { background: none; border: 0; box-shadow: none; width: 206px; text-align: center; }
+#hud.ash #miniWrap .mhead { background: rgba(18, 13, 20, .85); border: 1px solid var(--ab); border-radius: 10px; padding: 3px 8px; }
+#hud.ash #minicv { width: 184px; height: 184px; border-radius: 50%; margin: 6px auto 0; border: 4px solid var(--ag); box-shadow: 0 0 0 3px #2a1c10, 0 6px 20px rgba(0, 0, 0, .6), inset 0 0 18px rgba(0, 0, 0, .6); }
+#hud.ash #miniWrap .mfoot { justify-content: center; gap: 6px; }
+#hud.ash #miniWrap #zoomIn, #hud.ash #miniWrap #zoomOut { border-radius: 50%; width: 26px; height: 26px; border: 1px solid var(--ag); background: #1a1220; color: var(--ag); }
+/* skill bar: EXP strip with a gem on top, buff slots cyan, ultimates gold */
+#hud.ash #ult { display: none; }
+#hud.ash .hotbars { border-radius: 14px; padding: 12px 10px 8px; position: relative; }
+#hud.ash .hotbars #exp { position: absolute; left: 10px; right: 10px; top: 3px; bottom: auto; height: 5px; border-radius: 3px; background: #0c0810; border: 1px solid #3a2a20; }
+#hud.ash .hotbars #exp i { background: linear-gradient(90deg, #c88a2a, #ffe08a); box-shadow: 0 0 6px #ffc84a; border-radius: 3px; }
+#hud.ash .hotbars #exp span { bottom: auto; top: -15px; color: #f0dca8; font-size: 9px; }
+#hud.ash .hotbars #exp .expGem { position: absolute; left: 50%; top: -9px; transform: translateX(-50%); color: var(--ag); font-size: 13px; text-shadow: 0 0 6px #ffc84a; }
+#hud.ash .slot { border-radius: 7px; border: 1px solid #4a3a2a; background: linear-gradient(180deg, #221a20, #120c12); }
+#hud.ash .slot kbd { background: rgba(0, 0, 0, .6); color: #f0dca8; border-radius: 3px; font-size: 8px; }
+#hud.ash .slot.kbuff { border: 2px solid #4ad6e0; box-shadow: inset 0 0 8px rgba(74, 214, 224, .25); }
+#hud.ash .slot.kult { border: 2px solid #f0b43a; box-shadow: inset 0 0 8px rgba(240, 180, 58, .3); }
+#hud.ash .slot.locked .qty { left: 0; right: 0; bottom: 2px; text-align: center; font-size: 9px; color: #c8b8a0; }
+/* class mechanic gauge */
+#cmgauge { display: flex; gap: 8px; align-items: center; background: rgba(18, 13, 20, .85); border: 1px solid #6a5232; border-radius: 12px; padding: 3px 12px; font-size: 11px; pointer-events: auto; }
+#cmgauge em { font-style: normal; font-weight: 700; } #cmgauge .pips { display: flex; gap: 3px; }
+#cmgauge .pips b { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--c); opacity: .45; } #cmgauge .pips b.on { background: var(--c); opacity: 1; box-shadow: 0 0 6px var(--c); }
+/* compact menu + full menu popup */
+#menu.v3 { position: absolute; right: 12px; bottom: 16px; display: block; padding: 0; background: none; border: 0; box-shadow: none; }
+#menu.v3 .mgi3 { display: grid; grid-template-columns: repeat(4, 54px); gap: 5px; padding: 7px; border-radius: 12px; }
+#menu.v3 .mbtn { width: 54px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 19px; line-height: 1; border-radius: 9px; background: linear-gradient(180deg, #3a2c2a, #1c1418); border: 1px solid #5a4630; }
+#menu.v3 .mbtn em { font-style: normal; font-size: 9.5px; color: #f0dca8; margin-top: 4px; } #menu.v3 .mbtn kbd { position: absolute; right: 2px; top: 1px; font-size: 7.5px; color: var(--gold); background: none; border: 0; }
+#menu.v3 .mbtn:hover { border-color: var(--ag, #e8c26a); box-shadow: 0 0 10px rgba(232, 194, 106, .45); }
+#menu.v3 .moreMenu { position: absolute; right: 0; bottom: calc(100% + 8px); width: 300px; padding: 8px; border-radius: 12px; background: linear-gradient(180deg, rgba(30, 22, 30, .97), rgba(14, 10, 16, .97)); border: 1px solid #6a5232; box-shadow: 0 8px 30px rgba(0, 0, 0, .6); }
+#menu.v3 .moreMenu .mgl { font-size: 10px; color: var(--gold); margin: 4px 0 3px; } #menu.v3 .moreMenu .mgi { display: grid; grid-template-columns: repeat(5, 52px); gap: 4px; }
+#menu.v3 .moreMenu .mbtn { width: 52px; height: 46px; font-size: 16px; }
+#menuFold { display: none !important; }
+#hud.ash .autoRound { position: absolute; right: 272px; bottom: 30px; width: 86px; height: 86px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 3px solid #8a6a3a; background: radial-gradient(circle at 50% 35%, #4a3630, #1a1214); box-shadow: 0 0 0 2px #1a1010, 0 6px 18px rgba(0, 0, 0, .6); color: #f0dca8; cursor: pointer; padding: 0; }
+#hud.ash .autoRound span { font-size: 17px; font-weight: 800; letter-spacing: .05em; } #hud.ash .autoRound b { font-size: 10px; font-weight: 500; color: #c8b8a0; }
+#hud.ash .autoRound.on { border-color: #6ae07a; box-shadow: 0 0 0 2px #0a200e, 0 0 20px rgba(106, 224, 122, .55); } #hud.ash .autoRound.on b { color: #9af0a8; }
+#hud.ash #tracker { top: 262px; }
+@media (max-width: 900px) { #menu.v3 .mgi3 { grid-template-columns: repeat(4, 44px); } #menu.v3 .mbtn { width: 44px; height: 42px; font-size: 15px; } #menu.v3 .mbtn em { font-size: 8px; } #hud.ash .autoRound { width: 64px; height: 64px; right: 12px; bottom: 120px; } #hud.ash #minicv { width: 124px; height: 124px; } #hud.ash #miniWrap { width: 140px; } }
+#netPill { position: relative; margin: 4px auto 0; width: max-content; display: flex; align-items: center; gap: 6px; padding: 3px 12px; border-radius: 12px; background: rgba(18, 13, 20, .85); border: 1px solid #6a5232; color: #e8dcc0; font-size: 11px; pointer-events: none; z-index: 5; }
+#netPill i { width: 8px; height: 8px; border-radius: 50%; background: #8a8a8a; } #netPill.host i, #netPill.guest i { background: #5fe07a; box-shadow: 0 0 6px #5fe07a; }
+#netStatus.on { color: #6fe08a; }

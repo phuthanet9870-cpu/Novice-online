@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
 const D = require('../shared/data2.js');
+const F = require('../shared/formulas.js');
 const { SKILLS } = require('../shared/skills.js');
 const db = require('./db').load();
 const W = require('./world');
@@ -17,7 +18,7 @@ const E = require('./econ');
 
 const PORT = +process.env.PORT || 8080;
 const ROOT = path.join(__dirname, '..');
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.md': 'text/markdown; charset=utf-8' };
+const MIME = { '.webp': 'image/webp', '.jpg': 'image/jpeg', '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.md': 'text/markdown; charset=utf-8' };
 
 const server = http.createServer((req, res) => {
   let u = decodeURIComponent((req.url || '/').split('?')[0]);
@@ -112,6 +113,15 @@ function handle(sess, m) {
     if (m.t === 'play') {
       const ch = db.data.chars[m.id]; if (!ch || !acc.chars.includes(m.id)) return;
       for (const q of W.players.values()) if (q.char.acc === ch.acc && q.sess && q.char.id !== ch.id) q.sess.kick('ล็อกอินตัวละครอื่นจากบัญชีเดียวกัน');
+      // classes were replaced by the Ashfall roster: old characters move to the closest new class and get every skill point back
+      if (!D.CLASSES[ch.cls] || ch.kitVer !== 2) {
+        const MAP = { blade_knight: 'blademaster', guardian: 'guardian', berserker: 'berserker', shadow_assassin: 'assassin', ranger: 'ranger', elementalist: 'stormcaller', cleric: 'cleric', monk: 'monk', warlock: 'warlock', gunslinger: 'marksman', chrono_stalker: 'chronomancer', divine_sovereign: 'deity', hellfiend: 'demon', void_walker: 'shadowmancer', lightbringer: 'lightbringer' };
+        const old = ch.cls; if (!D.CLASSES[ch.cls]) ch.cls = MAP[ch.cls] || 'blademaster';
+        const first = require('../shared/skills.js').CLASS_SKILLS[ch.cls][0];
+        ch.skills = { [first]: 1 }; ch.skillPts = F.skillPointsAt(ch.lv) - 1; ch.hotbar = new Array(50).fill(null); I.defaultHotbar(ch); ch.hotbar[28] = 'item:pot_hp_1'; ch.hotbar[29] = 'item:pot_sp_1'; ch.passives = []; ch.kitVer = 2;
+        if (ch.equip && ch.equip.weapon && ch.equip.weapon.wtype !== D.CLASSES[ch.cls].weapon) { ch.inv = ch.inv || []; ch.inv.push(ch.equip.weapon); ch.equip.weapon = null; }
+        ch._kitMsg = old !== ch.cls ? `⚔ ระบบคลาสใหม่: ${old} → ${D.CLASSES[ch.cls].name} · คืนแต้มสกิลทั้งหมดแล้ว` : '⚔ ระบบสกิลใหม่ทั้งหมด — คืนแต้มสกิลแล้ว เรียนสกิลใหม่ได้ที่หน้าต่างสกิล (K)';
+      }
       let p = W.players.get(ch.id);
       if (p) { if (p.sess && p.sess !== sess) p.sess.kick('ล็อกอินซ้อน'); p.sess = sess; p.offlineUntil = 0; p.gm = acc.gm; }
       else {
@@ -120,8 +130,9 @@ function handle(sess, m) {
         W.players.set(ch.id, p);
       }
       sess.p = p;
+      if (ch._kitMsg) { sess.send({ t: 'notice', k: 'system', m: ch._kitMsg }); delete ch._kitMsg; }
       // the passive tree was re-laid out for 15 classes: old allocations are refunded once
-      { const T = require('../shared/passives.js'); if ((ch.passiveVer || 1) !== T.VERSION) { if ((ch.passives || []).length) sess.send({ t: 'notice', k: 'system', m: '🌌 Passive Tree ถูกปรับใหม่สำหรับ 15 คลาส — คืนแต้มทั้งหมดแล้ว กรุณาเลือกใหม่' }); ch.passives = []; ch.passiveVer = T.VERSION; } }
+      { const T = require('../shared/passives.js'); if ((ch.passiveVer || 1) !== T.VERSION) { if ((ch.passives || []).length) sess.send({ t: 'notice', k: 'system', m: '🌌 Passive Tree ถูกปรับใหม่สำหรับ 30 คลาส — คืนแต้มทั้งหมดแล้ว กรุณาเลือกใหม่' }); ch.passives = []; ch.passiveVer = T.VERSION; } }
       // GM-only character modes (immortal / no cooldown / ...) never carry over to non-GM accounts
       if (p.gm > 0) { p.gmf = Object.assign({}, ch.gmf || {}); p.god = !!p.gmf.god; } else { p.gmf = {}; p.god = false; delete ch.gmf; }
       let map = ch.map || 'aurelia';

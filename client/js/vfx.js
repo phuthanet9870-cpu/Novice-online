@@ -52,125 +52,135 @@
 
   // ------------------------------------------------------------------ recipes
   const D_ = () => root.NO_DATA || {};
+  // every class has its own projectile, swing and signature motif; every element its own particle shape
   const CLASS_STYLE = {
-    blade_knight: { proj: 'blade', slash: 'crescent', motif: 'swords' }, guardian: { proj: 'spear', slash: 'thrust', motif: 'shield' },
-    berserker: { proj: 'axe', slash: 'cleave', motif: 'rage' }, shadow_assassin: { proj: 'kunai', slash: 'twin', motif: 'smoke' },
-    ranger: { proj: 'arrow', slash: 'thrust', motif: 'leaf' }, elementalist: { proj: 'orb', slash: 'crescent', motif: 'runes' },
-    cleric: { proj: 'orb', slash: 'hammer', motif: 'cross' }, monk: { proj: 'fist', slash: 'palm', motif: 'chi' },
-    warlock: { proj: 'skull', slash: 'reap', motif: 'skulls' }, gunslinger: { proj: 'bullet', slash: 'thrust', motif: 'muzzle' },
-    chrono_stalker: { proj: 'chakram', slash: 'twin', motif: 'clock' }, divine_sovereign: { proj: 'star', slash: 'hammer', motif: 'halo' },
-    hellfiend: { proj: 'fireskull', slash: 'claw', motif: 'hellfire' }, void_walker: { proj: 'voidblade', slash: 'iai', motif: 'void' },
-    lightbringer: { proj: 'prism', slash: 'crescent', motif: 'prism' }
+    blademaster: { proj: 'blade', slash: 'iai', motif: 'swords' }, guardian: { proj: 'spear', slash: 'hammer', motif: 'shield' },
+    berserker: { proj: 'axe', slash: 'cleave', motif: 'rage' }, paladin: { proj: 'star', slash: 'hammer', motif: 'cross' },
+    pyromancer: { proj: 'orb', slash: 'crescent', motif: 'hellfire' }, cryomancer: { proj: 'shard', slash: 'crescent', motif: 'snow' },
+    stormcaller: { proj: 'orb', slash: 'crescent', motif: 'storm' }, necromancer: { proj: 'skull', slash: 'reap', motif: 'skulls' },
+    cleric: { proj: 'orb', slash: 'hammer', motif: 'halo' }, druid: { proj: 'leafy', slash: 'claw', motif: 'leaf' },
+    assassin: { proj: 'kunai', slash: 'twin', motif: 'smoke' }, shadowdancer: { proj: 'kunai', slash: 'twin', motif: 'void' },
+    ranger: { proj: 'arrow', slash: 'thrust', motif: 'leaf' }, marksman: { proj: 'bullet', slash: 'thrust', motif: 'muzzle' },
+    engineer: { proj: 'bomb', slash: 'hammer', motif: 'gear' }, monk: { proj: 'fist', slash: 'palm', motif: 'chi' },
+    spellblade: { proj: 'blade', slash: 'iai', motif: 'runes' }, beastmaster: { proj: 'spear', slash: 'claw', motif: 'paw' },
+    chronomancer: { proj: 'chakram', slash: 'twin', motif: 'clock' }, warlock: { proj: 'fireskull', slash: 'reap', motif: 'skulls' },
+    starhunter: { proj: 'star', slash: 'thrust', motif: 'stars' }, darkknight: { proj: 'voidblade', slash: 'cleave', motif: 'void' },
+    lightbringer: { proj: 'prism', slash: 'crescent', motif: 'prism' }, shadowmancer: { proj: 'voidblade', slash: 'claw', motif: 'maw' },
+    seraph: { proj: 'spear', slash: 'thrust', motif: 'feathers' }, reaper: { proj: 'voidblade', slash: 'reap', motif: 'skulls' },
+    demon: { proj: 'fireskull', slash: 'claw', motif: 'hellfire' }, deity: { proj: 'star', slash: 'hammer', motif: 'halo' },
+    jester: { proj: 'card', slash: 'twin', motif: 'cards' }, loki: { proj: 'card', slash: 'crescent', motif: 'void' }
   };
   const MELEE_WEAPON = { sword: 1, spear: 1, axe: 1, dagger: 1, knuckle: 1, scythe: 1, mace: 1, claw: 1, katana: 1 };
+  const IMPACT = { ember: 'blast', shard: 'shatter', spark: 'zap', smoke: 'implode', feather: 'burst', leaf: 'burst', dust: 'burst', glyph: 'burst', drop: 'splash', tick: 'burst', bubble: 'splash', swirl: 'gust', ringlet: 'burst', twinkle: 'burst' };
   function build(sk) {
-    const cs = CLASS_STYLE[sk.cls] || CLASS_STYLE.blade_knight;
+    const cs = CLASS_STYLE[sk.cls] || CLASS_STYLE.blademaster;
     const cls = D_().CLASSES[sk.cls] || {}, wpn = cls.weapon || 'sword';
-    const el = sk.element || 'neutral', h = hash(sk.id);
+    const el = sk.element || 'neutral', efx = sk.efx || 'dust', h = hash(sk.id);
     const v = (n, k = 0) => (h >>> (k * 3)) % n;
-    const ds = String(sk.design || '');
-    const tok = ds.startsWith('ult:') ? 'ult' : ds.startsWith('buff:') ? 'buff' : ds.split('|')[0];
-    const r = sk.radius || 3, len = sk.length || sk.range || 6;
-    const tags = (sk.applies || []).map((a) => a.tag);
+    const r = sk.radius || 3, len = sk.length || sk.range || 6, big = sk.kind === 'ult' ? 1 : 0;
+    const tags = (sk.applies || []).map((a) => a.tag), rk = (sk.riders || []).map((x) => x.k);
     const steps = [];
     const add = (...s) => s.forEach((x) => x && steps.push(x));
-    const slashStyle = MELEE_WEAPON[wpn] ? cs.slash : 'crescent';
+    const slashStyle = MELEE_WEAPON[wpn] || sk.melee ? cs.slash : 'crescent';
     const projStyle = cs.proj;
-    const impactK = { fire: 'blast', ice: 'shatter', lightning: 'zap', holy: 'burst', dark: 'implode', poison: 'splash', water: 'splash', earth: 'crater', blood: 'burst', wind: 'gust', neutral: 'burst' }[el] || 'burst';
-    const cast = (k = 0) => (sk.dmgType === 'mag' || sk.cast ? { k: 'sigil', at: 'caster', dur: 0.55, r: 1.1, style: ['ring', 'hex', 'star', 'square'][v(4, k)] } : null);
-    const motif = { k: 'motif', at: 'caster', dur: 0.6, style: cs.motif };
-    if (tok === 'buff') {
-      let mods = {}; try { mods = JSON.parse(ds.slice(5)); } catch (e) {}
-      const kk = Object.keys(mods), has = (...x) => x.some((q) => kk.includes(q));
-      add({ k: 'aura', at: 'caster', follow: 1, dur: 1.4, style: has('defPct', 'dmgReduce', 'blocks', 'mdefPct', 'guardAlly', 'spShield') ? 'shell' : has('aspdPct', 'movePct', 'flee', 'cdr') ? 'wind' : has('lifesteal', 'soulSiphon') ? 'blood' : has('regenPct', 'hpPct', 'spRegen') ? 'heal' : has('crit', 'critDmg', 'hit', 'range') ? 'eye' : has('matkPct', 'castReduce', 'spPct') ? 'runes' : has('ccImmune', 'ccRes') ? 'halo' : 'flame', n: 6 + v(6) });
-      add(has('defPct', 'dmgReduce', 'blocks', 'guardAlly') ? { k: 'shield', at: 'caster', follow: 1, dur: 1.2, r: 1 } : null, motif);
-      if (mods.party) add({ k: 'nova', at: 'caster', dur: 0.7, r: 5, style: 'soft' });
-      return steps;
-    }
-    if (tok === 'ult') {
-      const parts = ds.split(':'), kind = parts[1];
-      let o = {}; try { o = JSON.parse(parts.slice(2).join(':')); } catch (e) {}
-      const R = o.r || sk.radius || 6;
-      add({ k: 'wings', at: 'caster', dur: 0.9, style: cs.motif }, { k: 'sigil', at: 'caster', dur: 0.9, r: 2.2, style: 'star' });
-      switch (kind) {
-        case 'nuke': add({ k: o.leap ? 'meteor' : 'pillar', at: sk.self ? 'caster' : 'target', d: 0.3, dur: 0.9, r: 1.6, style: el }, { k: 'nova', at: sk.self ? 'caster' : 'target', d: 0.5, dur: 0.9, r: R, style: 'double' }, { k: impactK, at: sk.self ? 'caster' : 'target', d: 0.5, r: R * 0.5, big: 1 }); break;
-        case 'barrage': add({ k: 'rain', at: 'target', d: 0.2, dur: 2.2, r: Math.min(R, 8), n: 28, style: el === 'neutral' ? projStyle : el }); break;
-        case 'blackhole': add({ k: 'blackhole', at: 'target', d: 0.2, dur: 2.6, r: Math.min(R, 6) }); break;
-        case 'stackburst': add({ k: 'implode', at: 'caster', d: 0.2, r: R * 0.6 }, { k: 'nova', at: 'caster', d: 0.6, dur: 0.8, r: R, style: 'double' }); break;
-        case 'megaline': add({ k: 'beam', at: 'caster', d: 0.3, dur: 1.2, len: o.len || 15, w: 1.1, style: cs.motif === 'prism' ? 'prism' : el }); break;
-        case 'transform': add({ k: 'aura', at: 'caster', follow: 1, d: 0.2, dur: 3.5, style: cs.motif, n: 18 }, { k: 'nova', at: 'caster', d: 0.2, dur: 0.6, r: 4, style: 'double' }); break;
-        case 'dome': add({ k: 'shield', at: 'caster', follow: 1, d: 0.2, dur: 4, r: R || 4 }); break;
-        case 'saint': case 'revive': case 'zoneheal': case 'miracle': add({ k: 'pillar', at: 'caster', d: 0.2, dur: 1.4, r: 2.2, style: 'holy' }, { k: 'heal', at: 'caster', d: 0.4, dur: 1.4, r: o.r || 6 }); break;
-        case 'summonArmy': add({ k: 'portal', at: 'caster', d: 0.2, dur: 1.6, r: 2.5, n: Math.min(6, o.n || 3) }); break;
-        case 'plague': add({ k: 'cloud', at: 'area', d: 0.2, dur: 2.4, r: 6, n: 5, style: el }); break;
-        case 'execute': case 'executeSweep': add({ k: 'slash', at: 'caster', d: 0.2, dur: 0.5, r: kind === 'executeSweep' ? R : 2.6, n: 1, style: 'iai', big: 1 }, { k: 'implode', at: 'target', d: 0.45, r: 1.2 }); break;
-        case 'zoneself': case 'zonetarget': add({ k: 'field', at: kind === 'zoneself' ? 'caster' : 'target', follow: kind === 'zoneself' ? 1 : 0, d: 0.2, dur: Math.min(6, o.dur || 5), r: o.r || 4, style: el }); break;
-        case 'traps': add({ k: 'sigil', at: 'area', d: 0.1, dur: 2.5, r: 0.9, n: 6, style: 'hex' }); break;
-        case 'delayedAoe': add({ k: 'mark', at: 'target', dur: o.delay || 2, r: o.r || 4 }, { k: 'pillar', at: 'target', d: o.delay || 2, dur: 0.9, r: 2, style: el }, { k: impactK, at: 'target', d: (o.delay || 2) + 0.1, r: o.r || 4, big: 1 }); break;
-        case 'single': add({ k: 'mark', at: 'target', dur: o.cast || 0.8, r: 1 }, { k: 'proj', at: 'path', d: (o.cast || 0.5) * 0.9, style: projStyle, big: 1 }); break;
-        case 'ricochetUlt': add({ k: 'bolt', at: 'area', d: 0.2, dur: 1.6, r: 6, n: 8 }); break;
-        default: add({ k: 'nova', at: 'caster', d: 0.3, dur: 0.9, r: R, style: 'double' });
-      }
-      return steps;
-    }
-    const swing = (extra) => Object.assign({ k: 'slash', at: 'caster', dur: 0.32, r: Math.max(1.5, Math.min(3.2, sk.range || 2)), n: 1, style: slashStyle }, extra);
-    switch (tok) {
-      case 'shot': case 'throw': case 'bolt': case 'lance': case 'pierce': case 'ricochet': case 'grenade': case 'volley': {
+    const impactK = IMPACT[efx] || 'burst';
+    const at = sk.self ? 'caster' : 'target';
+    const motes = (where, d, n, rr) => ({ k: 'motes', at: where, d: d || 0, dur: 0.7 + v(3) * 0.1, r: rr || 1.2, n: n || 8 + v(6), style: efx });
+    const cast = (k = 0) => (sk.dmgType === 'mag' ? { k: 'sigil', at: 'caster', dur: 0.5, r: 1 + v(3, k) * 0.15, style: ['ring', 'hex', 'star', 'square'][v(4, k)] } : null);
+    const swing = (extra) => Object.assign({ k: 'slash', at: 'caster', dur: 0.3, r: Math.max(1.5, Math.min(3.4, sk.radius || sk.range || 2)), n: 1, style: slashStyle, big }, extra);
+    switch (sk.arch) {
+      case 'slash': add(swing({ r: Math.max(1.6, Math.min(3.4, r)) }), { k: impactK, at: 'target', d: 0.1, r: 0.8 + v(3) * 0.15 }); break;
+      case 'spin': add({ k: 'slash', at: 'caster', dur: 0.55, r, n: Math.min(5, sk.hits || 2), style: 'spin', big }, { k: 'nova', at: 'caster', d: 0.1, dur: 0.5, r, style: ['soft', 'dashed', 'double'][v(3)] }); break;
+      case 'thrust': add(sk.melee ? swing({ style: 'thrust', r: Math.min(4, len * 0.6) }) : null, { k: 'wave', at: 'caster', d: sk.melee ? 0.08 : 0, dur: 0.5, len, w: 0.7 + v(3) * 0.2, style: el }); break;
+      case 'beam': add(cast(1), { k: 'beam', at: 'caster', dur: big ? 1.1 : 0.55, len, w: (big ? 1 : 0.45) + v(3) * 0.12, style: cs.motif === 'prism' ? 'prism' : el }); break;
+      case 'proj':
         add(cast(0));
-        if (tok === 'bolt' && el === 'lightning') { add({ k: 'bolt', at: 'target', d: 0.1, dur: 0.45, n: 1 + v(2) }); break; }
-        if (tok === 'bolt' && (el === 'holy' || el === 'fire' || el === 'dark')) { add({ k: 'pillar', at: 'target', d: 0.1, dur: 0.7, r: 1 + v(2) * 0.3, style: el }); break; }
-        if (tok === 'grenade') { add({ k: 'proj', at: 'path', style: 'bomb', arc: 1 }, { k: 'blast', at: 'target', d: 0.4, r: r }); break; }
-        if (tok === 'volley') { add({ k: 'proj', at: 'fan', n: 3 + v(3), style: projStyle }); break; }
-        add({ k: 'proj', at: 'path', style: projStyle, pierce: tok === 'pierce' || tok === 'lance' ? 2.5 : 0, n: tok === 'shot' ? 1 + v(2) : 1, trail: v(3) });
-        if (tok === 'ricochet') add({ k: 'proj', at: 'bounce', d: 0.25, style: projStyle });
-        add({ k: impactK, at: 'target', d: 0.05, r: 0.9 });
+        if (sk.volley) add({ k: 'proj', at: 'fan', n: Math.min(7, sk.volley), style: projStyle });
+        else add({ k: 'proj', at: 'path', style: projStyle, pierce: sk.pierce ? 2.5 : 0, n: 1, trail: v(3), big });
+        add(sk.shape === 'circle' ? { k: 'blast', at: 'target', d: 0.05, r: r } : { k: impactK, at: 'target', d: 0.05, r: 0.9 });
+        break;
+      case 'nova': add(cast(2), { k: 'nova', at: 'caster', d: 0.08, dur: big ? 0.9 : 0.65, r, style: ['double', 'runic', 'soft', 'dashed', 'crack'][v(5)] }, { k: impactK, at: 'caster', d: 0.1, r: r * 0.45, big }); break;
+      case 'ground':
+        add(cast(3), { k: 'mark', at: 'target', dur: sk.drop || 0.5, r: Math.min(r, 3) });
+        if ((sk.balls || 1) > 1) add({ k: 'rain', at: 'target', d: 0.2, dur: big ? 1.8 : 1.1, r, n: Math.min(30, (sk.balls || 4) * 2 + 4), style: el === 'neutral' || el === 'blood' || el === 'wind' ? projStyle : el });
+        else if (el === 'lightning') add({ k: 'bolt', at: 'target', d: sk.drop || 0.4, dur: 0.45, n: 1 + v(3) });
+        else add({ k: 'meteor', at: 'target', d: 0.05, dur: (sk.drop || 0.5) + 0.1, r }, { k: el === 'earth' || el === 'neutral' ? 'crater' : impactK, at: 'target', d: (sk.drop || 0.5), r: r * 0.7, big });
+        break;
+      case 'zone': add(cast(4), { k: 'field', at: 'target', dur: Math.min(8, (sk.zone && sk.zone.dur) || 4), r, style: el, n: 3 + v(4) }); break;
+      case 'chain': add(cast(5), { k: 'proj', at: 'path', style: projStyle, n: 1 }, { k: 'bolt', at: 'target', d: 0.15, dur: 0.45, n: Math.min(6, sk.chain || 3), style: el }); break;
+      case 'dash': add({ k: 'dash', at: 'line', dur: 0.3 }, swing({ d: 0.16, at: 'target' }), { k: impactK, at: 'target', d: 0.24, r: 0.9 }); break;
+      case 'leap': add({ k: 'blink', at: 'caster', dur: 0.35 }, { k: 'crater', at: 'caster', d: 0.3, r: r * 0.6 }, { k: 'nova', at: 'caster', d: 0.3, dur: 0.6, r, style: 'crack' }); break;
+      case 'barrage': {
+        if (sk.melee) { const n = Math.min(5, 2 + v(3)); for (let i = 0; i < n; i++) add(swing({ d: i * 0.1, flip: i % 2, dur: 0.22, r: 1.8 })); }
+        else add({ k: 'proj', at: 'fan', n: Math.min(7, Math.max(3, Math.ceil((sk.hits || 3) / 2))), style: projStyle });
+        add({ k: impactK, at: 'target', d: 0.3, r: 0.9 });
         break;
       }
-      case 'rain': add(cast(1), { k: 'rain', at: 'target', dur: 1.1, r, n: 8 + Math.round(r * 2), style: el === 'neutral' || el === 'blood' || el === 'wind' ? projStyle : el }); break;
-      case 'quake': add(swing({ dur: 0.25 }), { k: 'crater', at: sk.self ? 'caster' : 'target', d: 0.12, r: r * 0.6 }, { k: 'nova', at: sk.self ? 'caster' : 'target', d: 0.12, dur: 0.6, r, style: ['crack', 'double', 'dashed'][v(3)] }, { k: 'spikes', at: sk.self ? 'caster' : 'target', d: 0.2, dur: 0.7, r: r * 0.8, n: 6 + v(5), style: el }); break;
-      case 'nova': add(cast(2), { k: 'nova', at: sk.self ? 'caster' : 'target', d: 0.1, dur: 0.7, r, style: ['double', 'runic', 'soft'][v(3)] }, { k: impactK, at: sk.self ? 'caster' : 'target', d: 0.1, r: r * 0.4 }); break;
-      case 'leap': add({ k: 'blink', at: 'caster', dur: 0.4 }, { k: 'crater', at: 'target', d: 0.3, r: r * 0.6 }, { k: 'nova', at: 'target', d: 0.3, dur: 0.6, r, style: 'crack' }); break;
-      case 'spin': add({ k: 'slash', at: 'caster', dur: 0.5, r, n: 2 + v(2), style: 'spin' }, { k: 'nova', at: 'caster', d: 0.1, dur: 0.5, r, style: 'soft' }); break;
-      case 'combo': { const n = 2 + v(3); for (let i = 0; i < n; i++) add(swing({ d: i * 0.12, flip: i % 2, dur: 0.24 })); add({ k: impactK, at: 'target', d: n * 0.12, r: 0.8 }); break; }
-      case 'strike': case 'scythe': add(swing({ dur: 0.36, style: tok === 'scythe' ? 'reap' : slashStyle, big: 1 }), { k: 'burst', at: 'target', d: 0.12, r: 1 + v(3) * 0.2 }, { k: impactK, at: 'target', d: 0.14, r: 0.9 }); break;
-      case 'arc': add(sk.melee ? swing({ r: Math.min(4, sk.radius || 3), dur: 0.35 }) : { k: 'cone', at: 'caster', dur: 0.5, r: sk.radius || 5, style: el }); break;
-      case 'wave': add(cs.motif === 'prism' || cs.motif === 'halo' ? { k: 'beam', at: 'caster', dur: 0.55, len, w: 0.5 + v(3) * 0.15, style: cs.motif === 'prism' ? 'prism' : el } : { k: 'wave', at: 'caster', dur: 0.6, len, w: 0.9 + v(3) * 0.2, style: el }); break;
-      case 'dash': add({ k: 'dash', at: 'line', dur: 0.3 }, swing({ d: 0.18, at: 'target' }), { k: impactK, at: 'target', d: 0.25, r: 0.8 }); break;
-      case 'blink': case 'blinkcast': case 'backstep': add({ k: 'blink', at: 'caster', dur: 0.4 }, { k: 'blink', at: 'target', d: 0.12, dur: 0.4 }, tok === 'blinkcast' ? { k: impactK, at: 'target', d: 0.25, r: 1 } : swing({ d: 0.22, at: 'target' })); break;
-      case 'pull': add({ k: el === 'dark' || cs.motif === 'void' ? 'blackhole' : 'chain', at: el === 'dark' || cs.motif === 'void' ? 'target' : 'line', dur: el === 'dark' ? 1 : 0.5, r: Math.min(2.5, r) }, { k: impactK, at: 'target', d: 0.4, r: 0.8 }); break;
-      case 'zone': case 'trap': add(cast(3), { k: tok === 'trap' ? 'sigil' : 'field', at: 'target', dur: Math.min(8, (sk.zone && sk.zone.dur) || 3), r: tok === 'trap' ? 1 : r, style: tok === 'trap' ? 'hex' : el }); break;
-      case 'delayed': add({ k: cs.motif === 'clock' ? 'clock' : 'mark', at: 'target', dur: Math.min(3, sk.delay || 2), r: 1.2 }, { k: impactK, at: 'target', d: Math.min(3, sk.delay || 2), r: 1.6, big: 1 }); break;
-      case 'summon': add({ k: 'portal', at: 'target', dur: 1.3, r: 1.6, n: (sk.summon && sk.summon.count) || 1 }); break;
-      default:
-        if (sk.shape === 'circle') add({ k: 'nova', at: sk.self ? 'caster' : 'target', dur: 0.6, r });
-        else if (sk.shape === 'line') add({ k: 'beam', at: 'caster', dur: 0.5, len, w: 0.6, style: el });
-        else if (sk.shape === 'cone') add({ k: 'cone', at: 'caster', dur: 0.5, r, style: el });
-        else add(swing(), { k: impactK, at: 'target', d: 0.1, r: 0.8 });
+      case 'summon': case 'turret': add({ k: 'portal', at: 'caster', dur: 1.2, r: 1.5, n: (sk.summon && sk.summon.count) || 1 }); break;
+      case 'trap': add({ k: 'sigil', at: 'target', dur: 1.2, r: 0.9, style: ['hex', 'square', 'star'][v(3)] }); break;
+      case 'buff': {
+        const mk = Object.keys(sk.mods || {})[0] || 'atkPct';
+        add({ k: 'aura', at: 'caster', follow: 1, dur: 1.4, style: { defPct: 'shell', aspdPct: 'wind', movePct: 'wind', cdr: 'runes', lifesteal: 'blood', crit: 'eye', atkPct: 'flame' }[mk] || 'flame', n: 6 + v(6) });
+        add({ k: 'motif', at: 'caster', dur: 0.6, style: cs.motif });
+        break;
+      }
+      case 'shield': add({ k: 'shield', at: 'caster', follow: 1, dur: Math.min(4, (sk.shield && sk.shield.dur) || 3), r: 1 + v(3) * 0.1 }); break;
+      case 'heal': add({ k: 'heal', at: 'caster', dur: 1, r: sk.heal && sk.heal.who === 'party' ? 4 : 1.4 }); break;
+      case 'blink': add({ k: 'blink', at: 'caster', dur: 0.4 }, { k: 'dash', at: 'line', dur: 0.25 }); break;
+      case 'stealth': add({ k: 'poof', at: 'caster', dur: 0.6, r: 1.2 }, { k: 'aura', at: 'caster', follow: 1, dur: 1.2, style: 'void', n: 6 }); break;
+      default: add(swing(), { k: impactK, at: 'target', d: 0.1, r: 0.8 });
     }
-    // v4 signature mechanics
-    const mech = ds.split('|')[4] || 'none';
-    if (mech === 'boomerang') add({ k: 'proj', at: 'return', d: 0.35, style: projStyle });
-    if (mech === 'stackSelf') add({ k: 'aura', at: 'caster', follow: 1, d: 0.1, dur: 0.7, style: 'rage', n: 6 });
-    if (mech === 'overcharge') add({ k: 'sigil', at: 'caster', dur: 0.5, r: 1.6, style: 'star' }, { k: 'prismflash', at: 'caster', dur: 0.35, r: 1 });
-    if (mech === 'echo') add({ k: 'nova', at: 'target', d: 0.4, dur: 0.5, r: 1.4, style: 'dashed' });
-    if (tags.includes('freeze') || tags.includes('chill')) add({ k: 'shatter', at: 'target', d: 0.2, r: 0.7, style: 'frost' });
-    if (tags.includes('airborne')) add({ k: 'gust', at: 'target', d: 0.15, r: 0.8, style: 'up' });
+    // element particles at the point of impact
+    if (sk.dmg || sk.zone) add(motes(sk.arch === 'nova' || sk.arch === 'spin' ? 'caster' : 'target', 0.12, null, Math.min(3, r * 0.5)));
+    // ultimates: wings, a big seal and screen weight
+    if (big) add({ k: 'wings', at: 'caster', dur: 0.9, style: cs.motif }, { k: 'sigil', at: 'caster', dur: 0.9, r: 2.2, style: 'star' });
+    if (sk.setUlt) add({ k: 'motif', at: 'caster', dur: 1, style: cs.motif });
+    // each skill ability (rider) gets its own accent
+    for (const x of rk) switch (x) {
+      case 'burn': case 'burnField': add({ k: 'field', at: 'target', d: 0.15, dur: x === 'burnField' ? 2 : 0.9, r: 0.9, style: 'fire', n: 3 }); break;
+      case 'chill': add({ k: 'shatter', at: 'target', d: 0.2, r: 0.7, style: 'frost' }); break;
+      case 'knockup': add({ k: 'gust', at: 'target', d: 0.15, r: 0.8, style: 'up' }); break;
+      case 'vortex': add({ k: 'implode', at: at, d: 0.25, r: 2 }); break;
+      case 'bleed': add(Object.assign(motes('target', 0.15, 6, 0.6), { style: 'drop' })); break;
+      case 'toxin': add({ k: 'cloud', at: 'target', d: 0.2, dur: 1.2, r: 1.2, style: 'poison' }); break;
+      case 'blind': add({ k: 'prismflash', at: 'target', d: 0.1, dur: 0.35, r: 1 }); break;
+      case 'fear': add({ k: 'implode', at: 'target', d: 0.2, r: 0.8 }); break;
+      case 'mark': case 'starMark': add({ k: 'mark', at: 'target', d: 0.15, dur: 0.9, r: 0.8 }); break;
+      case 'execute': add({ k: 'slash', at: 'target', d: 0.25, dur: 0.25, r: 1.2, style: 'iai', n: 1 }); break;
+      case 'echo': add({ k: 'nova', at: 'target', d: 0.4, dur: 0.5, r: 1.4, style: 'dashed' }); break;
+      case 'splash': add({ k: 'nova', at: 'target', d: 0.1, dur: 0.4, r: 1.9, style: 'soft' }); break;
+      case 'stack': case 'fury': add({ k: 'aura', at: 'caster', follow: 1, d: 0.1, dur: 0.7, style: 'rage', n: 5 }); break;
+      case 'sunder': add({ k: 'shatter', at: 'target', d: 0.15, r: 0.6 }); break;
+      case 'weaken': case 'steal': add({ k: 'implode', at: 'target', d: 0.2, r: 0.6 }); break;
+      case 'leech': case 'mend': add({ k: 'heal', at: 'caster', d: 0.3, dur: 0.6, r: 0.8 }); break;
+      case 'guard': case 'overheal': add({ k: 'shield', at: 'caster', follow: 1, d: 0.2, dur: 0.8, r: 0.9 }); break;
+      case 'slowField': add({ k: 'field', at: 'target', d: 0.2, dur: 2, r: 2, style: 'ice', n: 2 }); break;
+      case 'timeLock': add({ k: 'clock', at: 'target', d: 0.1, dur: 0.9, r: 1 }); break;
+      case 'trail': add({ k: 'dash', at: 'line', d: 0.05, dur: 0.6 }); break;
+      case 'detonate': add({ k: 'mark', at: 'target', d: 0.05, dur: 0.6, r: 0.6 }); break;
+      case 'taunt': add({ k: 'nova', at: 'caster', d: 0.05, dur: 0.4, r: 3, style: 'runic' }); break;
+      case 'rally': case 'haste': case 'empower': case 'amp': add({ k: 'nova', at: 'caster', d: 0.2, dur: 0.6, r: 4, style: 'soft' }); break;
+      case 'invuln': case 'immune': case 'lastStand': add({ k: 'shield', at: 'caster', follow: 1, d: 0.1, dur: 1, r: 1.1 }); break;
+      case 'cleanse': case 'purge': add({ k: 'prismflash', at: x === 'purge' ? 'target' : 'caster', d: 0.15, dur: 0.4, r: 1 }); break;
+      case 'reflect': case 'thorns': add({ k: 'spikes', at: 'caster', d: 0.1, dur: 0.6, r: 1, n: 6, style: el }); break;
+    }
+    if (tags.includes('freeze')) add({ k: 'shatter', at: 'target', d: 0.2, r: 0.7, style: 'frost' });
     if (tags.includes('root')) add({ k: 'spikes', at: 'target', d: 0.2, dur: 0.8, r: 0.9, n: 5, style: 'vine' });
-    if (tags.includes('stun') || tags.includes('knockdown')) add({ k: 'nova', at: 'target', d: 0.15, dur: 0.35, r: 1.2, style: 'soft' });
-    if (cs.motif === 'clock' && (tags.includes('slow') || tags.includes('stun') || tags.includes('freeze'))) add({ k: 'clock', at: 'target', d: 0.1, dur: 0.9, r: 1 });
-    if (cs.motif === 'prism') add({ k: 'prismflash', at: 'target', d: 0.1, dur: 0.4, r: 1 });
-    if (cs.motif === 'hellfire') add({ k: 'field', at: 'target', d: 0.15, dur: 1, r: 0.9, style: 'fire', n: 4 });
-    if (cs.motif === 'void' && steps.length < 4) add({ k: 'implode', at: 'target', d: 0.2, r: 0.7 });
+    if (tags.includes('stun')) add({ k: 'nova', at: 'target', d: 0.15, dur: 0.35, r: 1.1, style: 'soft' });
     return steps;
   }
+  // Ashfall element palette (light → dark, 4 colours) stretched into an 8-step pixel ramp
   function paletteOf(sk) {
-    const c = sk.fx && sk.fx.c, h = hueOf(c && c[0]);
-    const own = hueRamp(h, 0.9);
+    const p4 = sk.pal || ['#ffffff', '#e8e8f0', '#a0a8c0', '#5a607a'];
+    const d = p4[3], dd = mixHex(d, '#000000', 0.3), ddd = mixHex(d, '#000000', 0.5);
+    let ramp = [ddd, dd, d, mixHex(d, p4[2], 0.5), p4[2], p4[1], mixHex(p4[1], p4[0], 0.5), p4[0]];
     const cls = D_().CLASSES[sk.cls];
-    if (sk.kind === 'buff') return mixRamp(hueRamp(hueOf(cls && cls.color), 0.8), own, 0.45);
-    const base = sk.element && sk.element !== 'neutral' ? EL_PAL[sk.element] : hueRamp(hueOf(cls && cls.color), 0.75);
-    return mixRamp(base, own, 0.18 + (hash(sk.id) % 12) / 100);
+    if (cls && cls.color) ramp = mixRamp(ramp, hueRamp(hueOf(cls.color), 0.8), sk.kind === 'buff' ? 0.35 : 0.12 + (hash(sk.id) % 9) / 100);
+    return ramp;
   }
+  const EFX = { fire: 'ember', ice: 'shard', lightning: 'spark', shadow: 'smoke', holy: 'feather', nature: 'leaf', phys: 'dust', arcane: 'glyph', blood: 'drop', time: 'tick', poison: 'bubble', tech: 'spark', wind: 'swirl', chi: 'ringlet', fel: 'ember', star: 'twinkle', dark: 'smoke', light: 'twinkle', umbra: 'smoke', celestial: 'feather', death: 'smoke', infernal: 'ember', divine: 'twinkle', jester: 'glyph', chaos: 'glyph' };
+  VFX.efxOf = (el) => EFX[el] || 'dust';
+  VFX.palOf = (p4) => paletteOf({ pal: p4, id: 'x' });
   function compile() {
     const SK = (root.NO_SKILLS && (root.NO_SKILLS.SKILLS || root.NO_SKILLS)) || {};
     const used = new Set();
@@ -269,6 +279,24 @@
       case 'trait': return add({ k: 'burst', x, y, r: 0.9, pal, dur: 0.4 });
       case 'zap': return add({ k: 'chainbolt', x, y, tx: o.tx, ty: o.ty, dur: 0.35, pal: EL_PAL.lightning });
       case 'dash': return add({ k: 'dash', x, y, tx: o.tx, ty: o.ty, dur: 0.3, noLight: 1 });
+      case 'afx': {
+        const R = o.sk && VFX.recipes[o.sk], P2 = R ? R.pal : o.pal || pal, r = o.r || 1.5, fk = o.fk, efx = o.efx || 'dust';
+        switch (fk) {
+          case 'setult': add({ k: 'sigil', x, y, dur: o.d || 5, r, style: 'star', pal: P2, prio: 1 }); return add({ k: 'field', x, y, dur: o.d || 5, r, style: o.el, pal: P2, n: 6, prio: 1 });
+          case 'strike': add({ k: 'meteor', x, y, dur: 0.35, r: 1, pal: P2 }); return add({ k: 'motes', x, y, d: 0.3, dur: 0.6, r: 1, n: 8, style: efx, pal: P2 });
+          case 'collapse': add({ k: 'implode', x, y, r, pal: P2, big: 1, prio: 1 }); add({ k: 'blast', x, y, d: 0.35, r, pal: P2, big: 1, prio: 1 }); return add({ k: 'nova', x, y, d: 0.35, dur: 0.8, r: r * 1.2, style: 'double', pal: P2, prio: 1 });
+          case 'spiritarrow': case 'prism': return add({ k: 'beam', x, y, tx: o.tx, ty: o.ty, ang: Math.atan2(o.ty - y, o.tx - x), len: Math.hypot(o.tx - x, o.ty - y), dur: 0.35, w: 0.35, style: fk === 'prism' ? 'prism' : 'wind', pal: P2 });
+          case 'minewarn': return add({ k: 'mark', x, y, dur: 0.5, r: 1, pal: P2 });
+          case 'overheat': case 'harvest': case 'bladering': case 'demonform': add({ k: 'nova', x, y, dur: 0.6, r, style: 'double', pal: P2, big: 1 }); return add({ k: 'motes', x, y, dur: 0.8, r, n: 14, style: efx, pal: P2 });
+          case 'starfall': return add({ k: 'meteor', x, y, dur: 0.3, r, pal: P2 });
+          case 'vortex': return add({ k: 'implode', x, y, r, pal: P2 });
+          case 'decoy': case 'decoyboom': return add({ k: 'poof', x, y, dur: 0.6, r: 1.2 });
+          case 'bulwark': case 'blessing': return add({ k: 'shield', x, y, follow: o.s, dur: 0.9, r: 1.1, pal: P2 });
+          case 'roots': return add({ k: 'spikes', x, y, dur: 0.8, r: 1.6, n: 7, style: 'vine', pal: P2 });
+          case 'chiflare': return add({ k: 'aura', x, y, follow: o.s, dur: 0.8, style: 'halo', n: 8, pal: P2 });
+          default: add({ k: 'burst', x, y, r: Math.min(2, r), pal: P2, dur: 0.4 }); return add({ k: 'motes', x, y, dur: 0.6, r: Math.min(2.5, r), n: 10, style: efx, pal: P2 });
+        }
+      }
       case 'echo': add({ k: 'nova', x, y, dur: 0.45, r: 1.8, style: 'dashed', pal }); return add({ k: 'burst', x, y, r: 1.1, pal, dur: 0.35 });
       case 'split': return add({ k: 'chainbolt', x, y, tx: o.tx, ty: o.ty, dur: 0.3, pal });
     }
@@ -439,6 +467,9 @@
       case 'fist': P.ellipse(g, x, y, 0.28 * sz, 0.22 * sz, c[5], 0.7); P.ellipse(g, x, y, 0.16 * sz, 0.13 * sz, c[7]); break;
       case 'star': P.star(g, x, y, 0.32 * sz, c[6], 1, k * 12); P.star(g, x, y, 0.18 * sz, '#fff', 1, -k * 12); break;
       case 'prism': for (let i = 0; i < 3; i++) P.line(g, x - cs * 0.6, y - sn * 0.6 + (i - 1) * 0.06, x, y + (i - 1) * 0.04, 0.05, ['#ff6a6a', '#6aff8a', '#6a9aff'][i], 0.8); P.star(g, x, y, 0.22 * sz, '#fff', 1, 0); break;
+      case 'shard': g.globalAlpha = 1; g.fillStyle = c[6]; g.beginPath(); g.moveTo(x + cs * 0.4 * sz, y + sn * 0.3 * sz); g.lineTo(x - sn * 0.12, y + cs * 0.1); g.lineTo(x - cs * 0.3 * sz, y - sn * 0.22 * sz); g.lineTo(x + sn * 0.12, y - cs * 0.1); g.fill(); P.line(g, x - cs * 0.2, y - sn * 0.15, x + cs * 0.3, y + sn * 0.22, 0.03, '#fff'); break;
+      case 'leafy': for (let i = 0; i < 3; i++) { const an = k * 16 + i * 2.1; P.ellipse(g, x + Math.cos(an) * 0.16, y + Math.sin(an) * 0.12, 0.13 * sz, 0.07 * sz, c[4 + i]); } break;
+      case 'card': { g.save(); g.translate(x, y); g.rotate(k * 18); g.globalAlpha = 1; g.fillStyle = '#f4f0e6'; g.fillRect(-0.14 * sz, -0.2 * sz, 0.28 * sz, 0.4 * sz); g.fillStyle = c[5]; g.fillRect(-0.06, -0.06, 0.12, 0.12); g.restore(); break; }
       case 'bomb': P.ellipse(g, x, y, 0.18, 0.18, '#2a2a30'); P.ellipse(g, x - 0.05, y - 0.05, 0.05, 0.05, '#6a6a7a'); P.star(g, x + 0.12, y - 0.2, 0.1, '#ffd25a', 1, k * 20); break;
       default: {
         const pr = (0.2 + Math.sin(k * 30) * 0.03) * sz;
@@ -607,6 +638,13 @@
       case 'void': case 'smoke': P.ellipse(g, e.x, y, 0.7 * (1 - k) + 0.01, 0.5 * (1 - k) + 0.01, '#120828', fade); P.ring(g, e.x, y, 0.8 * k + 0.2, 0.6 * k + 0.15, 0.05, c[6], fade); break;
       case 'prism': for (let i = 0; i < 6; i++) { const an = (i / 6) * TAU + k * 3; P.line(g, e.x, y, e.x + Math.cos(an) * 1.2 * k, y + Math.sin(an) * 0.8 * k, 0.05, `hsl(${i * 60},90%,65%)`, fade); } break;
       case 'muzzle': P.star(g, e.x + Math.cos(e.ang) * 0.6, y + 0.3, 0.4 * fade, '#fff3a0', fade, 0.4); break;
+      case 'snow': for (let i = 0; i < 6; i++) { const an = (i / 6) * TAU + k; P.line(g, e.x, y, e.x + Math.cos(an) * 0.6 * (0.4 + k), y + Math.sin(an) * 0.6 * (0.4 + k), 0.05, c[6], fade); } break;
+      case 'gear': P.ring(g, e.x, y, 0.45, 0.45, 0.1, c[5], fade); for (let i = 0; i < 8; i++) { const an = (i / 8) * TAU + k * 3; g.globalAlpha = fade; g.fillStyle = c[5]; g.fillRect(e.x + Math.cos(an) * 0.52 - 0.06, y + Math.sin(an) * 0.52 - 0.06, 0.12, 0.12); } break;
+      case 'paw': for (let i = 0; i < 4; i++) P.ellipse(g, e.x + (i - 1.5) * 0.22, y - 0.25 - (i % 3 ? 0.08 : 0), 0.09, 0.11, c[6], fade); P.ellipse(g, e.x, y + 0.05, 0.25, 0.2, c[6], fade); break;
+      case 'cards': for (let i = 0; i < 3; i++) { g.save(); g.translate(e.x + (i - 1) * 0.35, y - k * 0.6); g.rotate((i - 1) * 0.4); g.globalAlpha = fade; g.fillStyle = '#f4f0e6'; g.fillRect(-0.14, -0.2, 0.28, 0.4); g.fillStyle = i === 1 ? '#d83a3a' : '#2a2a3a'; g.fillRect(-0.05, -0.05, 0.1, 0.1); g.restore(); } break;
+      case 'feathers': case 'stars': for (let i = 0; i < 5; i++) { const an = (i / 5) * TAU + k * 2, x2 = e.x + Math.cos(an) * 0.8 * k, y2 = y + Math.sin(an) * 0.5 * k; if (e.style === 'stars') P.star(g, x2, y2, 0.18, c[7], fade, k * 5); else { g.globalAlpha = fade; g.fillStyle = c[7]; g.fillRect(x2 - 0.04, y2 - 0.16, 0.08, 0.32); } } break;
+      case 'maw': P.crescent(g, e.x, y - 0.1, 0.5, 0.3, Math.PI - 0.3, 0.12, c[5], fade); P.crescent(g, e.x, y + 0.1, 0.5, Math.PI + 0.3, TAU - 0.3, 0.12, c[5], fade); break;
+      case 'storm': P.jag(g, e.x - 0.3, y - 0.6, e.x + 0.2, y + 0.4, e.seed + ((k * 20) | 0), 0.06, c[7], fade); break;
       default: P.star(g, e.x, y, 0.4 * fade, c[6], fade, k * 4);
     }
   };
@@ -618,6 +656,31 @@
   DRAW.heal = (g, e, k) => { const c = e.pal, rr = rngOf(e.seed), fade = 1 - clamp((k - 0.7) / 0.3); P.ring(g, e.x, e.y, e.r * ease.out(k) + 0.05, (e.r * ease.out(k) + 0.05) * FLOOR, 0.07, c[5], fade); for (let i = 0; i < 10; i++) { const a = rr() * TAU, d = rr() * e.r * 0.8, x = e.x + Math.cos(a) * d, y = e.y + Math.sin(a) * d * FLOOR - k * 1.6 - rr() * 0.4; P.line(g, x - 0.1, y, x + 0.1, y, 0.06, c[6], fade); P.line(g, x, y - 0.1, x, y + 0.1, 0.06, c[6], fade); } };
   DRAW.cloud = (g, e, k) => { const c = e.pal, rr = rngOf(e.seed), fade = 1 - clamp((k - 0.75) / 0.25), R = e.r * ease.out(clamp(k * 3)); for (let i = 0; i < 14; i++) { const a = rr() * TAU, d = Math.sqrt(rr()) * R, s = 0.4 + rr() * 0.5 + Math.sin(e.t * 2 + i) * 0.05; P.ellipse(g, e.x + Math.cos(a) * d + Math.sin(e.t + i) * 0.2, e.y + Math.sin(a) * d * FLOOR - 0.4, s, s * 0.6, P.col(c, 2 + (i % 4)), 0.45 * fade); } };
   DRAW.prismflash = (g, e, k) => { const fade = 1 - k; for (let i = 0; i < 7; i++) { const an = (i / 7) * TAU + k * 2; P.line(g, e.x, e.y - 0.6, e.x + Math.cos(an) * 1.4 * ease.out(k), e.y - 0.6 + Math.sin(an) * 0.9 * ease.out(k), 0.07, `hsl(${i * 51},95%,65%)`, fade); } };
+  // element particles: each element has its own pixel shape (ember, shard, spark, smoke, feather, leaf, dust, glyph, drop, tick, bubble, swirl, ringlet, twinkle)
+  DRAW.motes = (g, e, k) => {
+    const c = e.pal, rr = rngOf(e.seed), st = e.style, fade = 1 - clamp((k - 0.55) / 0.45);
+    for (let i = 0; i < Math.min(18, e.n); i++) {
+      const a = rr() * TAU, sp = 0.4 + rr() * 0.8, d = e.r * sp * ease.out(k), rise = st === 'ember' || st === 'bubble' || st === 'twinkle' || st === 'smoke' ? k * (0.8 + rr()) : st === 'drop' || st === 'shard' || st === 'dust' ? -k * k * 0.6 + k * 0.5 : st === 'feather' || st === 'leaf' ? k * 0.4 : 0;
+      const x = e.x + Math.cos(a) * d, y = e.y - 0.6 + Math.sin(a) * d * 0.6 - rise, col = P.col(c, 4 + ((i + (k * 6) | 0) % 4)), s = 0.07 + rr() * 0.05;
+      g.globalAlpha = fade; g.fillStyle = col;
+      switch (st) {
+        case 'ember': g.fillRect(x - s / 2, y - s, s, s * 2); break;
+        case 'shard': g.beginPath(); g.moveTo(x, y - s * 1.6); g.lineTo(x + s * 0.6, y); g.lineTo(x, y + s * 0.6); g.lineTo(x - s * 0.6, y); g.fill(); break;
+        case 'spark': P.line(g, x - s, y, x + s, y, 0.04, col, fade); P.line(g, x, y - s, x, y + s, 0.04, '#fff', fade); break;
+        case 'smoke': P.ellipse(g, x, y, s * 1.8 * (0.5 + k), s * 1.4 * (0.5 + k), col, fade * 0.7); break;
+        case 'feather': g.save(); g.translate(x, y); g.rotate(Math.sin(k * 8 + i) * 0.8); g.fillRect(-s * 0.3, -s * 1.4, s * 0.6, s * 2.8); g.restore(); break;
+        case 'leaf': P.ellipse(g, x, y, s * 1.2, s * 0.6, col, fade); break;
+        case 'glyph': P.ring(g, x, y, s * 1.2, s * 1.2, 0.03, col, fade); g.fillRect(x - s * 0.2, y - s * 0.8, s * 0.4, s * 1.6); break;
+        case 'drop': P.ellipse(g, x, y, s * 0.7, s, col, fade); break;
+        case 'tick': P.ring(g, x, y, s * 1.3, s * 1.3, 0.03, col, fade); P.line(g, x, y, x + Math.cos(k * 9 + i) * s, y + Math.sin(k * 9 + i) * s, 0.03, '#fff', fade); break;
+        case 'bubble': P.ring(g, x, y, s, s, 0.03, col, fade); break;
+        case 'swirl': P.ring(g, x, y, s * 1.6, s, 0.03, col, fade, k * 9 + i, k * 9 + i + 3); break;
+        case 'ringlet': P.ring(g, x, y, s * 1.4 * (1 + k), s * 0.7 * (1 + k), 0.03, col, fade); break;
+        case 'twinkle': P.star(g, x, y, s * 1.6 * (0.6 + Math.abs(Math.sin(k * 12 + i)) * 0.6), col, fade, 0); break;
+        default: g.fillRect(x - s / 2, y - s / 2, s, s);
+      }
+    }
+  };
   // mechanic zones
   DRAW.orbitfx = (g, e) => { const c = e.pal, T = e.t, fade = e.dur - T < 0.25 ? (e.dur - T) / 0.25 : Math.min(1, T * 5), R = e.r; for (let i = 0; i < e.n; i++) { const an = T * 4 + (i / e.n) * TAU; for (let j = 0; j < 4; j++) { const a2 = an - j * 0.18; P.ellipse(g, e.x + Math.cos(a2) * R, e.y - 0.6 + Math.sin(a2) * R * FLOOR, 0.16 - j * 0.03, 0.16 - j * 0.03, c[7 - j], fade * (1 - j * 0.2)); } } P.ring(g, e.x, e.y, R, R * FLOOR, 0.03, c[4], fade * 0.5); };
   DRAW.wallfx = (g, e) => { const c = e.pal, T = e.t, fade = e.dur - T < 0.25 ? (e.dur - T) / 0.25 : Math.min(1, T * 5), rise = Math.min(1, T * 4); for (let i = 0; i < 3; i++) { const x = e.x + (i - 1) * 0.35; if (e.el === 'fire') P.flame(g, x, e.y, (1 + Math.sin(T * 9 + i) * 0.2) * rise, 0.18, c, T * 10 + i, fade); else if (e.el === 'ice' || e.el === 'water') { g.globalAlpha = fade; g.fillStyle = c[5 + (i % 2)]; g.beginPath(); g.moveTo(x - 0.18, e.y); g.lineTo(x, e.y - 1.2 * rise - i * 0.1); g.lineTo(x + 0.18, e.y); g.fill(); } else { const h = (0.55 + (i % 2) * 0.25) * rise; g.globalAlpha = fade; g.fillStyle = c[3]; g.fillRect(x - 0.16, e.y - h, 0.32, h); g.fillStyle = c[5]; g.fillRect(x - 0.16, e.y - h, 0.32, 0.08); g.fillStyle = c[6]; g.fillRect(x - 0.05, e.y - h * 0.65, 0.1, 0.1); } } };

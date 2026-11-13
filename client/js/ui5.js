@@ -45,10 +45,10 @@
     ['#tframe', 'เป้าหมาย', 'คลิกมอนสเตอร์เพื่อเลือก ดู HP ธาตุ และสถานะที่ติดอยู่ (เผา, แช่แข็ง...)'],
     ['#miniWrap', 'แผนที่ย่อ', 'จุดแดง = มอน · ส้ม = บอส · SAFE/AUTO บอกว่าแผนที่นี้ PvP / ออโต้ได้ไหม'],
     ['#tracker', 'ภารกิจที่ติดตาม', 'ความคืบหน้าภารกิจ ฆ่าครบแล้วกดรับรางวัลในหน้าต่างภารกิจ (L)'],
-    ['#ult', 'เกจอัลติเมต', 'เต็ม 100% จากการตี/โดนตี → ใช้สกิล ★ อัลติเมตได้'],
-    ['#hotbar1', 'Hotbar สกิล', 'กด 1-0 · Shift+1-0 · Alt+1-0 ใช้สกิล · ลากสกิลจากหน้าต่างสกิล (K) มาวาง'],
+    ['#cmgauge', 'กลไกประจำคลาส', 'แต้มพิเศษของคลาส สะสมตามเงื่อนไขของคลาส แล้วสกิลแต่ละช่องจะใช้แต้มต่างกัน (◆ ในคำอธิบายสกิล)'],
+    ['#hotbar1', 'Hotbar สกิล', '1–0 = สกิลโจมตี 1–10 · Shift+1–5 = โจมตี 11–15 · Shift+6–0 = บัฟ (กรอบฟ้า) · Alt+1–5 = อัลติเมต (กรอบทอง)'],
     ['#autoToggle', 'ออโต้', 'เปิดให้ตัวละครล่ามอนเอง · ตั้งค่าโหมด PvE/PvP ที่หน้าต่างออโต้ (O)'],
-    ['#menu', 'เมนูหลัก', 'จัดเป็นหมวด: ตัวละคร / ผจญภัย / สังคม / ระบบ · ตัวอักษรมุมปุ่ม = คีย์ลัด'],
+    ['#menu', 'เมนูหลัก', 'ปุ่มที่ใช้บ่อย · กด ☰ เมนู เพื่อเปิดทุกระบบแบบจัดหมวด · ตัวอักษรมุมปุ่ม = คีย์ลัด'],
     ['#chat', 'แชท', 'Enter เพื่อพิมพ์ · เลือกช่องแชทด้านซ้ายของช่องพิมพ์ · /w ชื่อ = กระซิบ'],
   ];
   UI.hudGuide = function () {
@@ -85,5 +85,44 @@
     if (!window.G || !G.char || $('#hud').hidden) return setTimeout(firstRun, 600);
     if (!store.get('no_guide_seen', 0)) setTimeout(() => UI.hudGuide(), 1500);
   }
-  UI.buildMenu = buildMenu; buildMenu(); firstRun();
+  // ---------------------------------------------------------------- Ashfall-style HUD layout
+  const PRIMARY = [['inv', '🎒', 'กระเป๋า', 'I'], ['char', '👤', 'ตัวละคร', 'U'], ['skills', '📖', 'สกิล', 'K'], ['passive', '🌌', 'Passive', '['], ['map', '🗺', 'แผนที่', 'M'], ['dungeon', '🗼', 'ดันเจี้ยน', 'J'], ['more', '☰', 'เมนู', ''], ['settings', '⚙', 'ตั้งค่า', '.']];
+  function buildMenu2() {
+    const m = $('#menu'); if (!m) return setTimeout(buildMenu2, 200);
+    const gmHidden = $('#gmBtn') ? $('#gmBtn').hidden : true;
+    m.className = 'v3';
+    m.innerHTML = `<div class="mgi3">${PRIMARY.map(([w, ic, n, k]) => `<button class="mbtn" data-win="${w}" data-tip="${n}${k ? ' (' + k + ')' : ''}"><span>${ic}</span><em>${n}</em>${k ? `<kbd>${k}</kbd>` : ''}</button>`).join('')}</div>
+      <div class="moreMenu" hidden>${GROUPS.map(([g, items]) => `<div class="mgrp"><div class="mgl">${g}</div><div class="mgi">${items.map(([w, ic, n, k]) => `<button class="mbtn" data-win="${w}" data-tip="${n}${k ? ' (' + k + ')' : ''}" ${w === 'gm' ? `id="gmBtn" ${gmHidden ? 'hidden' : ''}` : ''}><span>${ic}</span><em>${n}</em>${k ? `<kbd>${k}</kbd>` : ''}</button>`).join('')}</div></div>`).join('')}</div>`;
+    m.onclick = (e) => {
+      const b = e.target.closest('[data-win]'); if (!b) return;
+      const w = b.dataset.win, more = m.querySelector('.moreMenu');
+      if (w === 'more') { more.hidden = !more.hidden; return; }
+      more.hidden = true;
+      if (w === 'guide') UI.hudGuide(); else UI.toggle(w);
+    };
+  }
+  function layoutHud() {
+    const hud = $('#hud'); if (!hud || !$('#bottom') || !$('#autoToggle')) return setTimeout(layoutHud, 200);
+    hud.classList.add('ash');
+    // class gauge above the skill bar, EXP strip on top of the bar
+    if (!$('#cmgauge')) { const g = document.createElement('div'); g.id = 'cmgauge'; $('#bottom').insertBefore(g, $('#bottom').querySelector('.hotbars')); }
+    const hb = $('#bottom .hotbars'), ex = $('#exp'); if (ex && hb && ex.parentNode !== hb) { hb.insertBefore(ex, hb.firstChild); ex.insertAdjacentHTML('afterbegin', '<b class="expGem">◆</b>'); }
+    // big round AUTO button bottom-right
+    const at = $('#autoToggle'); if (at.parentNode !== hud) { hud.appendChild(at); at.classList.add('autoRound'); at.querySelector('span').textContent = 'AUTO'; }
+  }
+  // online status: login screen line + a pill at the top of the HUD (single-page build only)
+  function netPill() {
+    const N = window.NO_NET; if (!N) return;
+    const draw = () => {
+      const s = $('#netStatus'); if (s) { s.textContent = N.status; s.className = N.mode === 'solo' ? '' : 'on'; }
+      const hud = $('#hud'); if (!hud) return;
+      let p = $('#netPill'); if (!p) { p = document.createElement('div'); p.id = 'netPill'; ($('#miniWrap') || hud).appendChild(p); }
+      p.className = N.mode; p.innerHTML = `<i></i>${N.mode === 'solo' ? 'ออฟไลน์ · เล่นคนเดียว' : `${N.mode === 'host' ? 'โฮสต์' : 'ออนไลน์'} · ${N.online} คนในโลกนี้`}`;
+    };
+    N.listeners.push(draw); draw();
+  }
+  const lg = $('#login'); if (lg) lg.style.background = "radial-gradient(ellipse at center, rgba(10,8,16,.35), rgba(10,8,16,.88)), url('client/assets/ui/login.webp') center / cover no-repeat";
+  UI.buildMenu = buildMenu2; buildMenu2(); layoutHud(); netPill(); firstRun();
+  // the AUTO button keeps its round label
+  const _hud = UI.hud; UI.hud = function () { _hud.apply(this, arguments); const at = $('#autoToggle.autoRound'); if (at && G.sme) at.querySelector('b').textContent = G.sme.au ? 'ทำงาน' : 'ออโต้ [`]'; };
 })();

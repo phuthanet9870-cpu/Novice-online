@@ -159,7 +159,20 @@
     ['lifesteal', 'drop'], ['soulSiphon', 'drop'], ['regenPct', 'heart'], ['hpPct', 'heart'], ['spRegen', 'heart'], ['matkPct', 'wand'], ['castReduce', 'wand'], ['crit', 'eye'], ['range', 'eye'], ['hit', 'eye'],
     ['summonBuff', 'skull'], ['comboWin', 'chain'], ['comboDmg', 'chain'], ['extraStack', 'chain'], ['dropPct', 'coin'], ['heatSink', 'flake'], ['flee', 'feather'], ['movePct', 'speed'], ['aspdPct', 'speed'], ['atkPct', 'up'], ['dmgPct', 'up'], ['resGainPct', 'up'], ['str', 'up'], ['agi', 'speed']];
 
+  const CLASS_MOTIF = { blademaster: 'blade_knight', guardian: 'guardian', berserker: 'berserker', paladin: 'divine_sovereign', pyromancer: 'hellfiend', cryomancer: 'flake', stormcaller: 'elementalist', necromancer: 'warlock', cleric: 'cleric', druid: 'ranger', assassin: 'shadow_assassin', shadowdancer: 'mask', ranger: 'ranger', marksman: 'gunslinger', engineer: 'gunslinger', monk: 'monk', spellblade: 'elementalist', beastmaster: 'ranger', chronomancer: 'chrono_stalker', warlock: 'warlock', starhunter: 'lightbringer', darkknight: 'void_walker', lightbringer: 'lightbringer', shadowmancer: 'void_walker', seraph: 'feather', reaper: 'warlock', demon: 'hellfiend', deity: 'divine_sovereign', jester: 'mask', loki: 'mask' };
+  const BUFF_G2 = { crit: 'eye', atkPct: 'up', aspdPct: 'speed', defPct: 'shield', lifesteal: 'drop', cdr: 'wand', movePct: 'speed' };
   function glyphFor(sk) {
+    if (sk.arch) {
+      const u = sk.kind === 'ult';
+      switch (sk.arch) {
+        case 'slash': return 'strike'; case 'spin': return 'spin'; case 'thrust': return 'lance'; case 'beam': return u ? 'megaline' : 'wave';
+        case 'proj': return sk.volley ? 'shot' : sk.pierce ? 'pierce' : sk.shape === 'circle' ? 'grenade' : sk.element === 'lightning' ? 'bolt' : 'throw';
+        case 'nova': return u ? 'stackburst' : 'nova'; case 'ground': return u ? ((sk.balls || 1) > 1 ? 'barrage' : 'nuke') : (sk.balls || 1) > 1 ? 'rain' : 'quake';
+        case 'zone': return u ? 'plague' : 'zone'; case 'chain': return 'ricochet'; case 'dash': return 'dash'; case 'leap': return 'leap';
+        case 'barrage': return u ? 'execute' : 'combo'; case 'summon': return u ? 'summonArmy' : 'summon'; case 'turret': return 'summon'; case 'trap': return 'trap';
+        case 'buff': return BUFF_G2[Object.keys(sk.mods || {})[0]] || 'up'; case 'shield': return 'shield'; case 'heal': return 'heart'; case 'blink': return 'blink'; case 'stealth': return 'mask';
+      }
+    }
     const ds = String(sk.design || '');
     if (sk.kind === 'buff') { let mods = {}; try { mods = JSON.parse(ds.slice(5)); } catch (e) {} for (const [k, g] of BUFF_GLYPH) if (k in mods) return g; return 'up'; }
     if (ds.startsWith('ult:')) return ds.split(':')[1];
@@ -179,7 +192,7 @@
     // backdrop: class-colour gradient, a faint class motif, the skill's own hue in the corner glow
     const glow = swatch.length ? hex2(swatch[3]) : sc(main, 0.6);
     for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const t = y / N, d = Math.hypot(x - 22, y - 9) / 30; bg.set(x, y, mix(mix(sc(c2, 1.05), sc(c2, 0.5), t), sc(glow, 0.85), Math.max(0, 0.55 - d))); }
-    const mot = layer(); (MOTIF[sk.cls] || MOTIF.blade_knight)(mot, mix(sc(c2, 1.05), cc, 0.35));
+    const mot = layer(); (MOTIF[sk.cls] || MOTIF[CLASS_MOTIF[sk.cls]] || MOTIF.blade_knight)(mot, mix(sc(c2, 1.05), cc, 0.35));
     bg.over(mot);
     // glyph
     const gl = layer(); const fn = G[glyphFor(sk)] || G.strike;
@@ -196,6 +209,8 @@
     for (let i = 0; i < N; i++) { bg.set(i, 0, fr); bg.set(i, N - 1, sc(fr, 0.6)); bg.set(0, i, fr); bg.set(N - 1, i, sc(fr, 0.6)); }
     if (sk.kind === 'ult') { for (let i = 1; i < N - 1; i++) { bg.set(i, 1, sc(fr, 0.5)); bg.set(1, i, sc(fr, 0.5)); } for (const [x, y] of [[1, 1], [30, 1], [1, 30], [30, 30]]) { bg.set(x, y, [255, 250, 210]); } star(bg, 27, 4, 2, [255, 236, 150]); }
     if (sk.kind === 'buff') { bg.rect(25, 2, 5, 1, [200, 255, 210]); bg.rect(27, 0 + 0, 1, 5, [200, 255, 210]); }
+    if (sk.riders && sk.riders[0]) { const rh = hashS(sk.riders[0].k), rc = hsl(rh % 360, 0.75, 0.62); const rp = layer(); rp.disc(5, 5, 3, rc); rp.set(4, 4, [255, 255, 255]); if (rh & 1) rp.rect(3, 5, 5, 1, sc(rc, 0.5)); else rp.rect(5, 3, 1, 5, sc(rc, 0.5)); rp.outline(OUT); bg.over(rp); }
+    if (sk.cat === 'set') { for (let i = 0; i < 5; i++) bg.set(12 + i * 2, 2, [255, 236, 150]); bg.rect(12, 3, 9, 1, [220, 170, 60]); }
     if (sk.role && 'SLF'.includes(sk.role)) { const rc = { S: [58, 176, 255], L: [255, 176, 48], F: [255, 58, 90] }[sk.role]; bg.rect(2, 2, 4, 4, rc); bg.set(3, 3, [255, 255, 255]); }
     return bg.toURL(2);
   };

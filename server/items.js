@@ -24,7 +24,7 @@ I.newChar = function (acc, name, cls) {
   const ch = {
     id, acc: acc.user.toLowerCase(), name, cls, lv: 1, exp: 0, statPts: 5, stats: Object.assign({}, c.start), skillPts: 3, skills: {},
     hotbar: new Array(50).fill(null), inv: [], equip: {}, zeny: 2500, map: 'aurelia', lastTown: 'aurelia', x: undefined, y: undefined,
-    dungeonBest: {}, created: Date.now(), ult: 0, pity: 0, kills: 0, pvpKills: 0
+    dungeonBest: {}, created: Date.now(), ult: 0, pity: 0, kills: 0, pvpKills: 0, kitVer: 2
   };
   const first = CLASS_SKILLS[cls][0];
   ch.skills[first] = 1; ch.hotbar[0] = first;
@@ -32,11 +32,13 @@ I.newChar = function (acc, name, cls) {
   const a = F.genEquip(r, 'armor', 1, 0); a.uid = uid(); ch.equip.armor = a;
   const b = F.genEquip(r, 'boots', 1, 0); b.uid = uid(); ch.equip.boots = b;
   I.addItem(ch, 'pot_hp_1', 30); I.addItem(ch, 'pot_sp_1', 10); I.addItem(ch, 'tele_scroll', 5); I.addItem(ch, 'ore_refine', 5);
-  ch.hotbar[12] = 'item:pot_hp_1'; ch.hotbar[13] = 'item:pot_sp_1';
+  I.defaultHotbar(ch); ch.hotbar[28] = 'item:pot_hp_1'; ch.hotbar[29] = 'item:pot_sp_1';
   P.init(ch);
   return ch;
 };
 
+// Ashfall layout: 1–0 = attack 1–10 · Shift+1–5 = attack 11–15 · Shift+6–0 = buffs · Alt+1–5 = ultimates
+I.defaultHotbar = function (ch) { const L = CLASS_SKILLS[ch.cls] || []; for (let i = 0; i < Math.min(25, L.length); i++) ch.hotbar[i] = L[i]; };
 // ------------------------------------------------------------------ inventory primitives
 I.count = (ch, id) => ch.inv.reduce((a, it) => a + (it.id === id ? it.qty : 0), 0);
 I.find = (ch, u) => ch.inv.find((it) => it.uid === u);

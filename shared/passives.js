@@ -192,5 +192,5 @@
   }
   function describe(mods) { return Object.entries(mods).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${LABEL[k] || k}`); }
   const points = (lv, bonus) => Math.max(0, lv - 1) + Math.floor(lv / 10) + (bonus || 0);
-  return { VERSION: 2, nodes, edges, starts, modsOf, fxOf, fxText, canAllocate, canRefund, describe, LABEL, points, RINGS, ringRadius, count: nodes.length };
+  return { VERSION: 3, nodes, edges, starts, modsOf, fxOf, fxText, canAllocate, canRefund, describe, LABEL, points, RINGS, ringRadius, count: nodes.length };
 });

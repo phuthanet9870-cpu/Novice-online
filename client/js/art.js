@@ -39,11 +39,14 @@
     for (let ty = y0; ty < y0 + CH + PAD * 2; ty++) for (let tx = x0; tx < x0 + CH + PAD * 2; tx++) {
       const px = (tx - x0) * TS, py = (ty - y0) * TS;
       const t = tileAt(map, tx, ty);
-      drawGround(g, map, B, t, tx, ty, px, py);
+      if (!(window.TER && TER.ground(g, map, t, tx, ty, px, py, tileAt))) drawGround(g, map, B, t, tx, ty, px, py);
     }
+    const builtSprites = window.TER && TER.buildings(g, map, x0, y0, CH + PAD * 2, CH + PAD * 2, tileAt);
     // objects layer (sorted by row so taller objects overlap correctly)
     for (let ty = y0; ty < y0 + CH + PAD * 2; ty++) for (let tx = x0; tx < x0 + CH + PAD * 2; tx++) {
       const t = tileAt(map, tx, ty);
+      if (t === T.HOUSE && builtSprites) continue;
+      if ((t === T.TREE || t === T.ROCK || t === T.DECO) && window.TER && TER.object(g, map, t, tx, ty, (tx - x0) * TS, (ty - y0) * TS)) continue;
       if (t === T.TREE || t === T.ROCK || t === T.DECO || t === T.WALL || t === T.HOUSE) drawObject(g, map, B, t, tx, ty, (tx - x0) * TS, (ty - y0) * TS);
     }
     c.pad = PAD;

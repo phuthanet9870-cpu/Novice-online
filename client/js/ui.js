@@ -41,7 +41,7 @@
     UI.chars = m.chars;
     const list = $('#charList');
     list.innerHTML = m.chars.map((c) => `<div class="charCard" data-id="${c.id}"><img src="${ART.portrait(c.cls, c.name, 96)}"><div><b>${esc(c.name)}</b><span>Lv ${c.lv} ${D.CLASSES[c.cls].name}</span><small>${esc(c.guild ? '<' + c.guild + '> ' : '')}${esc(mapName(c.map))}</small></div><button class="btn gold" data-play="${c.id}">เข้าเกม ▶</button><button class="btn tiny danger" data-del="${c.id}" data-name="${esc(c.name)}">ลบ</button></div>`).join('')
-      + (m.chars.length < 6 ? `<div class="charCard new" id="newCharBtn"><div class="plus">＋</div><div><b>สร้างตัวละครใหม่</b><span>เลือกได้ 15 คลาส</span></div></div>` : '');
+      + (m.chars.length < 6 ? `<div class="charCard new" id="newCharBtn"><div class="plus">＋</div><div><b>สร้างตัวละครใหม่</b><span>เลือกได้ 30 อาชีพ</span></div></div>` : '');
     list.onclick = (e) => {
       const pl = e.target.closest('[data-play]'); if (pl) return G.send({ t: 'play', id: pl.dataset.play });
       const dl = e.target.closest('[data-del]'); if (dl) { UI.ask(`พิมพ์ชื่อ "${dl.dataset.name}" เพื่อยืนยันการลบตัวละคร`, { input: true, danger: true, ok: 'ลบตัวละคร' }).then((n) => { if (n) G.send({ t: 'deleteChar', id: dl.dataset.del, confirm: n }); }); return; }
@@ -52,26 +52,39 @@
     if (!m.chars.length) $('#createPanel').hidden = false;
     if (m.created) G.send({ t: 'play', id: m.created });
   };
-  let pickCls = 'blade_knight';
+  let pickCls = 'blademaster', clsPage = 0;
+  const CLS_PER = 5;
+  UI.classArt = (c) => 'client/assets/classes/' + c + '.webp';
   function buildClassPicker() {
     const grid = $('#classGrid');
-    grid.innerHTML = D.CLASS_IDS.map((c) => `<div class="clsBtn" data-cls="${c}" style="--c:${D.CLASSES[c].color}"><img src="${ART.classIcon(c, 56)}"><b>${D.CLASSES[c].name}</b><small>${D.CLASSES[c].th}</small></div>`).join('');
-    grid.onclick = (e) => { const b = e.target.closest('[data-cls]'); if (b) { pickCls = b.dataset.cls; renderClassInfo(); } };
+    const pages = Math.ceil(D.CLASS_IDS.length / CLS_PER);
+    const draw = () => {
+      const ids = D.CLASS_IDS.slice(clsPage * CLS_PER, clsPage * CLS_PER + CLS_PER);
+      grid.innerHTML = `<button class="cArrow" data-nav="-1" title="ก่อนหน้า">◀</button><div class="cCards">${ids.map((c) => `<div class="clsBtn cCard" data-cls="${c}" style="--c:${D.CLASSES[c].color}"><div class="cArt"><img src="${UI.classArt(c)}" alt="" loading="lazy" onerror="this.style.display='none'"></div><div class="cName"><b>${esc(D.CLASSES[c].name)}</b><small>${esc(D.CLASSES[c].th)}</small></div><button class="btn ${c === pickCls ? 'green' : 'gold'} tiny cPick">${c === pickCls ? '✓ เลือกแล้ว' : 'เลือก'}</button></div>`).join('')}</div><button class="cArrow" data-nav="1" title="ถัดไป">▶</button>
+        <div class="cDots">${Array.from({ length: pages }, (_, i) => `<i class="${i === clsPage ? 'on' : ''}" data-page="${i}"></i>`).join('')}<span>${clsPage + 1}/${pages} · ${D.CLASS_IDS.length} อาชีพ</span></div>`;
+      for (const b of grid.querySelectorAll('.clsBtn')) b.classList.toggle('on', b.dataset.cls === pickCls);
+    };
+    grid.onclick = (e) => {
+      const nav = e.target.closest('[data-nav]'); if (nav) { clsPage = (clsPage + +nav.dataset.nav + pages) % pages; draw(); return; }
+      const dot = e.target.closest('[data-page]'); if (dot) { clsPage = +dot.dataset.page; draw(); return; }
+      const b = e.target.closest('[data-cls]'); if (b) { pickCls = b.dataset.cls; draw(); renderClassInfo(); }
+    };
+    UI.redrawClassPicker = draw;
     $('#createBtn').onclick = () => G.send({ t: 'createChar', name: $('#newName').value.trim(), cls: pickCls });
     $('#cancelCreate').onclick = () => { $('#createPanel').hidden = true; };
-    renderClassInfo();
+    draw(); renderClassInfo();
   }
   function renderClassInfo() {
-    for (const b of document.querySelectorAll('.clsBtn')) b.classList.toggle('on', b.dataset.cls === pickCls);
     const c = D.CLASSES[pickCls];
-    const bar = (k, n) => `<div class="rate"><span>${n}</span><i>${'<b></b>'.repeat(c.rating[k])}${'<u></u>'.repeat(5 - c.rating[k])}</i></div>`;
     const sk = CSK()[pickCls].map((id) => SKS()[id]);
-    $('#classInfo').innerHTML = `<div class="ciHead"><img src="${ART.portrait(pickCls, 'Preview', 120)}" class="preview"><div><h2 style="color:${c.color}">${c.name}</h2><h3>${c.th} — ${c.role}</h3><p>${c.desc}</p>
-      <div class="chips"><span class="chip">อาวุธ: ${c.weapon}</span><span class="chip">พลังพิเศษ: ${c.res.name}</span><span class="chip">${c.dmg === 'mag' ? 'เวทมนตร์' : 'กายภาพ'} · ${c.scale === 'melee' ? 'ประชิด' : 'ระยะไกล'}</span></div></div></div>
-      <div class="rates">${bar('atk', 'โจมตี')}${bar('def', 'ป้องกัน')}${bar('spd', 'ความเร็ว')}${bar('mag', 'เวท')}${bar('sup', 'ซัพพอร์ต')}${bar('diff', 'ความยาก')}</div>
-      <div class="baseStats">${D.STATS.map((s) => `<span><b>${s.toUpperCase()}</b>${c.start[s]}</span>`).join('')}<span><b>HP</b>${c.hp0}+${c.hpLv}/lv</span><span><b>SP</b>${c.sp0}+${c.spLv}/lv</span><span><b>ASPD</b>${c.aspd}</span><span><b>MOVE</b>${c.move}</span><span><b>RANGE</b>${c.range}</span></div>
-      <div class="branches"><div><b>⚔ Active</b><small>40 สกิล</small></div><div><b>★ Ultimate</b><small>5 สกิล</small></div><div><b>✚ Buff</b><small>5 สกิล</small></div><div><b>ไม่ซ้ำกันทั้งเกม</b><small>ความสามารถ · เอฟเฟกต์ · ไอคอน · เสียง</small></div></div>
-      <div class="skillPreview">${sk.filter((s) => s.kind === 'ult').map((s) => `<img src="${ART.skillIcon(s)}" data-skill="${s.id}">`).join('')}${sk.filter((s) => s.kind !== 'ult').slice(0, 12).map((s) => `<img src="${ART.skillIcon(s)}" data-skill="${s.id}">`).join('')}</div>`;
+    const show = [sk[0], sk[1], sk[3], sk[15], sk[20], sk[24]].filter(Boolean);
+    const m = c.mech || {};
+    $('#classInfo').innerHTML = `<div class="ciBox ciWho"><h4>ตัวละคร</h4><div class="ciRow"><img class="ciThumb" src="${UI.classArt(pickCls)}" alt=""><div><b style="color:${c.color}">${esc(c.name)}</b><small>${esc(c.th)}</small><div class="chips"><span class="chip">ธาตุ${esc(c.elTh || '')}</span><span class="chip">${esc(c.role)}</span><span class="chip">${c.scale === 'melee' ? 'ประชิด' : 'ระยะ ' + c.range}</span><span class="chip">${esc(c.wname || c.weapon)}</span></div></div></div></div>
+      <div class="ciBox ciDesc"><h4>ความสามารถ</h4><p>${esc(c.name)} (${esc(c.th)}) ${esc(c.role)} · สกิลโจมตี 15 · บัฟ 5 · อัลติเมต 4 · อัลติเมตประจำคลาส 1</p><p class="mech" style="--c:${m.c || c.color}"><b>กลไกประจำคลาส · ${esc(m.n || '')}</b> (สูงสุด ${m.max || 0}) — ${esc(m.d || '')}</p></div>
+      <div class="ciBox ciSkills"><h4>สกิล</h4><div class="skillPreview">${show.map((s, i) => `<img src="${ART.skillIcon(s)}" data-skill="${s.id}" class="${i ? '' : 'on'}" data-prev="${s.id}">`).join('')}</div><div id="ciSkillTxt" class="ciSkillTxt"></div></div>`;
+    const txt = (id) => { const s = SKS()[id]; $('#ciSkillTxt').innerHTML = `<b>${esc(s.name)}</b> <small>[${{ atk: 'โจมตี', buff: 'บัฟ', ult: 'อัลติเมต', set: 'อัลติเมตคลาส' }[s.cat] || ''}] Lv${s.reqLv}</small><p>${esc(s.desc)}</p>`; };
+    txt(show[0].id);
+    $('#classInfo').onclick = (e) => { const im = e.target.closest('[data-prev]'); if (!im) return; for (const x of $('#classInfo').querySelectorAll('[data-prev]')) x.classList.toggle('on', x === im); txt(im.dataset.prev); };
   }
   function mapName(id) { const d = NO_MAP.getMapDef(id || 'aurelia'); return d ? d.name : id; }
   UI.kicked = (m) => { UI.ask(m || 'ถูกตัดการเชื่อมต่อ', { ok: 'เริ่มใหม่', noCancel: true }).then(() => location.reload()); };
@@ -169,10 +182,10 @@
       const v = G.char.hotbar[+el.dataset.i];
       const img = el.querySelector('img'), q = el.querySelector('.qty');
       el.dataset.skill = ''; el.dataset.itemid = '';
-      if (!v) { img.removeAttribute('src'); img.style.visibility = 'hidden'; q.textContent = ''; el.classList.remove('locked'); continue; }
+      if (!v) { img.removeAttribute('src'); img.style.visibility = 'hidden'; q.textContent = ''; el.classList.remove('locked', 'kbuff', 'kult'); continue; }
       img.style.visibility = 'visible';
       if (v.startsWith('item:')) { const id = v.slice(5); img.src = ART.itemIcon({ id }); const n = G.char.inv.reduce((a, it) => a + (it.id === id ? it.qty : 0), 0); q.textContent = n; el.classList.toggle('locked', !n); el.dataset.itemid = id; }
-      else { const sk = SKS()[v]; if (!sk) continue; img.src = ART.skillIcon(sk); q.textContent = ''; el.dataset.skill = v; el.classList.toggle('locked', !G.skillLv(v)); }
+      else { const sk = SKS()[v]; if (!sk) continue; img.src = ART.skillIcon(sk); const lk = !G.skillLv(v); q.textContent = lk ? 'Lv' + sk.reqLv : ''; el.dataset.skill = v; el.classList.toggle('locked', lk); el.classList.toggle('kbuff', sk.cat === 'buff'); el.classList.toggle('kult', sk.cat === 'ult' || sk.cat === 'set'); }
     }
   }
   function renderParty() {
@@ -193,8 +206,13 @@
     $('#pLv').textContent = me.lv;
     // resource
     const rmax = me.rmax;
-    if (rmax <= 5) $('#resBar').innerHTML = Array.from({ length: rmax }, (_, i) => `<b class="${i < Math.floor(me.res) ? 'on' : ''}"></b>`).join('');
-    else $('#resBar').innerHTML = `<div class="rgauge ${G.char.cls === 'gunslinger' && me.res > 80 ? 'hot' : ''}"><i style="width:${me.res}%"></i><span>${Math.round(me.res)}</span></div>`;
+    const mc = (D.CLASSES[G.char.cls].mech || {}).c || '#ffd34a', rk = G.char.cls + ':' + Math.floor(me.res) + '/' + rmax;
+    if ($('#resBar').dataset.k !== rk) {
+      $('#resBar').dataset.k = rk;
+      const pips = Array.from({ length: rmax }, (_, i) => `<b class="${i < Math.floor(me.res) ? 'on' : ''}" style="--c:${mc}"></b>`).join('');
+      $('#resBar').innerHTML = pips;
+      const g = $('#cmgauge'); if (g) g.innerHTML = `<em style="color:${mc}">${esc(D.CLASSES[G.char.cls].res.name)}</em><span class="pips">${pips}</span>`;
+    }
     // ult
     const ult = $('#ult'); ult.style.setProperty('--p', me.ult + '%'); ult.classList.toggle('ready', me.ult >= 100); $('#ultTxt').textContent = me.ult >= 100 ? 'ULTIMATE READY' : `ULT ${me.ult}%`;
     // exp

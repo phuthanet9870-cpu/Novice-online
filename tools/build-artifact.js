@@ -8,11 +8,13 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 const safe = (js) => js.replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--');
 
 const html = read('client/index.html');
+// build id: guests only join a host running the very same build
+const VER = require('crypto').createHash('sha1').update([...['shared/skills.js', 'shared/classes.js', 'server/combat.js', 'server/ashfall.js', 'server/index.js'].map(read)].join('')).digest('hex').slice(0, 10);
 const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('<script src='));
 const css = read('client/style.css');
-const shared = ['shared/rng.js', 'shared/data.js', 'shared/data2.js', 'shared/itemdb.js', 'shared/formulas.js', 'shared/mapgen.js', 'shared/skills.js', 'shared/passives.js'];
-const client = ['client/js/vfx.js', 'client/js/sfx.js', 'client/js/bossart.js', 'client/js/art.js', 'client/js/pixicons.js', 'client/js/game.js', 'client/js/ui.js', 'client/js/ui2.js', 'client/js/ui3.js', 'client/js/ui4.js', 'client/js/ui5.js'];
-const serverMods = ['world', 'combat', 'items', 'auto', 'social', 'progress', 'econ', 'gm', 'index'];
+const shared = ['shared/rng.js', 'shared/classes.js', 'shared/data.js', 'shared/data2.js', 'shared/itemdb.js', 'shared/formulas.js', 'shared/mapgen.js', 'shared/skills.js', 'shared/passives.js'];
+const client = ['client/js/vfx.js', 'client/js/sfx.js', 'client/js/bossart.js', 'client/js/art.js', 'client/js/pixicons.js', 'client/js/terrain_man.js', 'client/js/terrain.js', 'client/js/game.js', 'client/js/ui.js', 'client/js/ui2.js', 'client/js/ui3.js', 'client/js/ui4.js', 'client/js/ui5.js'];
+const serverMods = ['world', 'ashfall', 'combat', 'items', 'auto', 'social', 'progress', 'econ', 'gm', 'index'];
 
 const browserDb = `
 const KEY = 'novice_online_db_v1';
@@ -21,7 +23,7 @@ const db = {
   dirty: false,
   load() { try { const s = localStorage.getItem(KEY); if (s) Object.assign(this.data, JSON.parse(s)); } catch (e) {} return this; },
   save() { try { localStorage.setItem(KEY, JSON.stringify(this.data)); } catch (e) {} this.dirty = false; },
-  nextId() { return this.data.nextId++; },
+  nextId() { this.data.nextId++; return Date.now().toString(36) + this.data.nextId.toString(36) + Math.random().toString(36).slice(2, 5); },
   hashPass(pass, salt) { let h1 = 0x811c9dc5, h2 = 0x1234567; const s = salt + ':' + pass; for (let k = 0; k < 64; k++) for (let i = 0; i < s.length; i++) { h1 = Math.imul(h1 ^ s.charCodeAt(i), 16777619) >>> 0; h2 = Math.imul(h2 + s.charCodeAt(i) + k, 2654435761) >>> 0; } return h1.toString(16) + h2.toString(16); },
   createAccount(user, pass) {
     const key = user.toLowerCase(); if (this.data.accounts[key]) return null;
@@ -50,7 +52,7 @@ const shim = `
     http: { createServer: () => ({ listen(port, cb) { cb && setTimeout(cb, 0); }, on() {} }) },
     ws: { WebSocketServer: class { constructor() { this.h = {}; WSS = this; } on(ev, fn) { this.h[ev] = fn; } } }
   };
-  const SHARED = { 'shared/data.js': () => NO_DATA, 'shared/data2.js': () => NO_DATA, 'shared/itemdb.js': () => NO_DATA, 'shared/formulas.js': () => NO_F, 'shared/mapgen.js': () => NO_MAP, 'shared/rng.js': () => NO_RNG, 'shared/skills.js': () => NO_SKILLS, 'shared/passives.js': () => NO_PASSIVE };
+  const SHARED = { 'shared/classes.js': () => NO_CLASSES, 'shared/data.js': () => NO_DATA, 'shared/data2.js': () => NO_DATA, 'shared/itemdb.js': () => NO_DATA, 'shared/formulas.js': () => NO_F, 'shared/mapgen.js': () => NO_MAP, 'shared/rng.js': () => NO_RNG, 'shared/skills.js': () => NO_SKILLS, 'shared/passives.js': () => NO_PASSIVE };
   const MODS = window.__NO_MODS = {};
   const cache = {};
   function resolve(from, name) {
@@ -70,6 +72,7 @@ const shim = `
     MODS[id](m, m.exports, r, id.replace(/\\/[^/]+$/, ''));
     return m.exports;
   }
+  window.__NO_WSS = () => WSS;
   window.__NO_START = () => req('server/boot.js', './index');
   window.__NO_REQ = (n) => req('server/boot.js', n);
   // In-page WebSocket: the client connects to the bundled server without any network.
@@ -98,11 +101,12 @@ ${css}
 html, body { height: 100%; background: #0b0d14; color: #e9e6dc; }
 .offlineNote { margin-top: 4px; font-size: 11px; color: #9a98a4; text-align: center; }
 </style>
-${body.replace('<div class="features">', '<div class="offlineNote">เวอร์ชันเล่นในเบราว์เซอร์: เซิร์ฟเวอร์จำลองทำงานในหน้านี้ · เซฟอยู่ในเครื่องนี้ · บัญชีแรกที่สมัครได้สิทธิ์ GM</div>\n    <div class="features">')}
+${body.replace('<div class="features">', '<div class="offlineNote"><b id="netStatus">กำลังค้นหาเซิร์ฟเวอร์ออนไลน์…</b><br>ใครเปิดลิงก์นี้พร้อมกันจะอยู่โลกเดียวกัน · คนแรกเป็นโฮสต์ · เซฟอยู่ในเครื่องของแต่ละคน · บัญชีแรกของโฮสต์ได้สิทธิ์ GM</div>\n    <div class="features">')}
 ${shared.map((f) => `<script>\n${safe(read(f))}\n</script>`).join('\n')}
 <script>\n${safe(shim)}\n${safe(mods)}\n__NO_START();\naddEventListener('pagehide', () => { try { __NO_REQ('./gm').saveAll(); } catch (e) {} });\ndocument.addEventListener('visibilitychange', () => { if (document.hidden) try { __NO_REQ('./gm').saveAll(); } catch (e) {} });\n</script>
+<script>\n${safe(read('tools/artifact-net.js').replace('__NO_VER__', VER))}\n</script>
 ${client.map((f) => `<script>\n${safe(read(f))}\n</script>`).join('\n')}
-<script>ART.preloadBosses(); UI.boot();</script>
+<script>__NO_NET_BOOT(); ART.preloadBosses(); UI.boot();</script>
 `;
 fs.mkdirSync(path.join(ROOT, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(ROOT, 'dist', 'novice-online.html'), out);

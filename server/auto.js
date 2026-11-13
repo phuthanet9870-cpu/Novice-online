@@ -73,7 +73,8 @@ function skillReady(p, id, t) {
   if ((p.cds[id] || 0) > t) return false;
   if (p.sp < F.skillSp(sk, lv)) return false;
   if (sk.needRes && p.res < sk.needRes) return false;
-  if (sk.kind === 'ult' && p.ult < 100) return false;
+  if (sk.gauge && p.ult < 100) return false;
+  if (sk.kind !== 'buff' && (p.gcdUntil || 0) > t) return false;
   if (sk.cond && sk.cond.type === 'selfHp' && p.hp / p.maxHp * 100 >= sk.cond.v) return false;
   if (sk.hpCost && p.hp < p.maxHp * 0.4) return false;
   return true;
@@ -170,7 +171,7 @@ A.update = function (p, dt, t) {
       const sk = SKILLS[id];
       if (sk.kind !== 'buff') continue;
       const b = p.buffs.get('buff:' + id);
-      if (b && b.until - t > 8) continue;
+      if (b && b.until - t > 1) continue;
       if (skillReady(p, id, t)) { C.useSkill(p, id); return; }
     }
   }
@@ -218,8 +219,8 @@ A.update = function (p, dt, t) {
     rot = a._plan;
   }
   let choice = null;
-  if (a.useUlt !== 'never' && p.ult >= 100 && (a.useUlt === 'always' || tgt.rank >= 1 || tgt.kind === 'p')) {
-    for (const id in ch.skills) if (SKILLS[id].kind === 'ult' && skillReady(p, id, t)) { choice = id; break; }
+  if (a.useUlt !== 'never' && (a.useUlt === 'always' || tgt.rank >= 1 || tgt.kind === 'p')) {
+    for (const id in ch.skills) if (SKILLS[id].kind === 'ult' && !SKILLS[id].gauge && skillReady(p, id, t)) { choice = id; break; }
   }
   if (!choice) for (const e of rot) { if (skillReady(p, e.id, t) && condOk(p, e, tgt, a)) { choice = e.id; break; } }
   const d = W.dist(p, tgt);
