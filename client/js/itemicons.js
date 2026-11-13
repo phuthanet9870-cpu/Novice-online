@@ -12,7 +12,7 @@
   const cache = new Map();
   const hash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
   const P = IP.pools;
-  const LOOT = { fang: 'mat_fang', talon: 'mat_fang', stinger: 'mat_fang', pincer: 'mat_fang', feather: 'mat_feather', gel: 'mat_slime', ecto: 'mat_slime', bone: 'mat_bone', dust: 'mat_bone', scale: 'mat_scale', chitin: 'mat_scale', shell: 'mat_scale', plate: 'mat_scale', fur: 'mat_hide', cloth: 'mat_hide', horn: 'mat_horn', heart: 'gem', core: 'gem', orb: 'gem', pearl: 'gem', lens: 'gem', shard: 'gem', ember: 'gem', seal: 'relic', leaf: 'food', root: 'food', seed: 'food', spore: 'food', cap: 'food', stone: 'rune', gland: 'mat_slime', coin: 'relic', relic: 'relic', box: 'bag', anvil: 'tool', food: 'food', oil: 'elixir', flask: 'elixir', scroll: 'scroll' };
+  const LOOT = { fang: 'mat_fang', talon: 'mat_fang', stinger: 'mat_fang', pincer: 'mat_fang', feather: 'mat_feather', gel: 'mat_slime', ecto: 'mat_slime', bone: 'mat_bone', dust: 'mat_bone', scale: 'mat_scale', chitin: 'mat_scale', shell: 'mat_scale', plate: 'mat_scale', fur: 'mat_hide', cloth: 'mat_hide', horn: 'mat_horn', heart: 'gem', core: 'gem', orb: 'gem', pearl: 'gem', lens: 'gem', shard: 'gem', ember: 'gem', seal: 'relic', leaf: 'elixir', root: 'mat_hide', seed: 'bag', spore: 'bag', cap: 'mat_bowl', stone: 'rune', gland: 'mat_slime', coin: 'relic', relic: 'relic', box: 'bag', anvil: 'tool', food: 'elixir', oil: 'elixir', flask: 'elixir', scroll: 'scroll' };
   function poolOf(it, def) {
     if (it.type === 'equip') {
       if (it.slot === 'weapon') return P['w_' + it.wtype] || P.w_sword;

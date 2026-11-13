@@ -554,7 +554,7 @@
     title: '👤 ตัวละคร', w: 640,
     render() {
       const ch = G.char, st = G.st, c = D.CLASSES[ch.cls];
-      const slot = (s) => { const it = ch.equip[s]; return `<div class="eqslot" data-act="unequip" data-slot="${s}" ${it ? `data-item="${it.uid}"` : ''}>${it ? `<img src="${ART.itemIcon(it)}">${it.refine ? `<em>+${it.refine}</em>` : ''}` : `<span>${D.SLOT_TH[s]}</span>`}</div>`; };
+      const slot = (s) => { const it = ch.equip[s]; return `<div class="eqslot" data-act="unequip" data-slot="${s}" data-th="${D.SLOT_TH[s]}" ${it ? `data-item="${it.uid}"` : ''}>${it ? `<img src="${ART.itemIcon(it)}">${it.refine ? `<em>+${it.refine}</em>` : ''}` : `<span>${D.SLOT_TH[s]}</span>`}</div>`; };
       const derived = [['ATK', st.atk], ['MATK', st.matk], ['DEF', st.def], ['MDEF', st.mdef], ['HP', st.maxHp], ['SP', st.maxSp], ['ASPD', st.aspd + '/s'], ['Crit', st.crit + '%'], ['Crit DMG', st.critDmg + '%'], ['Hit', st.hit], ['Flee', st.flee], ['ร่ายเร็ว', st.castReduce + '%'], ['ลด CD', st.cdr + '%'], ['เดิน', st.move], ['Lifesteal', st.lifesteal + '%'], ['ดาเมจ+', st.dmgPct + '%'], ['ลดดาเมจ', st.dmgReduce + '%'], ['คอมโบ+', st.comboDmg + '%'], ['บอส+', st.bossDmg + '%'], ['ดรอป+', st.dropPct + '%'], ['PvP+', st.pvpDmg + '%'], ['PvP ลด', st.pvpRes + '%'], ['ต้าน CC', st.ccRes + '%'], ['Combo Win', st.comboWin + 's']];
       const gearN = Object.values(ch.equip).filter(Boolean).length;
       return `<div class="charWin">

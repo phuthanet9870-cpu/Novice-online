@@ -557,3 +557,142 @@ body.touch #chat { display: none; }
 #tracker { border: 0 !important; border-style: solid !important; border-width: 12px 14px !important; border-image: url(assets/ui/cinder/quest_tracker.png) 24 160 24 24 fill / 12px 40px 12px 12px stretch !important; background: none !important; }
 #hud.ash #tframe { border: 0; border-style: solid; border-width: 14px 18px; border-image: url(assets/ui/cinder/panel_plain.png) 32 fill / 14px 18px stretch; background: none; }
 .itemIco, .bkDrop img, .invGrid .cell img, .eqslot img { image-rendering: auto; }
+
+/* ---------------- v8: CinderUI HUD (built from the kit images) ---------------- */
+#hud.c8 #pframe, #hud.c8 #tframe { display: none !important; }
+#hud.c8 #ult, #hud.c8 #exp { display: none !important; }
+/* player unit frame 448x152 drawn at 0.82 */
+#uf8 { position: absolute; left: 10px; top: 8px; width: 367px; height: 125px; background: url(assets/ui/cinder/unitframe_player.png) 0 0 / 100% 100% no-repeat; pointer-events: auto; z-index: 3; }
+#uf8 .uf-por { position: absolute; left: 3.9%; top: 9.5%; width: 21%; height: 61.5%; border-radius: 50%; object-fit: cover; background: radial-gradient(circle, #2a2030, #0c0810); z-index: -1; }
+#uf8 .uf-name { position: absolute; left: 30.5%; top: 1px; right: 4%; display: flex; gap: 6px; align-items: baseline; white-space: nowrap; overflow: hidden; }
+#uf8 .uf-name b { font: 700 14px Cinzel, Kanit, serif; color: #ffe6a8; letter-spacing: .05em; text-shadow: 0 1px 0 #000, 0 0 4px #000, 0 0 8px #000; } #uf8 .uf-name small { font-size: 10.5px; color: #f0dcb8; text-shadow: 0 1px 0 #000, 0 0 4px #000; }
+#uf8 .uf-hp, #uf8 .uf-sp, #uf8 .uf-res { position: absolute; overflow: hidden; }
+#uf8 .uf-hp { left: 29.5%; top: 24.5%; width: 60.7%; height: 16%; } #uf8 .uf-sp { left: 30.4%; top: 41.8%; width: 53.6%; height: 10.5%; } #uf8 .uf-res { left: 30.4%; top: 54%; width: 46.4%; height: 10.5%; }
+#uf8 .f { position: absolute; left: 0; top: 0; bottom: 0; width: var(--p, 100%); background-size: 100% 100%; transition: width .2s; }
+#uf8 .uf-hp .f { background-image: url(assets/ui/cinder/bar_s_fill_health.png); background-position: center; background-size: 104% 280%; }
+#uf8 .uf-sp .f { background-image: url(assets/ui/cinder/bar_s_fill_mana.png); background-size: 104% 280%; background-position: center; }
+#uf8 .uf-res .f { background-image: url(assets/ui/cinder/bar_s_fill_ember.png); background-size: 104% 280%; background-position: center; }
+#uf8 span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font: 600 10.5px Kanit, sans-serif; color: #fff; text-shadow: 0 1px 1px #000, 0 0 3px #000; }
+#uf8 .uf-sp span, #uf8 .uf-res span { font-size: 9px; }
+#uf8 .uf-lv { position: absolute; left: 7%; top: 64%; width: 13%; height: 36%; background: url(assets/ui/cinder/badge_level.png) center / contain no-repeat; display: grid; place-items: center; }
+#uf8 .uf-lv b { font: 700 11px Kanit, sans-serif; color: #ffe8b0; text-shadow: 0 1px 2px #000; }
+#hud.c8 #buffs { position: absolute; left: 110px; top: 92px; display: flex; gap: 4px; flex-wrap: wrap; max-width: 260px; }
+#hud.c8 .buff.c8 { width: 30px; height: 30px; border: 0; border-radius: 0; background: url(assets/ui/cinder/buff_frame.png) center / contain no-repeat; display: grid; place-items: center; font-size: 10px; color: var(--c); text-shadow: 0 1px 2px #000; }
+#hud.c8 .buff.c8.de { background-image: url(assets/ui/cinder/debuff_frame.png); }
+/* target frame 364x100 */
+#tf8 { position: absolute; left: 50%; top: 58px; transform: translateX(-50%); width: 328px; height: 90px; background: url(assets/ui/cinder/unitframe_target.png) 0 0 / 100% 100% no-repeat; pointer-events: none; z-index: 3; }
+#tf8 .tf-name { position: absolute; left: 9%; right: 26%; top: -6px; font: 700 13px Cinzel, Kanit, serif; color: #f6dc9a; text-shadow: 0 1px 2px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tf8 .tf-hp { position: absolute; left: 9.9%; top: 31%; width: 63.7%; height: 20%; overflow: hidden; }
+#tf8 .tf-hp .f { position: absolute; left: 0; top: 0; bottom: 0; width: var(--p, 100%); background: url(assets/ui/cinder/bar_s_fill_health.png) center / 104% 280%; transition: width .2s; }
+#tf8 .tf-hp span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 600 10.5px Kanit, sans-serif; color: #fff; text-shadow: 0 1px 2px #000; }
+#tf8 .tf-sub { position: absolute; left: 10.5%; top: 53%; width: 47.5%; height: 12%; font-size: 9px; color: #d8c8a8; display: flex; align-items: center; padding-left: 6px; white-space: nowrap; overflow: hidden; }
+#tf8 .tf-por { position: absolute; left: 74.2%; top: 12.5%; width: 19.6%; height: 71%; border-radius: 50%; z-index: -1; background: radial-gradient(circle, #2a2030, #0c0810); }
+/* boss bar 760x76 at top center */
+#boss8 { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); width: min(640px, 92vw); text-align: center; pointer-events: none; z-index: 3; }
+#boss8 .bb-name { font: 700 22px Cinzel, Kanit, serif; letter-spacing: .28em; color: #f2dcb0; text-transform: uppercase; text-shadow: 0 2px 6px #000, 0 0 14px rgba(255, 140, 60, .35); }
+#boss8 .bb-bar { position: relative; height: 64px; margin-top: -6px; }
+#boss8 .bb-bar i { position: absolute; inset: 0; background-size: 100% 100%; }
+#boss8 .bb-back { background-image: url(assets/ui/cinder/boss_back.png); } #boss8 .bb-frame { background-image: url(assets/ui/cinder/boss_frame.png); }
+#boss8 .bb-fill { background-image: url(assets/ui/cinder/boss_fill.png); clip-path: inset(0 calc(6.6% + (100% - var(--p, 100%)) * .868) 0 0); transition: clip-path .15s; }
+#boss8 .bb-ghost { background-image: url(assets/ui/cinder/boss_fill_ghost.png); clip-path: inset(0 calc(6.6% + (100% - var(--g, 100%)) * .868) 0 0); }
+#boss8 .bb-bar span { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); font: 700 12px Kanit, sans-serif; color: #fff; text-shadow: 0 1px 2px #000; }
+#boss8 .bb-sub { font-size: 11px; letter-spacing: .08em; color: #e8d8b8; text-shadow: 0 1px 3px #000; margin-top: -6px; }
+/* compass plate */
+#compass8 { position: absolute; left: 50%; top: 2px; transform: translateX(-50%); width: min(520px, 70vw); height: 49px; background: url(assets/ui/cinder/compass_bar.png) 0 0 / 100% 100% no-repeat; text-align: center; pointer-events: none; z-index: 2; }
+#compass8 .ticks { position: absolute; left: 12%; right: 12%; top: 8px; height: 14px; background: url(assets/ui/cinder/compass_ticks_tile.png) 0 0 / auto 100% repeat-x; opacity: .55; -webkit-mask: linear-gradient(90deg, transparent, #000 25%, #000 75%, transparent); mask: linear-gradient(90deg, transparent, #000 25%, #000 75%, transparent); }
+#compass8 b { position: relative; display: block; padding-top: 7px; font: 700 13px Cinzel, Kanit, serif; letter-spacing: .25em; color: #f2dcb0; text-transform: uppercase; text-shadow: 0 1px 3px #000; }
+#compass8 small { position: relative; font-size: 9.5px; color: #c8b89a; letter-spacing: .06em; }
+#hud.c8 #miniWrap .mhead { display: none; }
+#hud.c8 ~ #toasts, #hud.c8 #toasts { top: 160px; }
+/* EXP bar under the skill bar */
+#exp8 { width: min(560px, 80vw); margin-top: -2px; }
+.cb { position: relative; height: 26px; } .cb i { position: absolute; inset: 0; background-size: 100% 100%; }
+.cb.l .cb-back { background-image: url(assets/ui/cinder/bar_l_back.png); } .cb.l .cb-frame { background-image: url(assets/ui/cinder/bar_l_frame.png); }
+.cb .cb-fill { background-image: var(--img); clip-path: inset(0 calc(3.4% + (100% - var(--p, 0%)) * .932) 0 0); transition: clip-path .3s; }
+.cb span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 600 10px Kanit, sans-serif; color: #fff4d8; text-shadow: 0 1px 2px #000; }
+/* quest tracker in the kit's style */
+#hud.c8 #tracker { padding: 2px 6px 4px; } #hud.c8 #tracker > b { font: 700 12px Cinzel, Kanit, serif; letter-spacing: .2em; color: #f2dcb0; text-transform: uppercase; }
+#hud.c8 #tracker div { padding-left: 14px; position: relative; } #hud.c8 #tracker div::before { content: ''; position: absolute; left: 0; top: 50%; width: 7px; height: 7px; margin-top: -4px; background: #e8862a; transform: rotate(45deg); box-shadow: 0 0 4px #ff9a3a; }
+#hud.c8 #tracker div.ok { color: #9a9080; text-decoration: line-through; } #hud.c8 #tracker div.ok::before { background: none; border: 1px solid #8a7a60; box-shadow: none; }
+/* loot toasts */
+#lootFeed .lootItem.c8 { display: flex; gap: 8px; align-items: center; min-width: 230px; padding: 0 8px; border: 0; border-style: solid; border-width: 12px 16px; border-image: url(assets/ui/cinder/toast.png) 28 fill / 12px 16px stretch; background: none; }
+#lootFeed .lootItem.c8 .gem { width: 14px; height: 14px; background: var(--c); transform: rotate(45deg); box-shadow: 0 0 8px var(--c); flex: none; }
+#lootFeed .lootItem.c8 small { display: block; font-size: 8.5px; letter-spacing: .2em; color: #d8a860; } #lootFeed .lootItem.c8 b { font-size: 12px; }
+/* chat panel */
+#hud.c8 #chat { border: 0; border-style: solid; border-width: 14px; border-image: url(assets/ui/cinder/panel_plain.png) 32 fill / 14px stretch; background: none; border-radius: 0; }
+#hud.c8 #chatTabs button { border: 0; border-style: solid; border-width: 4px 8px 2px; border-image: url(assets/ui/cinder/tab_inactive.png) 24 22 8 fill / 4px 8px 2px stretch; background: none; color: #cdbf9f; } #hud.c8 #chatTabs button.on { border-image-source: url(assets/ui/cinder/tab_active.png); color: #ffe3a0; }
+/* skill bar key tags */
+#hud.c8 .slot kbd { background: url(assets/ui/cinder/hotbar_keytag.png) center / 100% 100% no-repeat; border: 0; color: #f6dc9a; padding: 0 3px; min-width: 14px; text-align: center; }
+/* damage vignette */
+#vign8 { position: fixed; inset: 0; pointer-events: none; z-index: 50; background: url(assets/ui/cinder/vignette_damage.png) center / 100% 100% no-repeat; opacity: 0; }
+#vign8.hit { animation: vhit .55s ease-out; } #vign8.low { opacity: .45; animation: vlow 1.2s ease-in-out infinite; }
+@keyframes vhit { 0% { opacity: .85; } 100% { opacity: 0; } } @keyframes vlow { 0%, 100% { opacity: .25; } 50% { opacity: .55; } }
+/* windows: centred, letter-spaced titles like the kit */
+.win .whead { justify-content: center; position: relative; } .win .whead b { text-transform: uppercase; letter-spacing: .3em; font-size: 15px; } .win .whead .x { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); }
+.wbody h4 { font: 700 11px Cinzel, Kanit, serif; letter-spacing: .22em; text-transform: uppercase; color: #e8b46a; }
+.wbody input:not([type=checkbox]):not([type=range]), .wbody select, #chatIn, #chatCh, #login input, #newName { border: 0; border-style: solid; border-width: 8px 10px; border-image: url(assets/ui/cinder/input_normal.png) 20 fill / 8px 10px stretch; background: none; color: #f0e6d0; border-radius: 0; outline: 0; }
+.wbody input:not([type=checkbox]):not([type=range]):focus, #chatIn:focus, #login input:focus, #newName:focus { border-image-source: url(assets/ui/cinder/input_focus.png); }
+.wbody input[type=checkbox] { appearance: none; width: 20px; height: 20px; background: url(assets/ui/cinder/checkbox_off.png) center / contain no-repeat; vertical-align: middle; cursor: pointer; } .wbody input[type=checkbox]:checked { background-image: url(assets/ui/cinder/checkbox_on.png); }
+.wbody ::-webkit-scrollbar, .scrollKeep::-webkit-scrollbar, #chatLog::-webkit-scrollbar { width: 12px; }
+.wbody ::-webkit-scrollbar-track, .scrollKeep::-webkit-scrollbar-track, .wbody::-webkit-scrollbar-track, #chatLog::-webkit-scrollbar-track { border-style: solid; border-width: 6px 4px; border-image: url(assets/ui/cinder/scrollbar_track.png) 12 9 fill / 6px 4px stretch; }
+.wbody ::-webkit-scrollbar-thumb, .scrollKeep::-webkit-scrollbar-thumb, .wbody::-webkit-scrollbar-thumb, #chatLog::-webkit-scrollbar-thumb { border-style: solid; border-width: 7px 4px; border-image: url(assets/ui/cinder/scrollbar_thumb_normal.png) 14 9 fill / 7px 4px stretch; }
+.wbody::-webkit-scrollbar { width: 12px; }
+/* login & character select in the kit too */
+.panel, .loginBox, #createPanel, .charPanel { border-style: solid; }
+#login .loginBox { border: 0 !important; border-style: solid !important; border-width: 24px !important; border-image: url(assets/ui/cinder/window.png) 48 fill / 24px stretch !important; background: none !important; }
+#createPanel { border: 0 !important; border-style: solid !important; border-width: 24px !important; border-image: url(assets/ui/cinder/window.png) 48 fill / 24px stretch !important; background: none !important; }
+#hud.c8 #menuFold { display: none !important; }
+#hud.c8 #tracker { top: 286px !important; }
+#hud.c8 #chat { width: 372px; }
+#menu.v3 .mgi3 { grid-template-columns: repeat(4, 62px); }
+#menu.v3 .mbtn { width: 62px; height: 56px; border-width: 9px; }
+#menu.v3 .mbtn em { font-size: 9.5px; white-space: nowrap; letter-spacing: 0; margin-top: 2px; }
+#menu.v3 .mbtn span img { width: 26px; height: 26px; }
+/* class mechanic pips with the kit's pip images on a prompt plate */
+#cmgauge { border: 0; border-style: solid; border-width: 6px 30px; border-image: url(assets/ui/cinder/prompt_plate.png) 10 60 fill / 6px 30px stretch; background: none; border-radius: 0; padding: 0 2px; }
+#cmgauge .pips b { width: 13px; height: 13px; border: 0; border-radius: 0; opacity: 1; background: url(assets/ui/cinder/pip_empty.png) center / contain no-repeat; box-shadow: none; }
+#cmgauge .pips b.on { background-image: url(assets/ui/cinder/pip_ember.png); filter: drop-shadow(0 0 4px var(--c)); }
+#hud.c8 #resBar { display: none; }
+#hud.c8 .autoRound { border: 0; background: url(assets/ui/cinder/btn_round_normal.png) center / 100% 100% no-repeat; box-shadow: none; } #hud.c8 .autoRound:hover { background-image: url(assets/ui/cinder/btn_round_hover.png); }
+#hud.c8 .autoRound.on { background-image: url(assets/ui/cinder/btn_round_pressed.png); filter: drop-shadow(0 0 10px rgba(106, 224, 122, .7)); }
+/* character window like the kit's equipment screen */
+.eqslot:not([data-item]) span { opacity: 0; }
+.eqslot:not([data-item])[data-slot=head] { background-image: url(assets/ui/cinder/slot_equip_head.png) !important; }
+.eqslot:not([data-item])[data-slot=necklace], .eqslot:not([data-item])[data-slot=earring] { background-image: url(assets/ui/cinder/slot_equip_amulet.png) !important; }
+.eqslot:not([data-item])[data-slot=weapon] { background-image: url(assets/ui/cinder/slot_equip_weapon.png) !important; }
+.eqslot:not([data-item])[data-slot=armor], .eqslot:not([data-item])[data-slot=cloak] { background-image: url(assets/ui/cinder/slot_equip_chest.png) !important; }
+.eqslot:not([data-item])[data-slot=offhand] { background-image: url(assets/ui/cinder/slot_equip_offhand.png) !important; }
+.eqslot:not([data-item])[data-slot=ring1], .eqslot:not([data-item])[data-slot=ring2] { background-image: url(assets/ui/cinder/slot_equip_ring.png) !important; }
+.eqslot:not([data-item])[data-slot=boots] { background-image: url(assets/ui/cinder/slot_equip_feet.png) !important; }
+.eqslot:not([data-item])[data-slot=gloves], .eqslot:not([data-item])[data-slot=belt] { background-image: url(assets/ui/cinder/slot_equip_trinket.png) !important; }
+.eqslot { position: relative; } .eqslot::after { content: attr(data-th); position: absolute; left: 0; right: 0; bottom: -13px; font-size: 9px; color: #b8a888; text-align: center; white-space: nowrap; }
+.eqgrid { row-gap: 18px !important; }
+.charWin .pdoll img { border-radius: 50%; padding: 10px; background: url(assets/ui/cinder/portrait_round_frame.png) center / contain no-repeat, radial-gradient(circle, #2a2030 40%, transparent 41%); }
+.charWin .statRow { border-style: solid; border-width: 4px 12px; border-image: url(assets/ui/cinder/list_row_normal.png) 8 120 8 24 fill / 4px 12px stretch; margin-bottom: 2px; }
+.charWin .statRow:hover { border-image-source: url(assets/ui/cinder/list_row_hover.png); }
+.charWin .derived > div { background: none !important; border: 0 !important; border-style: solid !important; border-width: 8px !important; border-image: url(assets/ui/cinder/panel_inset.png) 24 fill / 8px stretch !important; border-radius: 0 !important; }
+.charWin .paper::before { content: 'EQUIPMENT'; display: block; font: 700 11px Cinzel, serif; letter-spacing: .24em; color: #e8b46a; margin-bottom: 6px; }
+.charWin .statCol::before { content: 'ATTRIBUTES'; display: block; font: 700 11px Cinzel, serif; letter-spacing: .24em; color: #e8b46a; margin-bottom: 6px; }
+.invGrid .cell.empty { opacity: .8; }
+#hud.c8 .autoRound { right: 296px !important; }
+.tt { min-width: 220px; } .tt > b:first-child { font-family: Cinzel, Kanit, serif; font-size: 15px; }
+.tt small:first-of-type { letter-spacing: .12em; text-transform: uppercase; }
+.charWin .derived { grid-template-columns: repeat(6, 1fr) !important; gap: 3px !important; }
+.charWin .derived > div { border-width: 5px !important; padding: 0 2px !important; } .charWin .derived small { font-size: 9px; } .charWin .derived b { font-size: 11.5px; }
+.charWin .paper > .hint { display: block; margin-top: 16px; }
+.selLeft { border: 0; border-style: solid; border-width: 20px; border-image: url(assets/ui/cinder/window.png) 48 fill / 20px stretch; }
+.selLeft h2 { font: 700 13px Cinzel, Kanit, serif; letter-spacing: .2em; color: #f2dcb0; }
+#charList > * { border: 0 !important; border-style: solid !important; border-width: 6px 14px !important; border-image: url(assets/ui/cinder/list_row_normal.png) 8 120 8 24 fill / 6px 14px stretch !important; background: none !important; }
+#charList > *:hover, #charList > .on { border-image-source: url(assets/ui/cinder/list_row_selected.png) !important; }
+#createPanel h2 { font-family: Cinzel, Kanit, serif; letter-spacing: .12em; text-align: center; }
+#classInfo .ciBox { border: 0; border-style: solid; border-width: 10px; border-image: url(assets/ui/cinder/panel_inset.png) 24 fill / 10px stretch; background: none; border-radius: 0; }
+#classInfo .ciRow b { color: #ffe6a8 !important; }
+#classGrid .cArrow { border: 0; background: url(assets/ui/cinder/btn_round_normal.png) center / 100% 100% no-repeat; color: #f6dc9a; }
+#classGrid .cArrow:hover { background-image: url(assets/ui/cinder/btn_round_hover.png); }
+.orb { width: 96px; height: 96px; } .orb.hp { left: -104px; } .orb.sp { right: -104px; } .orb b { font-size: 13px; } .orb small { bottom: 14px; }
+#hud.c8 #chat { width: clamp(250px, calc(50vw - 361px), 372px); }
+#hud.c8 .autoRound { right: 14px !important; bottom: 186px !important; width: 76px; height: 76px; }
+#hud.c8 #tracker { top: 300px !important; }
+#hud.c8 #netPill { margin-top: 2px; }
+@media (max-width: 1100px) { #hud.c8 #chat { width: 260px; } }
+#hud.c8 #chatTabs button { padding: 0 3px; font-size: 11px; }

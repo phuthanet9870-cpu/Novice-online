@@ -121,7 +121,8 @@
     };
     N.listeners.push(draw); draw();
   }
-  const lg = $('#login'); if (lg) lg.style.background = "radial-gradient(ellipse at center, rgba(10,8,16,.35), rgba(10,8,16,.88)), url('client/assets/ui/login.webp') center / cover no-repeat";
+  const lg = $('#login'); if (lg) lg.style.background = "linear-gradient(180deg, rgba(10,8,16,0) 55%, rgba(10,8,16,.97) 80%), radial-gradient(ellipse at center, rgba(10,8,16,.25), rgba(10,8,16,.8)), url('client/assets/ui/login.webp') center top / cover no-repeat";
+  const sel = document.querySelector('#select, #charSelect, .screen#chars'); if (sel) sel.style.background = "linear-gradient(rgba(10,8,16,.86), rgba(10,8,16,.92)), url('client/assets/ui/login.webp') center top / cover no-repeat";
   // CinderUI pieces: gold glyphs on the menu, a ring around the minimap, HP/SP orbs beside the skill bar
   const GLYPH = { inv: 'bag', char: 'person', skills: 'book', passive: 'star', map: 'map', dungeon: 'skull', more: 'menu', settings: 'gear', auto: 'refresh', pets: 'paw', quests: 'quest', book: 'scroll', achieve: 'trophy', rank: 'crown', party: 'group', friends: 'chat', guild: 'flag', mail: 'mail', market: 'coin', craft: 'anvil', help: 'question', guide: 'compass', gm: 'shield' };
   function glyphs() { if (!ART.glyph) return; for (const b of document.querySelectorAll('#menu .mbtn[data-win]')) { const u = ART.glyph(GLYPH[b.dataset.win] || 'star', 48); const sp = b.querySelector('span'); if (u && sp && !sp.querySelector('img')) sp.innerHTML = `<img src="${u}" alt="">`; } }

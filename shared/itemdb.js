@@ -225,15 +225,15 @@
 
   // ---------------------------------------------------------------- support / consumables / refine / treasures / boxes
   const REGION_FOOD = {
-    aurelia: [['Meadow Honey Bread', { hpPct: 5, regenPct: 30 }], ['Clover Tea', { spPct: 8 }], ['Forest Berry Tart', { aspdPct: 4 }], ['Seabreeze Grilled Fish', { movePct: 6 }]],
-    sandhaven: [['Spiced Scorpion Skewer', { atkPct: 5 }], ['Oasis Date Cake', { hpPct: 6 }], ['Desert Mint Tea', { castReduce: 6 }], ['Temple Flatbread', { defPct: 8 }]],
-    frostholm: [['Yeti Stew', { hpPct: 8, dmgReduce: 2 }], ['Glacier Ice Cream', { crit: 4 }], ['Crystal Candy', { matkPct: 5 }], ['Smoked Bog Eel', { ccRes: 10 }]],
-    emberforge: [['Lava Pepper Steak', { atkPct: 7 }], ['Ember Chili Soup', { critDmg: 12 }], ['Obsidian Rock Candy', { defPct: 12 }], ['Dragonbone Broth', { hpPct: 10, lifesteal: 1 }]],
-    skyreach: [['Cloud Soufflé', { flee: 30, movePct: 5 }], ['Angel Food Cake', { matkPct: 8, spPct: 8 }], ['Void Truffle', { dmgPct: 5 }], ['Starfruit Nectar', { cdr: 4 }]]
+    aurelia: [['Meadow Vigor Elixir', { hpPct: 5, regenPct: 30 }], ['Clover Mana Tonic', { spPct: 8 }], ['Forest Haste Draught', { aspdPct: 4 }], ['Seabreeze Swift Tonic', { movePct: 6 }]],
+    sandhaven: [['Scorpion Venom Elixir', { atkPct: 5 }], ['Oasis Life Tonic', { hpPct: 6 }], ['Desert Focus Draught', { castReduce: 6 }], ['Temple Ward Elixir', { defPct: 8 }]],
+    frostholm: [['Yeti Blood Elixir', { hpPct: 8, dmgReduce: 2 }], ['Glacier Clarity Tonic', { crit: 4 }], ['Crystal Arcana Draught', { matkPct: 5 }], ['Bog Resolve Tonic', { ccRes: 10 }]],
+    emberforge: [['Lava Fury Elixir', { atkPct: 7 }], ['Ember Edge Tonic', { critDmg: 12 }], ['Obsidian Skin Draught', { defPct: 12 }], ['Dragonbone Elixir', { hpPct: 10, lifesteal: 1 }]],
+    skyreach: [['Cloudstep Tonic', { flee: 30, movePct: 5 }], ['Seraphic Draught', { matkPct: 8, spPct: 8 }], ['Void Essence Elixir', { dmgPct: 5 }], ['Starlight Nectar', { cdr: 4 }]]
   };
   D.REGION_SUPPORT = {};
   for (const rg of D.REGIONS) {
-    D.REGION_SUPPORT[rg.id] = REGION_FOOD[rg.id].map(([n, buff], k) => add(`food_${rg.id}_${k}`, { n, th: `อาหารประจำภูมิภาค (${Object.entries(buff).map(([a, b]) => a + ' +' + b).join(', ')} 15 นาที)`, type: 'buffitem', buff, dur: 900, price: 0, sell: 60 + D.REGIONS.indexOf(rg) * 80, lv: 1 + D.REGIONS.indexOf(rg) * 45, ic: 'food', icon: rg.color }));
+    D.REGION_SUPPORT[rg.id] = REGION_FOOD[rg.id].map(([n, buff], k) => add(`food_${rg.id}_${k}`, { n, th: `ยาเสริมประจำภูมิภาค (${Object.entries(buff).map(([a, b]) => a + ' +' + b).join(', ')} 15 นาที)`, type: 'buffitem', buff, dur: 900, price: 0, sell: 60 + D.REGIONS.indexOf(rg) * 80, lv: 1 + D.REGIONS.indexOf(rg) * 45, ic: 'flask', icon: rg.color }));
   }
   const ELEM_OIL = { fire: 'Flame Oil', ice: 'Frost Oil', lightning: 'Storm Oil', earth: 'Quake Oil', wind: 'Gale Oil', holy: 'Blessed Oil', dark: 'Shadow Oil', poison: 'Venom Oil', water: 'Tidal Oil' };
   for (const el in ELEM_OIL) add(`oil_${el}`, { n: ELEM_OIL[el], th: `เคลือบอาวุธเป็นธาตุ ${D.ELEMENTS[el] ? D.ELEMENTS[el].n || el : el} 10 นาที`, type: 'buffitem', buff: { element: el }, dur: 600, price: 4000, sell: 300, ic: 'oil', icon: ELC(el) });
@@ -252,8 +252,8 @@
     ['pot_drop2', 'Greater Scroll of Fortune', 'ดรอป +60% 30 นาที', { dropPct: 60 }, 1800, 0, '#ffd04a']
   ];
   for (const [id, n, th, buff, dur, price, c] of SUPPORT) add(id, { n, th, type: 'buffitem', buff, dur, price, sell: Math.max(50, price / 5 | 0), ic: /scroll/i.test(n) ? 'scroll' : 'flask', icon: c });
-  const STAT_FOOD = { str: 'Steak', agi: 'Fruit Salad', vit: 'Stew', int: 'Herb Soup', dex: 'Sushi', luk: 'Fortune Cookie' };
-  for (const s in STAT_FOOD) for (let t = 1; t <= 2; t++) add(`sfood_${s}_${t}`, { n: `${t === 2 ? 'Royal ' : ''}${STAT_FOOD[s]}`, th: `${s.toUpperCase()} +${t * 8} 30 นาที`, type: 'buffitem', buff: { [s]: t * 8 }, dur: 1800, price: t === 1 ? 3000 : 0, sell: 200 * t, ic: 'food', icon: { str: '#ff6a4a', agi: '#8aff6a', vit: '#ffb04a', int: '#6a9aff', dex: '#4affe0', luk: '#ffe04a' }[s] });
+  const STAT_FOOD = { str: 'Tonic of Might', agi: 'Tonic of Agility', vit: 'Tonic of Vitality', int: 'Tonic of Intellect', dex: 'Tonic of Precision', luk: 'Tonic of Fortune' };
+  for (const s in STAT_FOOD) for (let t = 1; t <= 2; t++) add(`sfood_${s}_${t}`, { n: `${t === 2 ? 'Greater ' : ''}${STAT_FOOD[s]}`, th: `${s.toUpperCase()} +${t * 8} 30 นาที`, type: 'buffitem', buff: { [s]: t * 8 }, dur: 1800, price: t === 1 ? 3000 : 0, sell: 200 * t, ic: 'flask', icon: { str: '#ff6a4a', agi: '#8aff6a', vit: '#ffb04a', int: '#6a9aff', dex: '#4affe0', luk: '#ffe04a' }[s] });
   const CURES = [['cure_herb', 'Green Herb', 'แก้ Poison', ['poison'], 50, '#5ac85a'], ['cure_water', 'Holy Water', 'แก้ Curse / Fear', ['curse', 'fear'], 300, '#bfe8ff'],
     ['cure_eye', 'Eye Drops', 'แก้ Blind', ['blind'], 150, '#8ad0ff'], ['cure_thaw', 'Warm Tonic', 'แก้ Freeze / Chill / Slow', ['freeze', 'chill', 'slow'], 300, '#ffb04a'],
     ['cure_all', 'Panacea', 'ล้างสถานะผิดปกติทั้งหมด', ['*'], 1500, '#ff8ae0'], ['cure_royal', 'Royal Jelly', 'ล้างสถานะทั้งหมด + ฟื้น HP 20%', ['*'], 0, '#ffe08a']];
