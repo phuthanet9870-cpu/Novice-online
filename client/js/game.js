@@ -582,7 +582,8 @@
     const dead = e.fl & 1;
     if ((e.fl & 4) && G.isEnemy(e)) return;
     const sz = e.sz || 1;
-    let top = y - (e.k === 'p' ? 52 * (e.fl & 64 ? 1.7 : 1) : e.k === 'c' ? 80 : e.k === 'n' ? 44 : (36 * sz + 6)) * z;
+    const sprH = e.k === 'm' ? ART.spriteHeight(e) : 0;
+    let top = y - (e.k === 'p' ? 52 * (e.fl & 64 ? 1.7 : 1) : e.k === 'c' ? 80 : e.k === 'n' ? 44 : sprH ? sprH + 8 : (36 * sz + 6)) * z;
     if (G.hasTag(e, 'airborne')) top -= 18 * z;
     g.textAlign = 'center';
     if (e.k === 'n') {

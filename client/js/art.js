@@ -46,7 +46,7 @@
     for (let ty = y0; ty < y0 + CH + PAD * 2; ty++) for (let tx = x0; tx < x0 + CH + PAD * 2; tx++) {
       const t = tileAt(map, tx, ty);
       if (t === T.HOUSE && builtSprites) continue;
-      if ((t === T.TREE || t === T.ROCK || t === T.DECO || t === T.WALL) && window.TER && TER.object(g, map, t, tx, ty, (tx - x0) * TS, (ty - y0) * TS)) continue;
+      if ((t === T.TREE || t === T.ROCK || t === T.DECO || t === T.WALL) && window.TER && TER.object(g, map, t, tx, ty, (tx - x0) * TS, (ty - y0) * TS, tileAt)) continue;
       if (t === T.TREE || t === T.ROCK || t === T.DECO || t === T.WALL || t === T.HOUSE) drawObject(g, map, B, t, tx, ty, (tx - x0) * TS, (ty - y0) * TS);
     }
     c.pad = PAD;
@@ -289,17 +289,19 @@
       A.foot = A.ch; A.cx = A.cw / 2;
       try {
         const c = document.createElement('canvas'); c.width = A.cw; c.height = A.ch; const q = c.getContext('2d');
-        const [row, n] = A.a.idle; let lo = 0, sx = 0, cnt = 0;
+        const [row, n] = A.a.idle; let lo = 0, hi = A.ch, sx = 0, cnt = 0;
         for (let f = 0; f < Math.min(n, 3); f++) {
           q.clearRect(0, 0, A.cw, A.ch); q.drawImage(im, f * A.cw, row * A.ch, A.cw, A.ch, 0, 0, A.cw, A.ch);
           const d = q.getImageData(0, 0, A.cw, A.ch).data;
-          for (let y = 0; y < A.ch; y++) for (let x = 0; x < A.cw; x++) if (d[(y * A.cw + x) * 4 + 3] > 40) { if (y > lo) lo = y; if (y > A.ch * 0.5) { sx += x; cnt++; } }
+          for (let y = 0; y < A.ch; y++) for (let x = 0; x < A.cw; x++) if (d[(y * A.cw + x) * 4 + 3] > 40) { if (y > lo) lo = y; if (y < hi) hi = y; if (y > A.ch * 0.5) { sx += x; cnt++; } }
         }
-        A.foot = lo + 1; if (cnt) A.cx = sx / cnt;
+        A.foot = lo + 1; A.top = hi; if (cnt) A.cx = sx / cnt;
       } catch (err) { /* tainted canvas: keep defaults */ }
     }
     return im;
   };
+  // on-screen height (px at zoom 1) of an animated sprite, for name plates / HP bars above huge bosses
+  ART.spriteHeight = (e) => { const A = e.spr && window.BOSS_ART && BOSS_ART[e.spr]; if (!A || A.foot === undefined) return 0; return (A.foot - (A.top || 0)) * (e.sz || 1) * 0.8; };
   ART.preloadBosses = () => { if (window.BOSS_ART) for (const k in BOSS_ART) ART.bossImage(k); };
   function drawBossSprite(g, e, x, y) {
     const A = BOSS_ART[e.spr], im = ART.bossImage(e.spr);

@@ -70,7 +70,12 @@ def prop(name, box):
 for i, c in enumerate([20, 21, 22]): prop(f'd:pillar{i}', (c * 16, 0, c * 16 + 16, 48))
 prop('d:fence', (368, 16, 384, 48)); prop('d:barrel0', (112, 80, 128, 112)); prop('d:barrel1', (128, 80, 144, 112)); prop('d:pot', (144, 80, 160, 112)); prop('d:jar', (160, 80, 176, 112))
 prop('d:torch', (176, 80, 192, 112)); prop('d:barrels', (192, 80, 224, 120)); prop('d:bones', (240, 64, 256, 80)); prop('d:rubble', (176, 56, 224, 80)); prop('d:spikes', (192, 32, 256, 48))
-prop('d:banner0', (176, 0, 192, 32)); prop('d:banner1', (192, 0, 208, 32)); prop('d:arch', (208, 0, 224, 32))
+prop('d:banner0', (176, 0, 192, 32));
+# wooden double doors with brick jambs (3 x 2 cells) — drawn over a 2-tile-high wall face
+pieces.append(('d:door0', cell(0, 5, 3, 2))); pieces.append(('d:door1', cell(3, 5, 3, 2)))
+prop('d:statue0', (80, 0, 96, 48)); prop('d:statue1', (128, 0, 144, 48)); prop('d:archway', (208, 0, 224, 16)); prop('d:stones', (112, 144, 128, 160))
+for i in range(4): prop(f'd:spike{i}', ((12 + i) * 16, 32, (13 + i) * 16, 48))
+prop('d:banner1', (192, 0, 208, 32)); prop('d:arch', (208, 0, 224, 32))
 
 # ---------------------------------------------------------------- shelf-pack
 pieces.sort(key=lambda p: -p[1].height)

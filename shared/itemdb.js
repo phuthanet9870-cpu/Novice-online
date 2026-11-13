@@ -55,21 +55,27 @@
   };
   for (const b in MORE_FAM) if (D.FAMILIES[b]) for (const f of MORE_FAM[b]) if (!D.FAMILIES[b].some((x) => x[0] === f[0])) D.FAMILIES[b].push(f);
   // Topdown Monsters pack: brand-new families for the sheets that had no matching monster
-  const NEW_FAM = { forest: [['Goblin Raider', 'imp', 'melee', 1, 'earth']], swamp: [['Swamp Ogre', 'golem', 'melee', 1, 'poison']], snow: [['Ice Werewolf', 'beast', 'melee', 1, 'ice']], volcano: [['Inferno Fiend', 'imp', 'caster', 1, 'fire']], abyss: [['Ghoul Stalker', 'undead', 'melee', 1, 'dark']] };
+  // one dedicated new family per sheet (11), each placed in the biome that matches its look
+  const NEW_FAM = {
+    forest: [['Goblin Raider', 'imp', 'melee', 1, 'earth']], swamp: [['Swamp Ogre', 'golem', 'melee', 1, 'poison']], snow: [['Ice Werewolf', 'beast', 'melee', 1, 'ice']],
+    volcano: [['Inferno Fiend', 'imp', 'caster', 1, 'fire'], ['Cinder Revenant', 'knight', 'melee', 1, 'fire']], abyss: [['Ghoul Stalker', 'undead', 'melee', 1, 'dark']],
+    desert: [['Horned Ravager', 'beast', 'melee', 1, 'earth'], ['Roc Raider', 'bird', 'ranged', 1, 'wind']], ruins: [['Grave Walker', 'undead', 'melee', 1, 'dark']],
+    sky: [['Drakeborn Warrior', 'dragon', 'melee', 1, 'wind']], beach: [['Shellbeak', 'bird', 'melee', 0, 'water']]
+  };
   for (const b in NEW_FAM) for (const f of NEW_FAM[b]) if (!D.FAMILIES[b].some((x) => x[0] === f[0])) D.FAMILIES[b].push(f);
   // animated sprite sheet per family (client/assets/monsters/tmNN.png, packed by tools/build-world-art.py)
   D.MON_SPRITES = {
     'Shadow Beast': 'tm00', 'Lich Acolyte': 'tm00', 'Ash Ghoul': 'tm00', 'Ghoul Stalker': 'tm00',
-    Gargoyle: 'tm01', 'Anubis Guard': 'tm01', Nightmare: 'tm01',
+    Gargoyle: 'tm01', 'Anubis Guard': 'tm01', Nightmare: 'tm01', 'Horned Ravager': 'tm01',
     'Cactus Brute': 'tm02', 'Mire Golem': 'tm02', 'Swamp Ogre': 'tm02',
-    Skeleton: 'tm03', 'Rot Zombie': 'tm03', Drowned: 'tm03',
-    'Sky Knight': 'tm04', 'Valkyrie': 'tm04',
-    Gull: 'tm05',
+    Skeleton: 'tm03', 'Rot Zombie': 'tm03', Drowned: 'tm03', 'Grave Walker': 'tm03',
+    'Sky Knight': 'tm04', 'Valkyrie': 'tm04', 'Drakeborn Warrior': 'tm04',
+    Gull: 'tm05', Shellbeak: 'tm05',
     'Woodland Imp': 'tm06', 'Goblin Raider': 'tm06',
     'Frost Wolf': 'tm07', 'Ice Werewolf': 'tm07',
-    Harpy: 'tm08', Vulture: 'tm08',
+    Harpy: 'tm08', Vulture: 'tm08', 'Roc Raider': 'tm08',
     Imp: 'tm09', 'Abyss Imp': 'tm09', 'Inferno Fiend': 'tm09',
-    'Pirate Skeleton': 'tm10', 'Flame Knight': 'tm10', 'Fallen Knight': 'tm10'
+    'Pirate Skeleton': 'tm10', 'Flame Knight': 'tm10', 'Fallen Knight': 'tm10', 'Cinder Revenant': 'tm10'
   };
   D.FAMILY_COUNT = new Set(Object.values(D.FAMILIES).flat().map((f) => f[0])).size;
 

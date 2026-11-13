@@ -17,9 +17,9 @@
   const RANK = [
     { n: 'normal', hp: 1, atk: 1, def: 1, exp: 1, size: 1 },
     { n: 'elite', hp: 3.5, atk: 1.5, def: 1.3, exp: 4, size: 1.25 },
-    { n: 'boss', hp: 45, atk: 2.2, def: 2, exp: 90, size: 2.2 },
-    { n: 'dboss', hp: 22, atk: 2, def: 1.8, exp: 40, size: 1.8 },
-    { n: 'world', hp: 900, atk: 3, def: 2.5, exp: 0, size: 3.2 },
+    { n: 'boss', hp: 45, atk: 2.2, def: 2, exp: 90, size: 3.8 },
+    { n: 'dboss', hp: 22, atk: 2, def: 1.8, exp: 40, size: 3.2 },
+    { n: 'world', hp: 900, atk: 3, def: 2.5, exp: 0, size: 5.2 },
     { n: 'summon', hp: 0.6, atk: 0.6, def: 0.6, exp: 0, size: 0.85 },
     { n: 'core', hp: 1, atk: 0, def: 3, exp: 0, size: 2 }
   ];
