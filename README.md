@@ -219,3 +219,36 @@ New commands: `@spawnsp`, `@gearb`, `@gearlist`, `@book`, `@pickupall`, `@clearg
 
 - **Skill icons** are 32×32 pixel art with a class backdrop and motif, a glyph showing the skill's mechanic, an element emblem, a status pip and a frame by kind. All 500 are unique.
 - **Item icons:** the new item types have pixel icons, all unique.
+
+## Skills v4 — signature mechanics
+Every active skill has one signature mechanic (`sk.mech`), chosen per class from its own pool (`tools/skill-design.js` `MECH`) and implemented server-side in `server/combat.js` `mechanics()`:
+
+| mech | effect |
+|---|---|
+| echo | re-hits the same targets after a delay at reduced power |
+| orbit | orbs circle the caster and hit anything they touch |
+| wall | an elemental wall laid across the aim direction |
+| trail | leaves an elemental trail along the dash path |
+| boomerang | returns to the caster and hits again |
+| split | splits into the nearest extra enemies |
+| stackSelf | each cast stacks +damage on yourself |
+| resetOnKill | killing the target resets the cooldown |
+| overcharge | spends extra SP when available for a big multiplier |
+
+Tooltips and skill cards show the mechanic as a gold chip. Orbit / wall / trail zones and echo / boomerang hits have their own visuals in `client/js/vfx.js`.
+
+## VFX v4
+Pixel-art look, written in-house:
+- Effects step at 14 fps (projectiles and zones at 30 fps).
+- Debris particles are drawn on the same 16 px-per-tile pixel layer.
+- A quarter-size bloom pass adds a soft glow to bright pixels.
+
+## Bosses (sprite pack)
+Field bosses (25 maps), dungeon floor bosses (5 dungeons) and world bosses (20, 16 of them new) use the animated sprite atlases in `client/js/bossart.js`. Each atlas has idle, run, attack, hit and death rows, built from the supplied Duelyst unit pack.
+- `D.BOSS_SPRITES` maps maps, dungeons and world bosses to sprites; `D.BOSS_NAMES` holds their in-game names.
+- Sprites are anchored to their shadow and switch animation by state.
+- GM test command: `@bossart <sprite|list> [lv]`.
+
+## HUD v2
+- The menu dock is grouped into labelled sections: ตัวละคร / ผจญภัย / สังคม & ค้าขาย / ระบบ. Every button has a name and a shortcut key.
+- The 🧭 HUD guide highlights each HUD element with a numbered note. It opens on first login and from the menu.

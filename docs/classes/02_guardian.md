@@ -53,20 +53,20 @@
 ## Ultimate (5)
 | # | สกิล | ปลด | ผล |
 |---|---|---|---|
-| U1 | **Citadel** | Awaken I | สร้างโดมป้องกัน 8s ปาร์ตี้ในโดมรับดาเมจ -60% |
-| U2 | **Dragoon Meteor** | Awaken I | กระโดดหายจากจอ 2s แล้วทิ่มลง AoE 1,800% + Knockdown |
-| U3 | **Aegis of the Saint** | Awaken II | ปาร์ตี้ทั้งหมดอมตะ 3s, ระเบิด Holy เมื่อจบ |
-| U4 | **Chains of Atlas** | Awaken II | ล่ามทุกเป้า 8×8 ดึงเข้ากลาง Root 3s |
-| U5 | **Immortal Wall** | Awaken III | 15s: ดูดดาเมจของทั้งปาร์ตี้มาที่ตัวเอง และลดลง 70% |
+| U1 | **Gravity Bastion** | Awaken I | สร้างโดมป้องกัน 8s ปาร์ตี้ในโดมรับดาเมจ -60% |
+| U2 | **Mirror Fortress** | Awaken I | กระโดดหายจากจอ 2s แล้วทิ่มลง AoE 1,800% + Knockdown |
+| U3 | **Sanctuary Wall** | Awaken II | ปาร์ตี้ทั้งหมดอมตะ 3s, ระเบิด Holy เมื่อจบ |
+| U4 | **Titan Shield Bash** | Awaken II | ล่ามทุกเป้า 8×8 ดึงเข้ากลาง Root 3s |
+| U5 | **Eternal Rampart** | Awaken III | 15s: ดูดดาเมจของทั้งปาร์ตี้มาที่ตัวเอง และลดลง 70% |
 
 ## Buff (5)
 | # | สกิล | ผล |
 |---|---|---|
-| B1 | Defender Stance | DEF +40%, ความเร็ว -10% |
-| B2 | Guardian's Pledge | รับดาเมจแทนเพื่อน 1 คน 30% |
-| B3 | Holy Armor | ต้านธาตุ Dark/Undead +30%, MDEF +25% ปาร์ตี้ |
-| B4 | Spear Discipline | ระยะหอก +1, Crit +10 |
-| B5 | Rallying Banner | ปักธง ปาร์ตี้ในวง HP regen +2%/s, ต้าน CC 20% |
+| B1 | Steel Skin | DEF +40%, ความเร็ว -10% |
+| B2 | Oath of Protection | รับดาเมจแทนเพื่อน 1 คน 30% |
+| B3 | Unbreakable Vigor | ต้านธาตุ Dark/Undead +30%, MDEF +25% ปาร์ตี้ |
+| B4 | Tower Stance | ระยะหอก +1, Crit +10 |
+| B5 | Rally Banner | ปักธง ปาร์ตี้ในวง HP regen +2%/s, ต้าน CC 20% |
 
 ## คอมโบแนะนำ
 - **Lock Down**: Chain Hook → Shield Slam → Crushing Weight → Rampart Smash

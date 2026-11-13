@@ -53,20 +53,20 @@
 ## Ultimate (5)
 | # | สกิล | ปลด | ผล |
 |---|---|---|---|
-| U1 | **Heaven's Arrow** | Awaken I | ลูกธนูยักษ์ทะลุจอ 2,000% |
-| U2 | **Minefield** | Awaken I | วางกับดักทุกชนิด 12 จุดรอบตัวทันที |
-| U3 | **Spirit of the Wild** | Awaken II | เรียกสัตว์วิญญาณยักษ์ 15s |
-| U4 | **Storm Volley** | Awaken II | ฝนธนูธาตุ (ไฟ/น้ำแข็ง/สายฟ้า) 10×10 6s |
-| U5 | **Eagle Eye God** | Awaken III | 12s: ทุกลูก Crit + ทะลุ + ระยะ ×2 |
+| U1 | **Arrow Storm** | Awaken I | ลูกธนูยักษ์ทะลุจอ 2,000% |
+| U2 | **Thorn Field** | Awaken I | วางกับดักทุกชนิด 12 จุดรอบตัวทันที |
+| U3 | **Spirit Pack** | Awaken II | เรียกสัตว์วิญญาณยักษ์ 15s |
+| U4 | **Comet Arrow** | Awaken II | ฝนธนูธาตุ (ไฟ/น้ำแข็ง/สายฟ้า) 10×10 6s |
+| U5 | **Hawkeye Awakening** | Awaken III | 12s: ทุกลูก Crit + ทะลุ + ระยะ ×2 |
 
 ## Buff (5)
 | # | สกิล | ผล |
 |---|---|---|
-| B1 | Eagle Eye | ระยะ +3, Hit +40 |
-| B2 | Wind Walk | ความเร็วเดินปาร์ตี้ +20%, Flee +15 |
+| B1 | Eagle Sight | ระยะ +3, Hit +40 |
+| B2 | Pack Pace | ความเร็วเดินปาร์ตี้ +20%, Flee +15 |
 | B3 | Elemental Quiver | เลือกธาตุลูกธนู (ไฟ/น้ำ/ลม/ดิน/สายฟ้า) |
-| B4 | Beast Bond | สัตว์คู่หู ATK/HP +40% |
-| B5 | Steady Aim | Focus สะสมเร็วขึ้น 2 เท่า, ยิงได้ขณะเดิน |
+| B4 | Steady Aim | สัตว์คู่หู ATK/HP +40% |
+| B5 | Bond of the Wild | Focus สะสมเร็วขึ้น 2 เท่า, ยิงได้ขณะเดิน |
 
 ## คอมโบแนะนำ
 - **Sniper**: Hunter's Mark → Pin Shot → Piercing Arrow → Rapid Fire → Headshot

@@ -151,6 +151,36 @@
   D.rankTier = (mmr) => { let t = D.RANK_TIERS[0]; for (const x of D.RANK_TIERS) if (mmr >= x[0]) t = x; return t; };
   D.EMOTES = ['😀', '😂', '😎', '😡', '😭', '❤️', '👍', '👋', '🙏', '💤', '🔥', '❓'];
 
+  // ---------------------------------------------------------------- boss sprites (client/js/bossart.js) and the extra world bosses
+  D.BOSS_SPRITES = {
+    field: { verdant_fields: 'candypanda', whisper_woods: 'sandpanther', mossy_hollow: 'treatdemon', sunny_coast: 'soulstealer', stone_ruins: 'kron',
+      golden_dunes: 'paragon', scorpion_canyon: 'harmony', mirage_oasis: 'spelleater', sunken_temple: 'oriasidol', thornwild: 'decepticlehelm',
+      frostbite_plains: 'crystal', glacier_rift: 'wolfpunch', howling_peaks: 'kane', crystal_caverns: 'orias', blightmarsh: 'umbra',
+      ashen_wastes: 'solfist', magma_falls: 'cindera', obsidian_fort: 'chaosknight', dragonbone: 'serpenti', storm_highlands: 'invader',
+      cloud_gardens: 'valiant', celestial_ruins: 'andromeda', void_frontier: 'shadowlord', shattered_realm: 'malyk', abyssal_throne: 'vampire' },
+    dungeon: { abyss_tower: 'decepticleprime', inferno_depths: 'treatoni', frost_crypt: 'borealjuggernaut', shadow_labyrinth: 'shinkagezendo', sky_sanctum: 'wujin' },
+    world: { wb_kraken: 'skyfalltyrant', wb_dragon: 'treatdrake', wb_titan: 'protector', wb_lich: 'legion' }
+  };
+  // names for the field and dungeon bosses, one per sprite
+  D.BOSS_NAMES = {
+    candypanda: 'Bonbon the Sweet Tyrant', sandpanther: 'Duneclaw Alpha', treatdemon: 'Mirefang Horror', soulstealer: 'Tidecaller Soulthief', kron: 'Kron the Ruin Warden',
+    paragon: 'Gilded Paragon', harmony: 'Sixfold Sun Avatar', spelleater: 'Mirage Spelleater', oriasidol: 'Sunken Idol', decepticlehelm: 'Thornwild Mech Warden',
+    crystal: 'Rimecrystal Wyrm', wolfpunch: 'Glacier Brawler', kane: 'Kane of the Howling Peak', orias: 'Prism Serpent', umbra: 'Umbral Beast',
+    solfist: 'Solfist the Ash King', cindera: 'Cindera Flamecaller', chaosknight: 'Obsidian Chaos Knight', serpenti: 'Bonecoil Serpent', invader: 'Stormborn Invader',
+    valiant: 'Valiant of the Clouds', andromeda: 'Andromeda Starweaver', shadowlord: 'Shadowlord of the Rift', malyk: 'Malyk the Shattered', vampire: 'Countess of the Abyss',
+    decepticleprime: 'Tower Prime Engine', treatoni: 'Inferno Oni Lord', borealjuggernaut: 'Boreal Juggernaut', shinkagezendo: 'Labyrinth Shadow Shogun', wujin: 'Sanctum Lion Sage'
+  };
+  for (const [id, name, shape, element, color, spr] of [
+    ['wb_swarm', 'Swarm Matriarch', 'insect', 'poison', '#6ad04a', 'antiswarm'], ['wb_frostgift', 'Frostgift Behemoth', 'golem', 'ice', '#9ad8ff', 'christmas'],
+    ['wb_spire', 'Crimson Spire', 'golem', 'blood', '#ff6a9a', 'city'], ['wb_seer', 'Clockwork Seer', 'golem', 'lightning', '#c8c8ff', 'decepticle'],
+    ['wb_chassis', 'Iron Juggernaut', 'golem', 'earth', '#a050ff', 'decepticlechassis'], ['wb_bladesentinel', 'Blade Sentinel', 'knight', 'neutral', '#4aa8ff', 'decepticlesword'],
+    ['wb_skyraptor', 'Sky Raptor Engine', 'bird', 'wind', '#ff5a3a', 'decepticlewings'], ['wb_echowitch', 'Echo Witch', 'spirit', 'dark', '#b0a0ff', 'dissonance'],
+    ['wb_ruingolem', 'Ruin Golem', 'golem', 'earth', '#c03a6a', 'emp'], ['wb_hollowking', 'Hollow King', 'knight', 'dark', '#3a5aff', 'gol'],
+    ['wb_nightmare', 'Nightmare Hound', 'beast', 'dark', '#40ff9a', 'grym'], ['wb_hermit', 'Arcane Hermit', 'spirit', 'lightning', '#7a8aff', 'manaman'],
+    ['wb_ravager', 'Ravager Wyrm', 'dragon', 'fire', '#ff3a3a', 'skurge'], ['wb_overseer', 'Tide Overseer', 'knight', 'water', '#4a6aff', 'taskmaster'],
+    ['wb_bloodfire', 'Bloodfire Fiend', 'imp', 'fire', '#ff7a2a', 'unhallowed'], ['wb_palewraith', 'Pale Wraith', 'spirit', 'ice', '#e8e8ff', 'wraith']
+  ]) { D.WORLD_BOSSES.push({ id, name, shape, element, color }); D.BOSS_SPRITES.world[id] = spr; }
+
   // shops also sell the extra consumables
   for (const k in D.SHOP) D.SHOP[k].push('pet_food');
 });

@@ -53,20 +53,20 @@
 ## Ultimate (5)
 | # | สกิล | ปลด | ผล |
 |---|---|---|---|
-| U1 | **Thousand Shadows** | Awaken I | หายตัว แล้วฟันทุกเป้าในจอ 1 ครั้ง 1,200% |
-| U2 | **Plague Lord** | Awaken I | Poison ทุกเป้าในจอ ×5 ชั้น และลดฮีล 80% |
-| U3 | **Eclipse Execution** | Awaken II | เป้าเดียว HP <40%: ฆ่าทันที (Boss: 3,000%) |
-| U4 | **Blade Tornado** | Awaken II | ร่างเป็นพายุมีด 6s เคลื่อนที่ได้ |
-| U5 | **Lord of Night** | Awaken III | 12s: ล่องหนไม่หลุดเมื่อโจมตี, Crit 100% |
+| U1 | **Death Mark** | Awaken I | หายตัว แล้วฟันทุกเป้าในจอ 1 ครั้ง 1,200% |
+| U2 | **Venom Cyclone** | Awaken I | Poison ทุกเป้าในจอ ×5 ชั้น และลดฮีล 80% |
+| U3 | **Black Plague** | Awaken II | เป้าเดียว HP <40%: ฆ่าทันที (Boss: 3,000%) |
+| U4 | **Hush of Night** | Awaken II | ร่างเป็นพายุมีด 6s เคลื่อนที่ได้ |
+| U5 | **Phantom Eternal** | Awaken III | 12s: ล่องหนไม่หลุดเมื่อโจมตี, Crit 100% |
 
 ## Buff (5)
 | # | สกิล | ผล |
 |---|---|---|
-| B1 | Cloak of Shadows | Flee +40, ลบ debuff 1 อัน |
-| B2 | Poison Mastery | ดาเมจพิษ +30%, ชั้น Poison +1 |
-| B3 | Killer Instinct | Crit +25, Crit damage +20% |
-| B4 | Fleet Foot | ความเร็วเดิน +25%, CD Shadow Step -2s |
-| B5 | Shadow Pact | ได้ Shadow Point จากทุก Crit |
+| B1 | Killer Instinct | Flee +40, ลบ debuff 1 อัน |
+| B2 | Shadow Sprint | ดาเมจพิษ +30%, ชั้น Poison +1 |
+| B3 | Lethal Poisons | Crit +25, Crit damage +20% |
+| B4 | Mirage Veil | ความเร็วเดิน +25%, CD Shadow Step -2s |
+| B5 | Night Predator | ได้ Shadow Point จากทุก Crit |
 
 ## คอมโบแนะนำ
 - **Assassin One-Shot**: Vanish → Shadow Mark → Ambush → Phantom Blades → Assassinate

@@ -53,20 +53,20 @@
 ## Ultimate (5)
 | # | สกิล | ปลด | ผล |
 |---|---|---|---|
-| U1 | **Pandemic** | Awaken I | ทุกเป้าในจอติด DoT ทุกแบบ + Curse |
-| U2 | **Army of the Dead** | Awaken I | เรียกผี 12 ตัว 20s |
-| U3 | **Lich Form** | Awaken II | 15s: อมตะต่อดาเมจกายภาพ, สกิล Hex ไม่มี CD |
-| U4 | **Reaper's Toll** | Awaken II | เคียวยักษ์ฟันจอ: ฆ่าเป้าที่ HP <15% (ไม่ใช่บอส) ที่เหลือ 1,500% |
-| U5 | **Eclipse of Souls** | Awaken III | สุริยุปราคา 12s: ทุกการตายในสนามให้ 5 Shard + ฮีล 20% |
+| U1 | **Doom Plague** | Awaken I | ทุกเป้าในจอติด DoT ทุกแบบ + Curse |
+| U2 | **Legion of the Damned** | Awaken I | เรียกผี 12 ตัว 20s |
+| U3 | **Abyssal Maw** | Awaken II | 15s: อมตะต่อดาเมจกายภาพ, สกิล Hex ไม่มี CD |
+| U4 | **Reaper's Harvest** | Awaken II | เคียวยักษ์ฟันจอ: ฆ่าเป้าที่ HP <15% (ไม่ใช่บอส) ที่เหลือ 1,500% |
+| U5 | **Lich Form** | Awaken III | สุริยุปราคา 12s: ทุกการตายในสนามให้ 5 Shard + ฮีล 20% |
 
 ## Buff (5)
 | # | สกิล | ผล |
 |---|---|---|
-| B1 | Dark Pact | MATK +20%, HP regen -50% |
-| B2 | Bone Armor | โล่กระดูก 3 ชั้น บล็อก 3 ฮิต |
-| B3 | Necrotic Aura | สมุน ATK/HP +50% |
-| B4 | Soul Siphon | ทุก DoT ดูด HP 2% ให้ตัวเอง |
-| B5 | Shadow Cloak | ต้าน Holy/Dark 30%, Flee +20 |
+| B1 | Forbidden Power | MATK +20%, HP regen -50% |
+| B2 | Soul Leech | โล่กระดูก 3 ชั้น บล็อก 3 ฮิต |
+| B3 | Necromantic Bond | สมุน ATK/HP +50% |
+| B4 | Bone Shield | ทุก DoT ดูด HP 2% ให้ตัวเอง |
+| B5 | Dark Haste | ต้าน Holy/Dark 30%, Flee +20 |
 
 ## คอมโบแนะนำ
 - **DoT Bomb**: Curse → Agony → Corruption → Malediction → Wither → Soul Rend

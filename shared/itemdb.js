@@ -204,6 +204,7 @@
   D.FARM_MAPS.forEach((f, i) => add(`bm_${f.id}`, { n: `${MAP_ADJ[i]} Sovereign Crest`, th: `วัตถุดิบบอส · Field Boss ${f.name}`, type: 'loot', mat: 4, ic: 'seal', icon: '#ff5a5a', sell: 2000 + f.min * 80, tier: Math.floor(i / 5), glow: 1 }));
   for (const dg of D.DUNGEONS) add(`dsig_${dg.id}`, { n: `${DG_ADJ[dg.id]} Guardian Sigil`, th: `วัตถุดิบบอส · บอสดันเจี้ยน ${dg.name}`, type: 'loot', mat: 4, ic: 'seal', icon: ELC(dg.element), sell: 8000, glow: 1 });
   const WB_MAT = { wb_kraken: ['Leviathan Pearl', 'pearl'], wb_dragon: ['World Burner Heart', 'heart'], wb_titan: ['Gaia Core', 'core'], wb_lich: ['Lich Emperor Phylactery', 'orb'] };
+  for (const wb of D.WORLD_BOSSES) if (!WB_MAT[wb.id]) WB_MAT[wb.id] = [wb.name.split(' ').slice(-1)[0] + ' Heartstone', 'heart'];
   for (const wb of D.WORLD_BOSSES) add(`wbm_${wb.id}`, { n: WB_MAT[wb.id][0], th: 'วัตถุดิบ World Boss (คราฟต์ Mythic)', type: 'loot', mat: 5, ic: WB_MAT[wb.id][1], icon: wb.color, sell: 50000, glow: 2 });
 
   // ---------------------------------------------------------------- species: fields, dungeons, bosses
@@ -211,15 +212,16 @@
     const fams = D.FAMILIES[f.biome], rg = D.regionOfMap(i);
     const prefix = D.MONSTER_PREFIX[Math.min(9, Math.floor(i / 2.6))];
     fams.forEach((fam, fi) => addSpecies(`${f.id}.${fi}`, { name: prefix + fam[0], alt: MAP_ADJ[i], fam, biome: f.biome, map: f.id, region: rg.id, lv: f.min, lvMax: f.max, tier: Math.floor(i / 2.5), where: f.name, kind: 'field' }));
-    const bf = fams[i % fams.length];
-    addSpecies(`${f.id}.boss`, { name: `${bf[0]} ${D.BOSS_TITLES[i % D.BOSS_TITLES.length]}`, alt: MAP_ADJ[i], fam: bf, biome: f.biome, map: f.id, region: rg.id, lv: f.max + 3, lvMax: f.max + 3, tier: Math.floor(i / 2.5) + 1, where: f.name, kind: 'fieldboss', rank: 2 });
+    const bf = fams[i % fams.length], bspr = D.BOSS_SPRITES && D.BOSS_SPRITES.field[f.id];
+    addSpecies(`${f.id}.boss`, { spr: bspr, name: bspr ? D.BOSS_NAMES[bspr] : `${bf[0]} ${D.BOSS_TITLES[i % D.BOSS_TITLES.length]}`, alt: MAP_ADJ[i], fam: bf, biome: f.biome, map: f.id, region: rg.id, lv: f.max + 3, lvMax: f.max + 3, tier: Math.floor(i / 2.5) + 1, where: f.name, kind: 'fieldboss', rank: 2 });
   });
   D.DUNGEONS.forEach((dg, di) => {
     const fams = D.FAMILIES[dg.biome];
     fams.forEach((fam, fi) => addSpecies(`${dg.id}.${fi}`, { name: `${DG_ADJ[dg.id]} ${fam[0]}`, alt: DG_ADJ[dg.id], fam, biome: dg.biome, dungeon: dg.id, region: 'dungeon', lv: dg.lvBase, lvMax: 300, tier: 6 + di, where: dg.name, kind: 'dungeon' }));
-    addSpecies(`${dg.id}.boss`, { name: `${DG_ADJ[dg.id]} Floor Guardian`, alt: DG_ADJ[dg.id], fam: fams[0], biome: dg.biome, dungeon: dg.id, region: 'dungeon', lv: dg.lvBase + 3, lvMax: 305, tier: 8 + di, where: dg.name + ' (ทุก 10 ชั้น)', kind: 'dboss', rank: 3, color: ELC(dg.element) });
+    const dspr = D.BOSS_SPRITES && D.BOSS_SPRITES.dungeon[dg.id];
+    addSpecies(`${dg.id}.boss`, { spr: dspr, name: dspr ? D.BOSS_NAMES[dspr] : `${DG_ADJ[dg.id]} Floor Guardian`, alt: DG_ADJ[dg.id], fam: fams[0], biome: dg.biome, dungeon: dg.id, region: 'dungeon', lv: dg.lvBase + 3, lvMax: 305, tier: 8 + di, where: dg.name + ' (ทุก 10 ชั้น)', kind: 'dboss', rank: 3, color: ELC(dg.element) });
   });
-  for (const wb of D.WORLD_BOSSES) addSpecies(`wb.${wb.id}`, { name: wb.name, alt: 'World', fam: [wb.name, wb.shape, 'melee', 1, wb.element], biome: 'abyss', region: 'world', lv: 250, lvMax: 250, tier: 12, where: 'Ruined Sanctum (World Boss)', kind: 'world', rank: 4, color: wb.color });
+  for (const wb of D.WORLD_BOSSES) addSpecies(`wb.${wb.id}`, { spr: D.BOSS_SPRITES && D.BOSS_SPRITES.world[wb.id], name: wb.name, alt: 'World', fam: [wb.name, wb.shape, 'melee', 1, wb.element], biome: 'abyss', region: 'world', lv: 250, lvMax: 250, tier: 12, where: 'Ruined Sanctum (World Boss)', kind: 'world', rank: 4, color: wb.color });
 
   // ---------------------------------------------------------------- support / consumables / refine / treasures / boxes
   const REGION_FOOD = {

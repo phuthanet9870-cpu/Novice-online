@@ -53,19 +53,19 @@
 ## Ultimate (5)
 | # | สกิล | ปลด | ผล |
 |---|---|---|---|
-| U1 | **Rage of the Titan** | Awaken I | ตัวใหญ่ 2 เท่า 12s, ทุกการโจมตีเป็น AoE |
-| U2 | **World Splitter** | Awaken I | ทุบพื้นแยกแผ่นดิน 10×10 2,200% + Knockdown |
-| U3 | **Blood God Avatar** | Awaken II | 10s: Lifesteal 50%, ไม่ตายจนกว่าจะหมดเวลา |
-| U4 | **Storm of Axes** | Awaken II | ขว้างขวาน 30 ลูกใส่ทุกเป้าในจอ |
-| U5 | **Ragnarok Fury** | Awaken III | Fury เต็มค้าง 15s, Fury Release ไม่มี CD |
+| U1 | **Rampage of a Thousand Axes** | Awaken I | ตัวใหญ่ 2 เท่า 12s, ทุกการโจมตีเป็น AoE |
+| U2 | **Blood God Avatar** | Awaken I | ทุบพื้นแยกแผ่นดิน 10×10 2,200% + Knockdown |
+| U3 | **Sunder the Earth** | Awaken II | 10s: Lifesteal 50%, ไม่ตายจนกว่าจะหมดเวลา |
+| U4 | **Avalanche Drop** | Awaken II | ขว้างขวาน 30 ลูกใส่ทุกเป้าในจอ |
+| U5 | **Colossal Fury** | Awaken III | Fury เต็มค้าง 15s, Fury Release ไม่มี CD |
 
 ## Buff (5)
 | # | สกิล | ผล |
 |---|---|---|
-| B1 | Frenzy | ASPD +25%, DEF -15% |
-| B2 | Thick Hide | HP สูงสุด +20% |
-| B3 | Battle Trance | ไม่ติด Stun/Knockdown 6s (CD 40s) |
-| B4 | Blood Scent | ดาเมจกับเป้า Bleed +15% ทั้งปาร์ตี้ |
+| B1 | Reckless Might | ASPD +25%, DEF -15% |
+| B2 | Savage Pace | HP สูงสุด +20% |
+| B3 | Unstoppable | ไม่ติด Stun/Knockdown 6s (CD 40s) |
+| B4 | Bloodied Edge | ดาเมจกับเป้า Bleed +15% ทั้งปาร์ตี้ |
 | B5 | War Drums | ATK ปาร์ตี้ +10%, Fury ได้เร็วขึ้น 30% |
 
 ## คอมโบแนะนำ

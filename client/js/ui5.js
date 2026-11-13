@@ -1,0 +1,89 @@
+// HUD v2: grouped & labelled menu dock, annotated HUD guide, signature-mechanic chips on skill tooltips.
+(function () {
+  'use strict';
+  const $ = (s) => document.querySelector(s);
+  const store = { get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
+
+  // ---------------------------------------------------------------- signature mechanic chips
+  const MECH = {
+    echo: (v) => ['🔁', 'สะท้อนซ้ำ', `ตีซ้ำอีกครั้งหลัง ${v.delay}s แรง ${Math.round(v.mult * 100)}%`],
+    orbit: (v) => ['🌀', 'ลูกโคจร', `${v.n} ลูกหมุนรอบตัว ${v.dur}s ตีศัตรูที่แตะ ${Math.round(v.mult * 100)}%`],
+    wall: (v) => ['🧱', 'กำแพงธาตุ', `สร้างกำแพงขวางทาง ${v.dur}s ทำดาเมจ ${Math.round(v.mult * 100)}%/ครั้ง`],
+    trail: (v) => ['👣', 'รอยทาง', `ทิ้งรอยธาตุตามทางพุ่ง ${v.dur}s ทำดาเมจ ${Math.round(v.mult * 100)}%/ครั้ง`],
+    boomerang: (v) => ['↩', 'บูมเมอแรง', `ย้อนกลับมาตีซ้ำ ${Math.round(v * 100)}%`],
+    split: (v) => ['✳', 'แตกกระจาย', `แตกไปโดนศัตรูใกล้เคียง ${v.n} ตัว ${Math.round(v.mult * 100)}%`],
+    stackSelf: (v) => ['📈', 'สะสมพลัง', `ใช้แต่ละครั้ง +${v.pct}% ดาเมจ (สูงสุด ${v.max} ชั้น)`],
+    resetOnKill: () => ['♻', 'รีเซ็ตเมื่อฆ่า', 'ฆ่าเป้าหมายได้ = คูลดาวน์รีเซ็ตทันที'],
+    overcharge: (v) => ['⚡', 'โอเวอร์ชาร์จ', `ถ้า SP เหลือพอ ใช้ SP เพิ่ม ${v.sp}% → แรง ×${v.mult}`],
+  };
+  UI.mechInfo = (sk) => (sk && sk.mech && MECH[sk.mech] && sk[sk.mech] !== undefined ? MECH[sk.mech](sk[sk.mech]) : null);
+  const baseTip = UI.skillTip;
+  UI.skillTip = function (id) {
+    let h = baseTip(id); const sk = NO_SKILLS.SKILLS[id], m = UI.mechInfo(sk);
+    if (m) h = h.replace('<p>', `<div class="mechChip"><b>${m[0]} ${m[1]}</b><span>${UI.esc(m[2])}</span></div><p>`);
+    return h;
+  };
+
+  // ---------------------------------------------------------------- grouped menu dock
+  const GROUPS = [
+    ['ตัวละคร', [['char', '👤', 'ตัวละคร', 'U'], ['inv', '🎒', 'กระเป๋า', 'I'], ['skills', '📖', 'สกิล', 'K'], ['passive', '🌌', 'Passive', '['], ['auto', '🤖', 'ออโต้', 'O'], ['pets', '🐾', 'สัตว์/พาหนะ', ',']]],
+    ['ผจญภัย', [['quests', '📜', 'ภารกิจ', 'L'], ['map', '🗺', 'แผนที่', 'M'], ['dungeon', '🗼', 'ดันเจี้ยน', 'J'], ['book', '📕', 'สมุดมอน', ']'], ['achieve', '🏅', 'ฉายา', 'Y'], ['rank', '🏆', 'อันดับ', 'R']]],
+    ['สังคม & ค้าขาย', [['party', '👥', 'ปาร์ตี้', 'P'], ['friends', '💬', 'เพื่อน', 'F'], ['guild', '🏰', 'กิลด์', 'G'], ['mail', '✉', 'จดหมาย', ''], ['market', '🏛', 'ตลาด', ''], ['craft', '⚗', 'คราฟต์', '']]],
+    ['ระบบ', [['settings', '⚙', 'ตั้งค่า', '.'], ['help', '❔', 'คู่มือ', 'H'], ['guide', '🧭', 'แนะนำจอ', ''], ['gm', '🛡', 'GM', 'F10']]],
+  ];
+  function buildMenu() {
+    const m = $('#menu'); if (!m) return setTimeout(buildMenu, 200);
+    const gmHidden = $('#gmBtn') ? $('#gmBtn').hidden : true;
+    m.classList.add('v2');
+    m.innerHTML = GROUPS.map(([g, items]) => `<div class="mgrp"><div class="mgl">${g}</div><div class="mgi">${items.map(([w, ic, n, k]) => `<button class="mbtn" data-win="${w}" data-tip="${n}${k ? ' (' + k + ')' : ''}" ${w === 'gm' ? `id="gmBtn" ${gmHidden ? 'hidden' : ''}` : ''}><span>${ic}</span><em>${n}</em>${k ? `<kbd>${k}</kbd>` : ''}</button>`).join('')}</div></div>`).join('');
+    m.onclick = (e) => { const b = e.target.closest('[data-win]'); if (!b) return; if (b.dataset.win === 'guide') UI.hudGuide(); else UI.toggle(b.dataset.win); };
+  }
+
+  // ---------------------------------------------------------------- annotated HUD guide
+  const SPOTS = [
+    ['#pframe', 'ตัวละครของคุณ', 'แถบแดง = HP · แถบฟ้า = SP (ใช้ร่ายสกิล) · แถบล่าง = พลังพิเศษของคลาส'],
+    ['#tframe', 'เป้าหมาย', 'คลิกมอนสเตอร์เพื่อเลือก ดู HP ธาตุ และสถานะที่ติดอยู่ (เผา, แช่แข็ง...)'],
+    ['#miniWrap', 'แผนที่ย่อ', 'จุดแดง = มอน · ส้ม = บอส · SAFE/AUTO บอกว่าแผนที่นี้ PvP / ออโต้ได้ไหม'],
+    ['#tracker', 'ภารกิจที่ติดตาม', 'ความคืบหน้าภารกิจ ฆ่าครบแล้วกดรับรางวัลในหน้าต่างภารกิจ (L)'],
+    ['#ult', 'เกจอัลติเมต', 'เต็ม 100% จากการตี/โดนตี → ใช้สกิล ★ อัลติเมตได้'],
+    ['#hotbar1', 'Hotbar สกิล', 'กด 1-0 · Shift+1-0 · Alt+1-0 ใช้สกิล · ลากสกิลจากหน้าต่างสกิล (K) มาวาง'],
+    ['#autoToggle', 'ออโต้', 'เปิดให้ตัวละครล่ามอนเอง · ตั้งค่าโหมด PvE/PvP ที่หน้าต่างออโต้ (O)'],
+    ['#menu', 'เมนูหลัก', 'จัดเป็นหมวด: ตัวละคร / ผจญภัย / สังคม / ระบบ · ตัวอักษรมุมปุ่ม = คีย์ลัด'],
+    ['#chat', 'แชท', 'Enter เพื่อพิมพ์ · เลือกช่องแชทด้านซ้ายของช่องพิมพ์ · /w ชื่อ = กระซิบ'],
+  ];
+  UI.hudGuide = function () {
+    let ov = $('#hudGuide'); if (ov) ov.remove();
+    ov = document.createElement('div'); ov.id = 'hudGuide';
+    const W = innerWidth, H = innerHeight, NW = 252, NH = 64, placed = [{ x: W / 2 - 230, y: H * 0.46 - 6, w: 460, h: 48 }];
+    const hits = (q) => placed.some((o) => q.x < o.x + o.w && q.x + q.w > o.x && q.y < o.y + o.h && q.y + q.h > o.y);
+    let html = '<div class="hgDim"></div>';
+    for (const [sel, t, d] of SPOTS) {
+      const el = $(sel); if (!el || el.hidden || !el.offsetParent) continue;
+      const r = el.getBoundingClientRect(); if (r.width < 4) continue;
+      placed.push({ x: r.left, y: r.top, w: r.width, h: r.height });
+    }
+    let boxes = '', notes = '', num = 0;
+    for (const [sel, t, d] of SPOTS) {
+      const el = $(sel); if (!el || el.hidden || !el.offsetParent) continue;
+      const r = el.getBoundingClientRect(); if (r.width < 4) continue;
+      const onRight = r.left + r.width / 2 > W / 2, top = r.top < H / 2;
+      const xs = [onRight ? r.left - NW - 12 : r.right + 12, Math.min(W - NW - 8, Math.max(8, r.left)), Math.min(W - NW - 8, Math.max(8, r.right - NW)), Math.min(W - NW - 8, Math.max(8, r.left + r.width / 2 - NW / 2))];
+      const ys = [r.top, top ? r.bottom + 8 : r.top - NH - 8]; for (let k = 1; k <= 12; k++) ys.push(r.top - k * 34, r.top + k * 34);
+      let pos = null;
+      outer: for (const y0 of ys) for (const x of xs) { const q = { x, y: y0, w: NW, h: NH }; if (q.x >= 4 && q.x + NW <= W - 4 && q.y >= 4 && q.y + NH <= H - 4 && !hits(q)) { pos = q; break outer; } }
+      if (!pos) pos = { x: Math.max(8, Math.min(W - NW - 8, xs[0])), y: Math.max(8, Math.min(H - NH - 8, r.top)), w: NW, h: NH };
+      placed.push(pos); num++;
+      boxes += `<div class="hgBox" style="left:${r.left - 4}px;top:${r.top - 4}px;width:${r.width + 8}px;height:${r.height + 8}px"><i class="hgN">${num}</i></div>`;
+      notes += `<div class="hgNote" style="left:${pos.x}px;top:${pos.y}px"><b><i class="hgN">${num}</i> ${t}</b><span>${d}</span></div>`;
+    }
+    html += boxes + notes;
+    html += '<div class="hgFoot"><b>คู่มือหน้าจอ</b> · คลิกที่ใดก็ได้เพื่อปิด · เปิดใหม่ได้ที่ปุ่ม 🧭 ในเมนู “ระบบ”</div>';
+    ov.innerHTML = html; ov.onclick = () => ov.remove(); document.body.appendChild(ov);
+    store.set('no_guide_seen', 1);
+  };
+  function firstRun() {
+    if (!window.G || !G.char || $('#hud').hidden) return setTimeout(firstRun, 600);
+    if (!store.get('no_guide_seen', 0)) setTimeout(() => UI.hudGuide(), 1500);
+  }
+  UI.buildMenu = buildMenu; buildMenu(); firstRun();
+})();

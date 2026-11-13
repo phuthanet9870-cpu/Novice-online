@@ -55,20 +55,20 @@
 ## Ultimate (5)
 | # | สกิล | ปลด | ผล |
 |---|---|---|---|
-| U1 | **Fist of the Heavens** | Awaken I | หมัดยักษ์จากฟ้า 2,000% + ทะลุ DEF |
-| U2 | **Infinite Combo** | Awaken I | 10s: Chain Skill ทุกตัวใช้ได้โดยไม่ต้องเรียงลำดับ |
-| U3 | **Thousand Hand Bodhisattva** | Awaken II | พันมือฟาด 10×10 3s |
-| U4 | **Dragon Ascension** | Awaken II | ยกเป้าทั้งหมด 8×8 Airborne 4s แล้ว Juggling อัตโนมัติ |
+| U1 | **Hundred Fist Storm** | Awaken I | หมัดยักษ์จากฟ้า 2,000% + ทะลุ DEF |
+| U2 | **Dragon Palm** | Awaken I | 10s: Chain Skill ทุกตัวใช้ได้โดยไม่ต้องเรียงลำดับ |
+| U3 | **Heaven Kick** | Awaken II | พันมือฟาด 10×10 3s |
+| U4 | **Flow State** | Awaken II | ยกเป้าทั้งหมด 8×8 Airborne 4s แล้ว Juggling อัตโนมัติ |
 | U5 | **Asura Awakening** | Awaken III | 15s: Chi ไม่จำกัด, Asura Strike ไม่ใช้ SP CD 3s |
 
 ## Buff (5)
 | # | สกิล | ผล |
 |---|---|---|
-| B1 | Iron Body | DEF +30%, ต้าน Knockback |
-| B2 | Fury Stance | Chi ได้ 2 เท่าจากคอมโบ, Crit +15 |
-| B3 | Meditation | SP regen ×3, ต้านสถานะ +25% |
-| B4 | Flowing Water | Combo Window +2s |
-| B5 | Martial Spirit | ATK ปาร์ตี้ +8%, ASPD +8% |
+| B1 | Tiger Stance | DEF +30%, ต้าน Knockback |
+| B2 | Chi Overflow | Chi ได้ 2 เท่าจากคอมโบ, Crit +15 |
+| B3 | Iron Body | SP regen ×3, ต้านสถานะ +25% |
+| B4 | Thousand Hands | Combo Window +2s |
+| B5 | Wind Walk | ATK ปาร์ตี้ +8%, ASPD +8% |
 
 ## คอมโบแนะนำ
 - **Classic Chain**: Triple Blow → Chain Combo → Combo Finish → Iron Knuckle → Tiger Claw → Chain Breaker

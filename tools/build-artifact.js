@@ -11,7 +11,7 @@ const html = read('client/index.html');
 const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('<script src='));
 const css = read('client/style.css');
 const shared = ['shared/rng.js', 'shared/data.js', 'shared/data2.js', 'shared/itemdb.js', 'shared/formulas.js', 'shared/mapgen.js', 'shared/skills.js', 'shared/passives.js'];
-const client = ['client/js/vfx.js', 'client/js/sfx.js', 'client/js/art.js', 'client/js/pixicons.js', 'client/js/game.js', 'client/js/ui.js', 'client/js/ui2.js', 'client/js/ui3.js', 'client/js/ui4.js'];
+const client = ['client/js/vfx.js', 'client/js/sfx.js', 'client/js/bossart.js', 'client/js/art.js', 'client/js/pixicons.js', 'client/js/game.js', 'client/js/ui.js', 'client/js/ui2.js', 'client/js/ui3.js', 'client/js/ui4.js', 'client/js/ui5.js'];
 const serverMods = ['world', 'combat', 'items', 'auto', 'social', 'progress', 'econ', 'gm', 'index'];
 
 const browserDb = `
@@ -102,7 +102,7 @@ ${body.replace('<div class="features">', '<div class="offlineNote">เวอร�
 ${shared.map((f) => `<script>\n${safe(read(f))}\n</script>`).join('\n')}
 <script>\n${safe(shim)}\n${safe(mods)}\n__NO_START();\naddEventListener('pagehide', () => { try { __NO_REQ('./gm').saveAll(); } catch (e) {} });\ndocument.addEventListener('visibilitychange', () => { if (document.hidden) try { __NO_REQ('./gm').saveAll(); } catch (e) {} });\n</script>
 ${client.map((f) => `<script>\n${safe(read(f))}\n</script>`).join('\n')}
-<script>UI.boot();</script>
+<script>ART.preloadBosses(); UI.boot();</script>
 `;
 fs.mkdirSync(path.join(ROOT, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(ROOT, 'dist', 'novice-online.html'), out);

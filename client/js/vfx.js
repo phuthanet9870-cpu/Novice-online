@@ -147,6 +147,12 @@
         else if (sk.shape === 'cone') add({ k: 'cone', at: 'caster', dur: 0.5, r, style: el });
         else add(swing(), { k: impactK, at: 'target', d: 0.1, r: 0.8 });
     }
+    // v4 signature mechanics
+    const mech = ds.split('|')[4] || 'none';
+    if (mech === 'boomerang') add({ k: 'proj', at: 'return', d: 0.35, style: projStyle });
+    if (mech === 'stackSelf') add({ k: 'aura', at: 'caster', follow: 1, d: 0.1, dur: 0.7, style: 'rage', n: 6 });
+    if (mech === 'overcharge') add({ k: 'sigil', at: 'caster', dur: 0.5, r: 1.6, style: 'star' }, { k: 'prismflash', at: 'caster', dur: 0.35, r: 1 });
+    if (mech === 'echo') add({ k: 'nova', at: 'target', d: 0.4, dur: 0.5, r: 1.4, style: 'dashed' });
     if (tags.includes('freeze') || tags.includes('chill')) add({ k: 'shatter', at: 'target', d: 0.2, r: 0.7, style: 'frost' });
     if (tags.includes('airborne')) add({ k: 'gust', at: 'target', d: 0.15, r: 0.8, style: 'up' });
     if (tags.includes('root')) add({ k: 'spikes', at: 'target', d: 0.2, dur: 0.8, r: 0.9, n: 5, style: 'vine' });
@@ -201,6 +207,7 @@
     if (big) { dim = Math.max(dim, 0.4); hitStop = Math.max(hitStop, 0.06); }
     for (const s of R.steps) {
       const base = { k: s.k, pal: R.pal, el: R.el, style: s.style, n: s.n || 1, r: s.r || 1, dur: s.dur, d: s.d || 0, big: s.big || big, prio, ang, flip: s.flip, len: s.len, w: s.w, cls: R.cls, var: s.var || 0 };
+      if (s.at === 'return') { const dur = clamp(dist / 22, 0.1, 0.5); add(Object.assign({}, base, { k: 'proj', x: f.tx, y: f.ty, tx: f.x, ty: f.y, dur, ang: ang + Math.PI })); continue; }
       if (s.at === 'path' || s.at === 'bounce' || s.at === 'fan') {
         const n = s.at === 'fan' ? s.n : 1;
         for (let i = 0; i < n; i++) {
@@ -262,10 +269,26 @@
       case 'trait': return add({ k: 'burst', x, y, r: 0.9, pal, dur: 0.4 });
       case 'zap': return add({ k: 'chainbolt', x, y, tx: o.tx, ty: o.ty, dur: 0.35, pal: EL_PAL.lightning });
       case 'dash': return add({ k: 'dash', x, y, tx: o.tx, ty: o.ty, dur: 0.3, noLight: 1 });
+      case 'echo': add({ k: 'nova', x, y, dur: 0.45, r: 1.8, style: 'dashed', pal }); return add({ k: 'burst', x, y, r: 1.1, pal, dur: 0.35 });
+      case 'split': return add({ k: 'chainbolt', x, y, tx: o.tx, ty: o.ty, dur: 0.3, pal });
     }
     return null;
   };
 
+  // persistent mechanic zones sent by the server (orbiting orbs, elemental walls, dash trails)
+  const zoneLive = new Map();
+  VFX.syncZones = function (ents) {
+    const seen = new Set();
+    for (const e of ents) {
+      if (e.k !== 'z' || !e.zf) continue;
+      seen.add(e.id);
+      if (zoneLive.has(e.id) && live.includes(zoneLive.get(e.id))) continue;
+      const pal = EL_PAL[e.el] || EL_PAL.neutral;
+      const q = add({ k: e.zf + 'fx', x: e.x, y: e.y, follow: e.id, dur: Math.max(0.5, (e.until || 40) / 10), r: e.r || 1, n: e.n || 3, pal, el: e.el, noLight: 1 });
+      if (q) zoneLive.set(e.id, q);
+    }
+    for (const [id, q] of zoneLive) if (!seen.has(id)) { q.dur = Math.min(q.dur, Math.max(0, q.t) + 0.2); zoneLive.delete(id); }
+  };
   // ------------------------------------------------------------------ status overlays (one per entity+tag)
   const statusLive = new Map();
   const TAG_K = { burn: 'fire', freeze: 'ice', chill: 'ice', poison: 'poison', bleed: 'blood', stun: 'stars', knockdown: 'stars', curse: 'curse', slow: 'slow', fear: 'curse', blind: 'blind', silence: 'silence', shock: 'shock', holybrand: 'halo', mark: 'mark', wet: 'wet', root: 'root', armorbreak: 'crack' };
@@ -355,7 +378,7 @@
   }
 
   // ------------------------------------------------------------------ the pixel layer
-  let layer = null, lg = null, LW = 0, LH = 0, view = null;
+  let layer = null, lg = null, LW = 0, LH = 0, view = null, bloom = null, bgc = null;
   VFX.setView = (v) => { view = v; };
   const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
   function ensureLayer(w, h) {
@@ -595,6 +618,10 @@
   DRAW.heal = (g, e, k) => { const c = e.pal, rr = rngOf(e.seed), fade = 1 - clamp((k - 0.7) / 0.3); P.ring(g, e.x, e.y, e.r * ease.out(k) + 0.05, (e.r * ease.out(k) + 0.05) * FLOOR, 0.07, c[5], fade); for (let i = 0; i < 10; i++) { const a = rr() * TAU, d = rr() * e.r * 0.8, x = e.x + Math.cos(a) * d, y = e.y + Math.sin(a) * d * FLOOR - k * 1.6 - rr() * 0.4; P.line(g, x - 0.1, y, x + 0.1, y, 0.06, c[6], fade); P.line(g, x, y - 0.1, x, y + 0.1, 0.06, c[6], fade); } };
   DRAW.cloud = (g, e, k) => { const c = e.pal, rr = rngOf(e.seed), fade = 1 - clamp((k - 0.75) / 0.25), R = e.r * ease.out(clamp(k * 3)); for (let i = 0; i < 14; i++) { const a = rr() * TAU, d = Math.sqrt(rr()) * R, s = 0.4 + rr() * 0.5 + Math.sin(e.t * 2 + i) * 0.05; P.ellipse(g, e.x + Math.cos(a) * d + Math.sin(e.t + i) * 0.2, e.y + Math.sin(a) * d * FLOOR - 0.4, s, s * 0.6, P.col(c, 2 + (i % 4)), 0.45 * fade); } };
   DRAW.prismflash = (g, e, k) => { const fade = 1 - k; for (let i = 0; i < 7; i++) { const an = (i / 7) * TAU + k * 2; P.line(g, e.x, e.y - 0.6, e.x + Math.cos(an) * 1.4 * ease.out(k), e.y - 0.6 + Math.sin(an) * 0.9 * ease.out(k), 0.07, `hsl(${i * 51},95%,65%)`, fade); } };
+  // mechanic zones
+  DRAW.orbitfx = (g, e) => { const c = e.pal, T = e.t, fade = e.dur - T < 0.25 ? (e.dur - T) / 0.25 : Math.min(1, T * 5), R = e.r; for (let i = 0; i < e.n; i++) { const an = T * 4 + (i / e.n) * TAU; for (let j = 0; j < 4; j++) { const a2 = an - j * 0.18; P.ellipse(g, e.x + Math.cos(a2) * R, e.y - 0.6 + Math.sin(a2) * R * FLOOR, 0.16 - j * 0.03, 0.16 - j * 0.03, c[7 - j], fade * (1 - j * 0.2)); } } P.ring(g, e.x, e.y, R, R * FLOOR, 0.03, c[4], fade * 0.5); };
+  DRAW.wallfx = (g, e) => { const c = e.pal, T = e.t, fade = e.dur - T < 0.25 ? (e.dur - T) / 0.25 : Math.min(1, T * 5), rise = Math.min(1, T * 4); for (let i = 0; i < 3; i++) { const x = e.x + (i - 1) * 0.35; if (e.el === 'fire') P.flame(g, x, e.y, (1 + Math.sin(T * 9 + i) * 0.2) * rise, 0.18, c, T * 10 + i, fade); else if (e.el === 'ice' || e.el === 'water') { g.globalAlpha = fade; g.fillStyle = c[5 + (i % 2)]; g.beginPath(); g.moveTo(x - 0.18, e.y); g.lineTo(x, e.y - 1.2 * rise - i * 0.1); g.lineTo(x + 0.18, e.y); g.fill(); } else { const h = (0.55 + (i % 2) * 0.25) * rise; g.globalAlpha = fade; g.fillStyle = c[3]; g.fillRect(x - 0.16, e.y - h, 0.32, h); g.fillStyle = c[5]; g.fillRect(x - 0.16, e.y - h, 0.32, 0.08); g.fillStyle = c[6]; g.fillRect(x - 0.05, e.y - h * 0.65, 0.1, 0.1); } } };
+  DRAW.trailfx = (g, e) => { const c = e.pal, T = e.t, fade = e.dur - T < 0.3 ? (e.dur - T) / 0.3 : 1, rr = rngOf(e.seed); P.ellipse(g, e.x, e.y, e.r * 0.8, e.r * 0.4, c[2], 0.35 * fade); for (let i = 0; i < 5; i++) { const x = e.x + (rr() - 0.5) * e.r, y = e.y + (rr() - 0.5) * e.r * 0.4, ph = rr() * 9; if (e.el === 'fire') P.flame(g, x, y, 0.35 + Math.sin(T * 9 + ph) * 0.1, 0.1, c, T * 9 + ph, fade); else { const up = (T * 0.8 + ph) % 1; P.ellipse(g, x, y - up * 0.6, 0.06, 0.06, c[6], fade * (1 - up)); } } };
   DRAW.impact = (g, e, k) => { const c = e.pal, fade = 1 - k, R = e.r * ease.out(k) + 0.05, y = e.y - 0.6; P.star(g, e.x, y, (e.crit ? 0.8 : 0.5) * (1 - k * 0.6), c[7], fade, e.ang); P.ring(g, e.x, y, R * 0.8, R * 0.6, 0.06, c[5], fade); if (e.crit) for (let i = 0; i < 6; i++) { const an = (i / 6) * TAU + e.ang; P.line(g, e.x + Math.cos(an) * R * 0.5, y + Math.sin(an) * R * 0.4, e.x + Math.cos(an) * R * 1.2, y + Math.sin(an) * R, 0.06, '#fff', fade); } };
   DRAW.burst = (g, e, k) => { const c = e.pal, fade = 1 - k, R = e.r * (0.5 + ease.out(k)), y = e.y - 0.5, rr = rngOf(e.seed); P.ellipse(g, e.x, y, R * 0.5 * fade + 0.01, R * 0.4 * fade + 0.01, c[7], fade); for (let i = 0; i < 10; i++) { const an = rr() * TAU, L = R * (0.6 + rr() * 0.6); P.line(g, e.x + Math.cos(an) * L * 0.3, y + Math.sin(an) * L * 0.25, e.x + Math.cos(an) * L, y + Math.sin(an) * L * 0.75, 0.07, c[5 + (i % 3)], fade); } };
   DRAW.blast = (g, e, k) => { const c = e.pal, fade = 1 - clamp((k - 0.3) / 0.7), R = e.r * ease.out3(k) + 0.05, rr = rngOf(e.seed); P.ellipse(g, e.x, e.y - 0.3, R * 0.55, R * 0.45, c[7], 1 - k); for (let i = 0; i < 12; i++) { const an = rr() * TAU, d = R * (0.3 + rr() * 0.6); P.ellipse(g, e.x + Math.cos(an) * d, e.y - 0.4 + Math.sin(an) * d * 0.6 - k * 0.6, R * 0.22 * (1 - k * 0.5), R * 0.2 * (1 - k * 0.5), k > 0.5 ? '#3a3036' : P.col(c, 3 + rr() * 4), fade); } P.ring(g, e.x, e.y, R * 1.1, R * 1.1 * FLOOR, 0.08, c[6], 1 - k); };
@@ -662,35 +689,45 @@
       g.fillStyle = gr; g.fillRect(x - R, y - 0.4 - R, R * 2, R * 2);
     }
     g.globalCompositeOperation = 'source-over';
-    if (view && live.length) {
+    if (view && (live.length || debris.length)) {
       const px = view.scale / PPT;
       const w = Math.ceil(view.W / px) + 2, h = Math.ceil(view.H / px) + 2;
       ensureLayer(w, h);
       lg.setTransform(1, 0, 0, 1, 0, 0); lg.clearRect(0, 0, w, h); lg.globalAlpha = 1;
       lg.setTransform(PPT, 0, 0, PPT, view.ox / px, view.oy / px);
-      for (const e of live) { if (e.t < 0) continue; const f = DRAW[e.k]; if (f) { try { f(lg, e, clamp(e.t / e.dur)); } catch (err) { e.dur = 0; } } }
+      // pixel-art timing: poses step at 14 fps (projectiles/zones at 30) like hand-drawn sprite effects
+      for (const e of live) {
+        if (e.t < 0) continue; const f = DRAW[e.k]; if (!f) continue;
+        const fps = e.k === 'proj' || e.k === 'status' || e.k.endsWith('fx') ? 30 : 14, tr = e.t, tq = Math.floor(tr * fps) / fps;
+        e.t = tq; try { f(lg, e, clamp(tq / e.dur)); } catch (err) { e.dur = 0; } e.t = tr;
+      }
+      // pixel particles share the layer so they get the same crisp look
+      const ps = 2 / 24;
+      for (const p of debris) { const t = p.t, a = t.fade || t.glow ? Math.max(0, 1 - p.age / p.life) : p.age > p.life - 0.25 ? (p.life - p.age) / 0.25 : 1, sz = ps * t.s; if (p.z > 0.05 && !t.glow) { lg.globalAlpha = 0.25 * a; lg.fillStyle = '#000'; lg.fillRect(p.x - sz / 2, p.y - sz / 4, sz, sz / 2); } lg.globalAlpha = clamp(a); lg.fillStyle = p.c; if (t.streak) lg.fillRect(p.x - sz / 2, p.y - p.z - sz, sz, sz * 3); else lg.fillRect(p.x - sz / 2, p.y - p.z - sz / 2, sz, sz); }
       lg.globalAlpha = 1;
       crisp();
+      // bloom: a soft quarter-size copy added on top makes the bright pixels glow
+      if (!bloom) { bloom = document.createElement('canvas'); bgc = bloom.getContext('2d'); }
+      const bw = Math.max(1, Math.ceil(w / 4)), bh = Math.max(1, Math.ceil(h / 4));
+      if (bloom.width !== bw || bloom.height !== bh) { bloom.width = bw; bloom.height = bh; }
+      bgc.clearRect(0, 0, bw, bh); bgc.imageSmoothingEnabled = true; bgc.drawImage(layer, 0, 0, bw, bh);
       g.save(); g.setTransform(view.dpr, 0, 0, view.dpr, view.sx || 0, view.sy || 0);
       const sm = g.imageSmoothingEnabled; g.imageSmoothingEnabled = false;
       g.drawImage(layer, 0, 0, w * px, h * px);
+      g.imageSmoothingEnabled = true; g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.45;
+      g.drawImage(bloom, 0, 0, bw * 4 * px, bh * 4 * px);
+      g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
       g.imageSmoothingEnabled = sm; g.restore();
     }
-    const ps = 2 / 24;
     for (let i = debris.length - 1; i >= 0; i--) {
       const p = debris[i], t = p.t;
       p.age += dt;
       if (p.age >= p.life) { debris.splice(i, 1); continue; }
       p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; p.vz -= t.g * dt;
       if (p.z < 0) { if (t.bounce && p.vz < -1.5) { p.z = 0; p.vz = -p.vz * t.bounce; p.vx *= 0.6; p.vy *= 0.6; } else { p.z = 0; p.vz = 0; p.vx *= 0.8; p.vy *= 0.8; } }
-      const a = t.fade || t.glow ? Math.max(0, 1 - p.age / p.life) : p.age > p.life - 0.25 ? (p.life - p.age) / 0.25 : 1;
-      const sz = ps * t.s;
-      if (p.z > 0.05 && !t.glow) { g.globalAlpha = 0.25 * a; g.fillStyle = '#000'; g.fillRect(p.x - sz / 2, p.y - sz / 4, sz, sz / 2); }
-      g.globalAlpha = a; g.fillStyle = p.c;
-      if (t.streak) g.fillRect(p.x - sz / 2, p.y - p.z - sz, sz, sz * 3); else g.fillRect(p.x - sz / 2, p.y - p.z - sz / 2, sz, sz);
     }
     g.globalAlpha = 1;
   };
-  VFX.clear = function () { live.length = 0; statusLive.clear(); decals.length = 0; debris.length = 0; dim = 0; hitStop = 0; };
+  VFX.clear = function () { live.length = 0; statusLive.clear(); zoneLive.clear(); decals.length = 0; debris.length = 0; dim = 0; hitStop = 0; };
   VFX.debris = debris; VFX.decals = decals;
 })(typeof window !== 'undefined' ? window : globalThis);

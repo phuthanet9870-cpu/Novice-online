@@ -53,20 +53,20 @@
 ## Ultimate (5)
 | # | สกิล | ปลด | ผล |
 |---|---|---|---|
-| U1 | **Bullet Hell** | Awaken I | ยิงทุกทิศ 4s กระสุน 200 นัด |
-| U2 | **Orbital Strike** | Awaken I | ลำแสงดาวเทียม 6×6 (ดีเลย์ 2s) 2,500% |
-| U3 | **Gatling Fortress** | Awaken II | ติดตั้งปืนกล 10s ยิงทุกเป้าในระยะ 12 |
-| U4 | **One Shot One Kill** | Awaken II | ไรเฟิลลูกเดียว 4,000% ระยะทั้งจอ (ร่าย 2s) |
-| U5 | **Infinite Arsenal** | Awaken III | 15s: Heat ไม่ขึ้น, ใส่กระสุนทุกธาตุพร้อมกัน |
+| U1 | **Lead Rain** | Awaken I | ยิงทุกทิศ 4s กระสุน 200 นัด |
+| U2 | **Airstrike** | Awaken I | ลำแสงดาวเทียม 6×6 (ดีเลย์ 2s) 2,500% |
+| U3 | **Minefield** | Awaken II | ติดตั้งปืนกล 10s ยิงทุกเป้าในระยะ 12 |
+| U4 | **Deadeye** | Awaken II | ไรเฟิลลูกเดียว 4,000% ระยะทั้งจอ (ร่าย 2s) |
+| U5 | **Gun Kata** | Awaken III | 15s: Heat ไม่ขึ้น, ใส่กระสุนทุกธาตุพร้อมกัน |
 
 ## Buff (5)
 | # | สกิล | ผล |
 |---|---|---|
-| B1 | Lock and Load | ความเร็วโจมตี +20%, Reload ทันที |
-| B2 | Gunslinger's Luck | Crit +20, ดรอปเรต +5% (ตัวเอง) |
-| B3 | Bullet Swap | สลับกระสุนธาตุทันที ไม่มีดีเลย์ |
-| B4 | Heat Sink | Heat ลดเร็วขึ้น 2 เท่า |
-| B5 | Tactical Gear | ความเร็วเดิน +15%, ลดดาเมจระยะไกล 20% ปาร์ตี้ |
+| B1 | Deadshot | ความเร็วโจมตี +20%, Reload ทันที |
+| B2 | Rapid Fire | Crit +20, ดรอปเรต +5% (ตัวเอง) |
+| B3 | Elemental Rounds | สลับกระสุนธาตุทันที ไม่มีดีเลย์ |
+| B4 | Cool Barrel | Heat ลดเร็วขึ้น 2 เท่า |
+| B5 | Treasure Hunter | ความเร็วเดิน +15%, ลดดาเมจระยะไกล 20% ปาร์ตี้ |
 
 ## คอมโบแนะนำ
 - **Gun-fu**: Slide Tackle → Juggle Shot → Air Volley → Fan the Hammer → Dead Drop

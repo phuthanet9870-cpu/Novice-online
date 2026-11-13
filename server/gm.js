@@ -134,9 +134,15 @@ const CMDS = {
     return `spawned ${n}× ${fam[0]} Lv${lv}`;
   }],
   spawnboss: [2, '@spawnboss [lv]', 'เรียกบอสที่ตำแหน่งตัวเอง', (p, a) => { const fams = D.FAMILIES[p.inst.def.biome] || D.FAMILIES.ruins; const fam = r.pick(fams); const m = W.spawnMonster(p.inst, { fam, lv: +a[0] || p.lv, rank: 2, x: p.x + 3, y: p.y, name: fam[0] + ' ' + r.pick(D.BOSS_TITLES), extra: { noRespawn: true } }); return 'boss ' + m.name; }],
-  worldboss: [3, '@worldboss start [0-3] | stop', 'ควบคุม World Boss', (p, a) => {
+  worldboss: [3, '@worldboss start [0-' + (D.WORLD_BOSSES.length - 1) + '] | stop', 'ควบคุม World Boss', (p, a) => {
     if (a[0] === 'stop') { if (S.wb.alive) { S.wb.alive.inst.remove(S.wb.alive); S.wb.alive = null; } return 'stopped'; }
     return S.spawnWorldBoss(a[1] !== undefined ? +a[1] : undefined) ? 'world boss spawned at wb_arena' : 'มี World Boss อยู่แล้ว';
+  }],
+  bossart: [2, '@bossart <sprite|list> [lv]', 'เรียกบอสสไปรต์ใหม่ข้างตัว (ทดสอบ)', (p, a) => {
+    const wbName = {}; for (const w of D.WORLD_BOSSES) { const k = D.BOSS_SPRITES.world[w.id]; if (k) wbName[k] = w.name; }
+    const names = Object.assign({}, D.BOSS_NAMES, wbName), keys = Object.keys(names); if (!a[0] || a[0] === 'list' || !names[a[0]]) return keys.join(', ');
+    const fams = D.FAMILIES[p.inst.def.biome] || D.FAMILIES.ruins;
+    const m = W.spawnMonster(p.inst, { fam: fams[0], lv: +a[1] || p.lv, rank: 2, x: p.x + 3, y: p.y, name: names[a[0]], extra: { noRespawn: true, spr: a[0] } }); return 'boss ' + m.name;
   }],
   killall: [2, '@killall', 'ฆ่ามอนทั้งแผนที่', (p) => { let n = 0; for (const e of [...p.inst.entities.values()]) if (e.kind === 'm' && !e.dead) { C.onDeath(e, p); n++; } return `killed ${n}`; }],
   bosstimer: [2, '@bosstimer [map] [sec]', 'ดู/ตั้งเวลาเกิด Field Boss', (p, a) => {

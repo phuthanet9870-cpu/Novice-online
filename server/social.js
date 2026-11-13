@@ -195,9 +195,10 @@ function spawnFieldBoss(inst) {
   const def = inst.def, st = fieldBoss[inst.mapId];
   const fams = D.FAMILIES[def.biome];
   const fam = fams[def.idx % fams.length];
-  const name = `${fam[0]} ${D.BOSS_TITLES[def.idx % D.BOSS_TITLES.length]}`;
+  const spr = D.BOSS_SPRITES.field[def.id];
+  const name = spr ? D.BOSS_NAMES[spr] : `${fam[0]} ${D.BOSS_TITLES[def.idx % D.BOSS_TITLES.length]}`;
   const pos = W.dist(inst.map.spawn, { x: inst.map.w * 0.75, y: inst.map.h * 0.3 }) > 20 ? require('../shared/mapgen.js').randomWalkable(inst.map, r, { x: inst.map.w * 0.7, y: inst.map.h * 0.35 }, 30) : inst.map.spawn;
-  const m = W.spawnMonster(inst, { fam, lv: def.max + 3, rank: 2, x: pos.x, y: pos.y, name, extra: { noRespawn: true, fieldBoss: true } });
+  const m = W.spawnMonster(inst, { fam, lv: def.max + 3, rank: 2, x: pos.x, y: pos.y, name, extra: { noRespawn: true, fieldBoss: true, spr } });
   st.alive = m;
   S.announce(`👹 Field Boss [${name}] ปรากฏตัวที่ ${def.name} (Lv ${m.lv})!`, 'boss');
 }
@@ -338,7 +339,7 @@ S.spawnWorldBoss = function (which) {
   inst.alwaysOn = true;
   const def = which !== undefined ? D.WORLD_BOSSES[which % D.WORLD_BOSSES.length] : D.WORLD_BOSSES[wb.idx++ % D.WORLD_BOSSES.length];
   const online = W.players.size;
-  const m = W.spawnMonster(inst, { fam: [def.name, def.shape, 'caster', 1, def.element], lv: 220, rank: 4, x: inst.map.spawn.x, y: inst.map.spawn.y - 12, name: def.name, color: def.color, extra: { noRespawn: true, range: 7 } });
+  const m = W.spawnMonster(inst, { fam: [def.name, def.shape, 'caster', 1, def.element], lv: 220, rank: 4, x: inst.map.spawn.x, y: inst.map.spawn.y - 12, name: def.name, color: def.color, extra: { noRespawn: true, range: 7, spr: D.BOSS_SPRITES.world[def.id] } });
   m.maxHp = m.hp = Math.round(m.maxHp * Math.max(0.05, Math.min(3, online / 10)));
   wb.alive = m; wb.dmg = new Map(); wb.startAt = now();
   S.announce(`🌋 WORLD BOSS [${def.name}] ปรากฏแล้วที่ ${inst.def.name}! (PvP เปิดในพื้นที่)`, 'boss');

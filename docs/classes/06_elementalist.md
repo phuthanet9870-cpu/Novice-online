@@ -53,20 +53,20 @@
 ## Ultimate (5)
 | # | สกิล | ปลด | ผล |
 |---|---|---|---|
-| U1 | **Armageddon** | Awaken I | อุกกาบาต 20 ลูกทั่วจอ |
-| U2 | **Eternal Winter** | Awaken I | แช่แข็งทุกเป้าในจอ 3s (PvP 1.5s) |
-| U3 | **Wrath of Zeus** | Awaken II | ฟ้าผ่าตามล่าเป้า 10 ครั้ง ×2 กับ Wet |
-| U4 | **Elemental Avatar** | Awaken II | 15s: ทุกสกิลใส่ 3 ธาตุพร้อมกัน |
-| U5 | **Primordial Singularity** | Awaken III | หลุมดำดูดทุกเป้าเข้ากลางแล้วระเบิด 3,500% |
+| U1 | **Cataclysm** | Awaken I | อุกกาบาต 20 ลูกทั่วจอ |
+| U2 | **Absolute Winter** | Awaken I | แช่แข็งทุกเป้าในจอ 3s (PvP 1.5s) |
+| U3 | **Storm Lord** | Awaken II | ฟ้าผ่าตามล่าเป้า 10 ครั้ง ×2 กับ Wet |
+| U4 | **Maelstrom** | Awaken II | 15s: ทุกสกิลใส่ 3 ธาตุพร้อมกัน |
+| U5 | **Archmage Ascension** | Awaken III | หลุมดำดูดทุกเป้าเข้ากลางแล้วระเบิด 3,500% |
 
 ## Buff (5)
 | # | สกิล | ผล |
 |---|---|---|
-| B1 | Arcane Intellect | MATK +15%, SP +20% ทั้งปาร์ตี้ |
-| B2 | Quick Cast | ลดเวลาร่าย 30% |
-| B3 | Elemental Attunement | ดาเมจ Reaction +40% (ทั้งปาร์ตี้) |
-| B4 | Mana Shield | ดาเมจ 30% ไปหัก SP แทน HP |
-| B5 | Weapon Enchant | ใส่ธาตุให้อาวุธเพื่อน (ไฟ/น้ำแข็ง/สายฟ้า) |
+| B1 | Arcane Surge | MATK +15%, SP +20% ทั้งปาร์ตี้ |
+| B2 | Mana Spring | ลดเวลาร่าย 30% |
+| B3 | Tempo of Elements | ดาเมจ Reaction +40% (ทั้งปาร์ตี้) |
+| B4 | Mana Barrier | ดาเมจ 30% ไปหัก SP แทน HP |
+| B5 | Prismatic Attunement | ใส่ธาตุให้อาวุธเพื่อน (ไฟ/น้ำแข็ง/สายฟ้า) |
 
 ## คอมโบแนะนำ
 - **Storm Chain**: Rain Call → Water Ball → Thunderclap → Chain Lightning → Lightning Storm

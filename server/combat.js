@@ -604,6 +604,7 @@ function moveCaster(p, sk, tgt, ax, ay) {
   const mv = sk.move; if (!mv) return;
   const inst = p.inst;
   const fx0 = p.x, fy0 = p.y;
+  p._dashFrom = { x: fx0, y: fy0 };
   let dir = Math.atan2((tgt ? tgt.y : ay) - p.y, (tgt ? tgt.x : ax) - p.x);
   if (mv.type === 'back') dir += Math.PI;
   if (mv.type === 'blink' && tgt) {
@@ -652,6 +653,44 @@ function computeMult(p, sk, lv, tgt, t) {
     if (!has && sk.role === 'F') m *= 0.5; else if (has) m *= 1.15;
   }
   return m * F.skillMult(sk, lv);
+}
+
+// v4 signature mechanics: every skill can carry one of these on top of its delivery, status, hook and utility
+function mechanics(p, sk, lv, tgt, ax, ay, targets, el, t) {
+  const inst = p.inst, sc = F.skillMult(sk, lv), color = (D.ELEMENTS[el] || D.ELEMENTS.neutral).color;
+  const base = (sk.dmg || 0.5) * sc;
+  const ox = sk.self ? p.x : (tgt ? tgt.x : ax), oy = sk.self ? p.y : (tgt ? tgt.y : ay);
+  if (sk.echo) {
+    // the skill rings out again: same targets, weaker
+    const list = targets.slice(), m = base * sk.echo.mult;
+    inst.after(sk.echo.delay, () => { if (p.dead || p.inst !== inst) return; inst.emit({ k: 'echo', s: p.id, sk: sk.id, x: ox, y: oy, el }); for (const o of list) if (!o.dead && o.inst === inst) C.dealDamage(p, o, { mult: m, el, kind: 'skill', sk }); });
+  }
+  if (sk.orbit) W.spawnZone(inst, { zk: 'zone', owner: p, follow: p, x: p.x, y: p.y, r: sk.orbit.r, until: t + sk.orbit.dur, tick: 0.5, mult: base * sk.orbit.mult, el, color, orbit: sk.orbit.n, sk: null, lv });
+  if (sk.wall) {
+    const a = Math.atan2(oy - p.y, ox - p.x) + Math.PI / 2, n = 4;
+    for (let i = 0; i < n; i++) { const k = (i - (n - 1) / 2) * 1.3; const x = ox + Math.cos(a) * k, y = oy + Math.sin(a) * k; if (M.walkable(inst.map, x, y)) W.spawnZone(inst, { zk: 'zone', owner: p, x, y, r: 0.9, until: t + sk.wall.dur, tick: 0.6, mult: base * sk.wall.mult, el, color, wall: 1, sk: null, lv }); }
+  }
+  if (sk.trail) {
+    const fx = p._dashFrom || { x: p.x, y: p.y };
+    for (let i = 0; i < 4; i++) { const k = (i + 0.5) / 4, x = fx.x + (p.x - fx.x) * k, y = fx.y + (p.y - fx.y) * k; if (M.walkable(inst.map, x, y)) W.spawnZone(inst, { zk: 'zone', owner: p, x, y, r: 1, until: t + sk.trail.dur, tick: 0.7, mult: base * sk.trail.mult, el, color, trail: 1, sk: null, lv }); }
+  }
+  if (sk.boomerang && targets.length) {
+    // the shot comes back along the same path
+    inst.after(0.45, () => { if (p.dead || p.inst !== inst) return; inst.emit({ k: 'echo', s: p.id, sk: sk.id, x: ox, y: oy, el, back: 1 }); for (const o of targetsFor(p, sk, tgt && !tgt.dead ? tgt : null, ax, ay)) C.dealDamage(p, o, { mult: base * sk.boomerang, el, kind: 'skill', sk }); });
+  }
+  if (sk.split && targets.length) {
+    const from = targets[0], hit = new Set(targets);
+    const near = [];
+    inst.inRadius(from.x, from.y, 4.5, (o) => { if (!hit.has(o) && !o.dead && (o.kind === 'm' || o.kind === 'p') && C.isEnemy(p, o)) near.push(o); });
+    near.sort((a, b) => W.dist(a, from) - W.dist(b, from));
+    for (const o of near.slice(0, sk.split.n)) { inst.emit({ k: 'bolt', x: from.x, y: from.y, tx: o.x, ty: o.y, el }); C.dealDamage(p, o, { mult: base * sk.split.mult, el, kind: 'skill', sk }); }
+  }
+  if (sk.stackSelf && targets.length) {
+    const b = p.buffs.get('stack:' + sk.id), n = Math.min(sk.stackSelf.max, (b ? b.n || 1 : 0) + 1);
+    C.addBuff(p, 'stack:' + sk.id, { dmgPct: sk.stackSelf.pct * n }, 6, sk.name + ' ×' + n, '#ffb03a');
+    const nb = p.buffs.get('stack:' + sk.id); if (nb) nb.n = n;
+  }
+  if (sk.resetOnKill && targets.some((o) => o.dead)) { p.cds[sk.id] = 0; p.sess && p.sess.send({ t: 'cd', id: sk.id, d: 0 }); inst.emit({ k: 'txt', t: p.id, x: p.x, y: p.y, m: 'RESET!', c: '#7df' }); }
 }
 
 function reactionFor(sk, el, tgt) {
@@ -764,8 +803,10 @@ const execCore = function (p, sk, lv, tgt, ax, ay) {
   let anyHit = false;
   const targets = sk.dmg || sk.perUnit || sk.applies ? targetsFor(p, sk, tgt, ax, ay) : [];
   p._lastTargets = targets;
-  const nb = p.nextBonus && sk.dmg ? 1 + p.nextBonus / 100 : 1;
-  if (nb > 1) p.nextBonus = 0;
+  let nb = p.nextBonus && sk.dmg ? 1 + p.nextBonus / 100 : 1;
+  if (sk.overcharge && !p.god && !gf.nosp) { const extra = p.maxSp * sk.overcharge.sp / 100; if (p.sp >= extra) { p.sp -= extra; nb *= sk.overcharge.mult; inst.emit({ k: 'txt', t: p.id, x: p.x, y: p.y, m: 'OVERCHARGE', c: '#6af' }); } }
+  else if (sk.overcharge) nb *= sk.overcharge.mult;
+  if (p.nextBonus && sk.dmg) p.nextBonus = 0;
   let totalDealt = 0;
   for (const o of targets) {
     if (o.dead) continue;
@@ -812,6 +853,7 @@ const execCore = function (p, sk, lv, tgt, ax, ay) {
     if (sk.dispel && o.kind === 'p') { let n = sk.dispel; for (const k of [...o.buffs.keys()]) { if (n-- <= 0) break; o.buffs.delete(k); } o.buffsChanged = true; C.recalc(o); }
     if (/ลดฮีล/.test(sk.desc)) o.healCut = { until: t + 8, pct: 0.4 };
   }
+  mechanics(p, sk, lv, tgt, ax, ay, targets, el, t);
   if (sk.taunt && !targets.length) inst.inRadius(p.x, p.y, sk.radius || 4, (o) => { if (o.kind === 'm') { o.target = p; o.tauntBy = p; o.tauntUntil = t + 4; } });
   if (sk.heal && !sk.heal.zone) {
     const sc = F.skillMult(sk, lv);

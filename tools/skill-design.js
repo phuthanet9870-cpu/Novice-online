@@ -28,6 +28,24 @@ const KITS = {
   void_walker: { res: 'Void Essence', range: 2.0, D: ['strike', 'combo', 'blink', 'pull', 'dash', 'arc', 'spin', 'throw', 'delayed'], T: ['blind', 'fear', 'silence', 'curse', 'mark', 'slow', 'root'], H: ['backstab', 'stealthOpen', 'consume', 'execute', 'bonus', 'chain', 'none'], U: ['stealth', 'pull', 'manaBurn', 'dispel', 'nextBonus', 'cdShift', 'none'], E: ['dark', 'poison', 'neutral'] },
   lightbringer: { res: 'Radiance', range: 9, D: ['lance', 'ricochet', 'bolt', 'nova', 'zone', 'rain', 'wave', 'delayed', 'pull'], T: ['blind', 'holybrand', 'burn', 'shock', 'stun', 'slow'], H: ['bonus', 'consume', 'perRes', 'chain', 'combo', 'none'], U: ['partyHeal', 'cleanse', 'pierce', 'nextBonus', 'shield', 'haste', 'none'], E: ['holy', 'lightning', 'fire'] },
 };
+// v4 signature mechanics, themed per class (implemented in server/combat.js mechanics())
+const MECH = {
+  blade_knight: ['echo', 'stackSelf', 'boomerang', 'resetOnKill', 'split', 'none'], guardian: ['wall', 'echo', 'orbit', 'stackSelf', 'none'],
+  berserker: ['stackSelf', 'overcharge', 'resetOnKill', 'echo', 'trail', 'none'], shadow_assassin: ['resetOnKill', 'split', 'echo', 'trail', 'none'],
+  ranger: ['split', 'boomerang', 'wall', 'echo', 'none'], elementalist: ['orbit', 'wall', 'echo', 'split', 'overcharge', 'none'],
+  cleric: ['orbit', 'wall', 'echo', 'overcharge', 'none'], monk: ['echo', 'stackSelf', 'trail', 'resetOnKill', 'none'],
+  warlock: ['orbit', 'split', 'echo', 'wall', 'overcharge', 'none'], gunslinger: ['split', 'boomerang', 'overcharge', 'resetOnKill', 'none'],
+  chrono_stalker: ['echo', 'orbit', 'boomerang', 'resetOnKill', 'none'], divine_sovereign: ['orbit', 'wall', 'echo', 'overcharge', 'none'],
+  hellfiend: ['trail', 'stackSelf', 'overcharge', 'orbit', 'none'], void_walker: ['resetOnKill', 'split', 'echo', 'trail', 'none'],
+  lightbringer: ['split', 'boomerang', 'orbit', 'wall', 'none']
+};
+function mechFits(m, out) {
+  if (m === 'trail') return !!(out.move && out.move.type === 'dash');
+  if (m === 'boomerang') return out.shape === 'line' || (out.shape === 'single' && !out.melee);
+  if (m === 'split') return out.shape === 'single' || out.shape === 'chain';
+  if (m === 'wall') return !out.self;
+  return true;
+}
 // name keywords → preferred delivery / status
 const NAME_D = [
   [/Spin|Whirl|Tornado|Cyclone|Flurry|Storm(?! Volley)|Dance|Hundred|Waltz|Kata/i, 'spin'], [/Wave|Beam|Ray|Lance|Spear|Pierce|Penetrat|Line|Railgun|Splitter|Fault|Thrust/i, 'wave'],
@@ -50,35 +68,45 @@ const pickName = (name, list, pool) => { for (const [re, v] of list) if (re.test
 // ---------------------------------------------------------------- hand-designed ultimates & buffs
 const ULTS = {
   blade_knight: [
-    ['nuke', { r: 6, dmg: 2.0, hits: 10, tag: ['bleed', 3] }], ['nuke', { r: 6, dmg: 14, tag: ['airborne', 1, 3] }], ['stackburst', { r: 5, tag: ['bleed', 5], per: 1.6 }],
-    ['megaline', { len: 15, dmg: 24, tag: ['armorbreak', 1, 8], pierce: 1 }], ['transform', { dur: 12, mods: { cdr: 85, dmgPct: 35 }, fullRes: 1 }]],
+    ['megaline', { len: 18, dmg: 22, tag: ['bleed', 3, 8], pierce: 1 }], ['zoneself', { dur: 6, mult: 1.5, r: 4, tag: ['armorbreak', 1] }], ['executeSweep', { r: 7, th: 20, dmg: 16 }],
+    ['delayedAoe', { r: 6, dmg: 26, delay: 1.5 }], ['transform', { dur: 12, mods: { critDmg: 80, aspdPct: 35 }, fullRes: 1 }]],
+
   guardian: [
-    ['dome', { dur: 8, mods: { dmgReduce: 60 }, party: 1 }], ['nuke', { r: 5, dmg: 17, tag: ['knockdown', 1, 3], leap: 1 }], ['saint', { dur: 3, revive: 0, heal: 30 }],
-    ['blackhole', { r: 8, dmg: 6, tag: ['root', 1, 3] }], ['transform', { dur: 15, mods: { dmgReduce: 70, guardAlly: 50 }, party: 1 }]],
+    ['blackhole', { r: 7, dmg: 8, tag: ['stun', 1, 2.5] }], ['transform', { dur: 12, mods: { dmgReduce: 60, reflect: 40 } }], ['zoneheal', { dur: 8, heal: 7, r: 6 }],
+    ['nuke', { r: 7, dmg: 15, tag: ['knockdown', 1, 3] }], ['dome', { dur: 10, mods: { dmgReduce: 50, ccRes: 50 }, party: 1 }]],
+
   berserker: [
-    ['transform', { dur: 12, mods: { giant: 1, dmgPct: 40, ccImmune: 1 } }], ['nuke', { r: 8, dmg: 22, tag: ['knockdown', 1, 2.5] }], ['transform', { dur: 10, mods: { lifesteal: 50, ccImmune: 1, invuln: 1 } }],
-    ['barrage', { r: 14, dmg: 1.4, hits: 30 }], ['transform', { dur: 15, mods: { dmgPct: 50, aspdPct: 40 }, fullRes: 1 }]],
+    ['barrage', { r: 7, dmg: 1.6, hits: 25, tag: ['bleed', 1] }], ['transform', { dur: 12, mods: { lifesteal: 30, dmgPct: 35 } }], ['stackburst', { r: 6, tag: ['armorbreak', 3], per: 2 }],
+    ['zonetarget', { dur: 6, mult: 2.2, r: 5, tag: ['knockdown', 1] }], ['transform', { dur: 10, mods: { giant: 1, ccImmune: 1, aspdPct: 50 } }]],
+
   shadow_assassin: [
-    ['nuke', { r: 14, dmg: 12, tag: ['blind', 1, 3] }], ['plague', { r: 14, tag: ['poison', 5], cut: 1 }], ['execute', { th: 40, dmg: 30 }],
-    ['zoneself', { dur: 6, mult: 1.6, r: 3.5, tag: ['bleed', 1] }], ['transform', { dur: 12, mods: { stealth: 1, crit: 100, dmgPct: 30 } }]],
+    ['execute', { th: 35, dmg: 34 }], ['zoneself', { dur: 5, mult: 2, r: 3, tag: ['poison', 2] }], ['plague', { r: 14, tag: ['poison', 4], tag2: ['blind', 1] }],
+    ['nuke', { r: 10, dmg: 14, tag: ['silence', 1, 3] }], ['transform', { dur: 10, mods: { stealth: 1, critDmg: 70, movePct: 30 } }]],
+
   ranger: [
-    ['megaline', { len: 22, dmg: 20, tag: ['mark', 1, 8] }], ['traps', { n: 12 }], ['summonArmy', { n: 3, dur: 15, mult: 1.2, shape: 'beast' }],
-    ['zonetarget', { dur: 6, mult: 2.4, r: 5, tag: ['burn', 1] }], ['transform', { dur: 12, mods: { crit: 100, range: 6, aspdPct: 30 } }]],
+    ['barrage', { r: 12, dmg: 1.3, hits: 35, tag: ['mark', 1] }], ['zonetarget', { dur: 7, mult: 2, r: 6, tag: ['slow', 1] }], ['summonArmy', { n: 4, dur: 15, mult: 1, shape: 'beast' }],
+    ['megaline', { len: 25, dmg: 24, tag: ['root', 1, 3] }], ['transform', { dur: 12, mods: { aspdPct: 45, range: 4 } }]],
+
   elementalist: [
-    ['barrage', { r: 14, dmg: 2.2, hits: 20, tag: ['burn', 2] }], ['nuke', { r: 14, dmg: 6, tag: ['freeze', 1, 3] }], ['ricochetUlt', { n: 10, dmg: 4, tag: ['shock', 1] }],
-    ['transform', { dur: 15, mods: { matkPct: 45, castReduce: 50 } }], ['blackhole', { r: 9, dmg: 35, tag: ['root', 1, 2] }]],
+    ['nuke', { r: 12, dmg: 9, tag: ['burn', 3, 6] }], ['zonetarget', { dur: 8, mult: 2.4, r: 6, tag: ['chill', 2] }], ['ricochetUlt', { n: 12, dmg: 3.5, tag: ['shock', 1] }],
+    ['blackhole', { r: 9, dmg: 28, tag: ['wet', 1, 6] }], ['transform', { dur: 15, mods: { matkPct: 40, cdr: 30 } }]],
+
   cleric: [
-    ['revive', { heal: 50 }], ['nuke', { r: 14, dmg: 18, tag: ['holybrand', 1, 10] }], ['zoneheal', { dur: 8, heal: 10, r: 6, invuln: 1 }],
-    ['transform', { dur: 15, mods: { ccImmune: 1, matkPct: 40, regenPct: 300 }, party: 1 }], ['miracle', {}]],
+    ['saint', { dur: 4, revive: 0, heal: 40 }], ['nuke', { r: 12, dmg: 16, tag: ['holybrand', 1, 10] }], ['zoneheal', { dur: 10, heal: 9, r: 7 }],
+    ['revive', { heal: 60 }], ['transform', { dur: 15, mods: { regenPct: 300, dmgReduce: 25 }, party: 1 }]],
+
   monk: [
-    ['single', { dmg: 26, pierce: 1, tag: ['stun', 1, 3] }], ['transform', { dur: 10, mods: { cdr: 70, comboWin: 3 } }], ['barrage', { r: 6, dmg: 1.2, hits: 30, tag: ['airborne', 1] }],
-    ['nuke', { r: 5, dmg: 16, tag: ['airborne', 1, 4] }], ['transform', { dur: 15, mods: { dmgPct: 60, spRegen: 5 }, fullRes: 1 }]],
+    ['barrage', { r: 5, dmg: 1.4, hits: 28, tag: ['stun', 1] }], ['single', { dmg: 30, pierce: 1, tag: ['knockdown', 1, 3] }], ['nuke', { r: 6, dmg: 15, tag: ['airborne', 1, 3] }],
+    ['transform', { dur: 12, mods: { comboWin: 3, aspdPct: 40 } }], ['transform', { dur: 10, mods: { dmgPct: 50, ccImmune: 1 }, fullRes: 1 }]],
+
   warlock: [
-    ['plague', { r: 14, tag: ['curse', 1], tag2: ['poison', 3] }], ['summonArmy', { n: 12, dur: 20, mult: 0.7, shape: 'undead' }], ['transform', { dur: 15, mods: { cdr: 80, dmgReduce: 40 } }],
-    ['executeSweep', { r: 9, th: 15, dmg: 15 }], ['transform', { dur: 12, mods: { lifesteal: 20, matkPct: 50 }, fullRes: 1 }]],
+    ['plague', { r: 14, tag: ['curse', 1], tag2: ['fear', 1] }], ['summonArmy', { n: 8, dur: 18, mult: 0.8, shape: 'undead' }], ['blackhole', { r: 8, dmg: 26, tag: ['curse', 1, 4] }],
+    ['executeSweep', { r: 8, th: 18, dmg: 14 }], ['transform', { dur: 12, mods: { lifesteal: 15, matkPct: 45 } }]],
+
   gunslinger: [
-    ['barrage', { r: 9, dmg: 0.9, hits: 40 }], ['delayedAoe', { r: 4, dmg: 28, delay: 2 }], ['summonArmy', { n: 1, dur: 10, mult: 2.5, shape: 'drone' }],
-    ['single', { dmg: 40, pierce: 1, cast: 2, range: 20 }], ['transform', { dur: 15, mods: { aspdPct: 60, dmgPct: 30 } }]],
+    ['barrage', { r: 10, dmg: 1, hits: 40, tag: ['shock', 1] }], ['delayedAoe', { r: 5, dmg: 30, delay: 2 }], ['traps', { n: 10 }],
+    ['single', { dmg: 38, pierce: 1, cast: 1.5, range: 20 }], ['transform', { dur: 12, mods: { aspdPct: 55, crit: 30 } }]],
+
   chrono_stalker: [
     ['nuke', { r: 14, dmg: 5, tag: ['freeze', 1, 3] }], ['stackburst', { r: 7, tag: ['slow', 4], per: 1.8 }], ['barrage', { r: 9, dmg: 1.1, hits: 30, tag: ['slow', 1] }],
     ['saint', { dur: 3, revive: 0, heal: 60 }], ['transform', { dur: 12, mods: { cdr: 90, aspdPct: 30 } }]],
@@ -96,16 +124,16 @@ const ULTS = {
     ['transform', { dur: 15, mods: { matkPct: 50, castReduce: 40 } }], ['transform', { dur: 10, mods: { movePct: 60, aspdPct: 50, cdr: 40 } }]]
 };
 const BUFFS = {
-  blade_knight: [{ atkPct: 15, hit: 30 }, { aspdPct: 15, party: 1 }, { lifesteal: 8, extraStack: 1 }, { dmgReduce: 20, ccImmune: 1, short: 8 }, { comboWin: 1.5, comboDmg: 10 }],
-  guardian: [{ defPct: 40, movePct: -10 }, { guardAlly: 30, party: 1 }, { mdefPct: 25, ccRes: 20, party: 1 }, { range: 1, crit: 10 }, { regenPct: 200, ccRes: 20, party: 1 }],
-  berserker: [{ aspdPct: 25, defPct: -15 }, { hpPct: 20 }, { ccImmune: 1, short: 6 }, { dmgPct: 15, party: 1 }, { atkPct: 10, resGainPct: 100, party: 1 }],
-  shadow_assassin: [{ flee: 40, short: 10 }, { extraStack: 1, dmgPct: 6 }, { crit: 25, critDmg: 20 }, { movePct: 25, cdr: 5 }, { resGainPct: 100, crit: 8 }],
-  ranger: [{ range: 3, hit: 40 }, { movePct: 20, flee: 15, party: 1 }, { element: 'cycle' }, { atkPct: 12, summonBuff: 1 }, { resGainPct: 100, aspdPct: 10 }],
-  elementalist: [{ matkPct: 15, spPct: 20, party: 1 }, { castReduce: 30 }, { dmgPct: 12, party: 1 }, { spShield: 30 }, { element: 'cycle', party: 1 }],
-  cleric: [{ str: 10, int: 10, dex: 10, party: 1 }, { agi: 10, movePct: 25, party: 1 }, { blocks: 5, short: 30, party: 1 }, { element: 'holy', party: 1 }, { dmgReduce: 12, ccRes: 30, party: 1 }],
-  monk: [{ defPct: 30, ccRes: 25 }, { resGainPct: 100, crit: 15 }, { spRegen: 3, ccRes: 25 }, { comboWin: 2 }, { atkPct: 8, aspdPct: 8, party: 1 }],
-  warlock: [{ matkPct: 20, regenPct: -50 }, { blocks: 3, short: 60 }, { summonBuff: 1, matkPct: 5 }, { soulSiphon: 1, lifesteal: 3 }, { mdefPct: 30, flee: 20 }],
-  gunslinger: [{ aspdPct: 20, hit: 20 }, { crit: 20, dropPct: 5 }, { element: 'cycle', aspdPct: 5 }, { heatSink: 1, cdr: 6 }, { movePct: 15, dmgReduce: 8, party: 1 }],
+  blade_knight: [{ atkPct: 12, crit: 10 }, { aspdPct: 18, movePct: 10 }, { lifesteal: 6, critDmg: 15 }, { dmgReduce: 15, ccRes: 30, short: 10 }, { comboDmg: 15, comboWin: 1 }],
+  guardian: [{ defPct: 35, mdefPct: 20 }, { guardAlly: 35, party: 1 }, { hpPct: 20, regenPct: 120 }, { blocks: 4, short: 20 }, { ccRes: 30, dmgReduce: 10, party: 1 }],
+  berserker: [{ atkPct: 20, defPct: -15 }, { aspdPct: 22, lifesteal: 4 }, { ccImmune: 1, short: 8 }, { critDmg: 30, hpPct: -10 }, { resGainPct: 100, dmgPct: 8, party: 1 }],
+  shadow_assassin: [{ crit: 18, flee: 20 }, { movePct: 22, cdr: 6 }, { critDmg: 25, extraStack: 1 }, { flee: 45, short: 10 }, { dmgPct: 10, resGainPct: 100 }],
+  ranger: [{ range: 2, crit: 12 }, { aspdPct: 16, movePct: 12, party: 1 }, { element: 'cycle' }, { hit: 40, critDmg: 15 }, { summonBuff: 1, atkPct: 10 }],
+  elementalist: [{ matkPct: 18, castReduce: 15 }, { spPct: 30, spRegen: 3 }, { cdr: 10, party: 1 }, { spShield: 25 }, { element: 'cycle', matkPct: 6 }],
+  cleric: [{ int: 12, vit: 12, party: 1 }, { regenPct: 150, party: 1 }, { blocks: 5, short: 25, party: 1 }, { element: 'holy', party: 1 }, { mdefPct: 25, ccRes: 25, party: 1 }],
+  monk: [{ aspdPct: 20, comboWin: 1 }, { resGainPct: 100, crit: 12 }, { defPct: 25, regenPct: 100 }, { comboDmg: 20 }, { movePct: 20, flee: 20, party: 1 }],
+  warlock: [{ matkPct: 22, hpPct: -10 }, { soulSiphon: 1, lifesteal: 4 }, { summonBuff: 1, matkPct: 8 }, { blocks: 3, short: 45 }, { cdr: 8, castReduce: 15 }],
+  gunslinger: [{ crit: 22, hit: 20 }, { aspdPct: 24 }, { element: 'cycle', crit: 5 }, { heatSink: 1, aspdPct: 8 }, { dropPct: 8, movePct: 15, party: 1 }],
   chrono_stalker: [{ aspdPct: 20, movePct: 15 }, { cdr: 12 }, { flee: 35, short: 12 }, { regenPct: 150, spRegen: 2 }, { ccImmune: 1, short: 8 }],
   divine_sovereign: [{ matkPct: 12, hpPct: 10, party: 1 }, { dmgPct: 10, party: 1 }, { blocks: 4, short: 30, party: 1 }, { castReduce: 25, spPct: 20 }, { str: 8, agi: 8, vit: 8, int: 8, dex: 8, luk: 8, party: 1 }],
   hellfiend: [{ atkPct: 15, critDmg: 15 }, { defPct: 35, hpPct: 10 }, { lifesteal: 10, aspdPct: 10 }, { dmgPct: 20, regenPct: -60 }, { regenPct: 250, ccRes: 20 }],
@@ -151,7 +179,7 @@ function makeName(sk, d, t, hk, cls, usedNames, weapon) {
   const nouns = [...(DNOUN[d] || ['Strike'])];
   if (d === 'strike' || d === 'combo') nouns.unshift(WEAPON_WORD[weapon]);
   const adjs = TADJ[t] || ['Mighty'];
-  const h = hashStr(sk.id + 'name');
+  const h = hashStr(sk.id + 'name-v4');
   for (let k = 0; k < adjs.length * nouns.length; k++) {
     const a = adjs[(h + k) % adjs.length], n = nouns[(Math.floor(h / 7) + Math.floor(k / adjs.length)) % nouns.length];
     const nm = `${a} ${n}`; if (!usedNames.has(nm.toLowerCase())) { usedNames.add(nm.toLowerCase()); return nm; }
@@ -162,8 +190,8 @@ function makeName(sk, d, t, hk, cls, usedNames, weapon) {
 
 // ---------------------------------------------------------------- active skill builder
 function buildActive(sk, kit, cls, used, prev, idxInClass) {
-  const h = hashStr(sk.id + 'v3');
-  const rnd = (n) => (hashStr(sk.id + ':' + n) % 10007) / 10007;
+  const h = hashStr(sk.id + 'v4');
+  const rnd = (n) => (hashStr(sk.id + ':v4:' + n) % 10007) / 10007;
   const role = sk.role;
   let D = pickName(sk.name, NAME_D, kit.D);
   let T = pickName(sk.name, NAME_T, kit.T);
@@ -260,12 +288,28 @@ function buildActive(sk, kit, cls, used, prev, idxInClass) {
     case 'haste': out.haste = 15 + Math.round(rnd(10) * 15); parts.push(`เร่งเวลา: ความเร็วโจมตี/เดิน +${out.haste}% 4 วิ`); break;
     case 'blindAoe': out.applies = (out.applies || []).concat([{ tag: 'blind', stacks: 1, dur: r1(1.5 + rnd(12)) }]); break;
   }
+  // signature mechanic (v4)
+  const pool = MECH[cls] || ['none'];
+  let mech = 'none';
+  for (let k = 0; k < pool.length; k++) { const m = pool[(idxInClass + (h >>> 3) + k) % pool.length]; if (mechFits(m, out)) { mech = m; break; } }
+  switch (mech) {
+    case 'echo': out.echo = { delay: r1(0.6 + rnd(30) * 0.6), mult: Math.round((0.35 + rnd(31) * 0.25) * 100) / 100 }; base *= 0.85; parts.push(`เสียงสะท้อน: ซ้ำอีกครั้งหลัง ${out.echo.delay} วิ แรง ${Math.round(out.echo.mult * 100)}%`); break;
+    case 'orbit': out.orbit = { n: 2 + Math.floor(rnd(32) * 3), dur: 4 + Math.floor(rnd(33) * 4), r: 1.9, mult: Math.round((0.12 + rnd(34) * 0.12) * 100) / 100 }; base *= 0.8; parts.push(`ลูกพลัง ${out.orbit.n} ลูกโคจรรอบตัว ${out.orbit.dur} วิ ทำดาเมจทุก 0.5 วิ`); break;
+    case 'wall': out.wall = { dur: 4 + Math.floor(rnd(35) * 3), mult: Math.round((0.15 + rnd(36) * 0.15) * 100) / 100 }; base *= 0.85; parts.push(`สร้างกำแพงธาตุขวางทาง ${out.wall.dur} วิ`); break;
+    case 'boomerang': out.boomerang = Math.round((0.5 + rnd(37) * 0.3) * 100) / 100; base *= 0.85; parts.push(`บูมเมอแรง: วกกลับมาโดนอีกครั้ง ${Math.round(out.boomerang * 100)}%`); break;
+    case 'split': out.split = { n: 2 + Math.floor(rnd(38) * 2), mult: Math.round((0.35 + rnd(39) * 0.25) * 100) / 100 }; base *= 0.9; parts.push(`แตกตัวกระโดดไปหาศัตรูใกล้เคียง ${out.split.n} ตัว ${Math.round(out.split.mult * 100)}%`); break;
+    case 'trail': out.trail = { dur: 3 + Math.floor(rnd(40) * 3), mult: Math.round((0.15 + rnd(41) * 0.15) * 100) / 100 }; parts.push(`ทิ้งรอยธาตุตามเส้นทางพุ่ง ${out.trail.dur} วิ`); break;
+    case 'stackSelf': out.stackSelf = { pct: 3 + Math.floor(rnd(42) * 4), max: 5 }; parts.push(`ทุกครั้งที่โดน: ดาเมจตัวเอง +${out.stackSelf.pct}% ซ้อนได้ 5 ชั้น (6 วิ)`); break;
+    case 'resetOnKill': out.resetOnKill = 1; parts.push('สังหารเป้า = รีเซ็ตคูลดาวน์สกิลนี้ทันที'); break;
+    case 'overcharge': out.overcharge = { sp: 8 + Math.floor(rnd(43) * 6), mult: Math.round((1.3 + rnd(44) * 0.2) * 100) / 100 }; parts.push(`โอเวอร์ชาร์จ: ใช้ SP เพิ่ม ${out.overcharge.sp}% ของสูงสุด เพื่อแรง ×${out.overcharge.mult}`); break;
+  }
+  out.mech = mech;
   out.dmg = r1(Math.min(7.5, base) * (out.hits > 1 ? 1 / Math.sqrt(out.hits) : 1));
   if (out.backstab) out.dmg = out.backstab.back;
   if (out.applies) parts.splice(1, 0, out.applies.map((a) => `ใส่ ${TAG[a.tag]}${a.stacks > 1 ? ' ' + a.stacks + ' ชั้น' : ''} ${a.dur} วิ`).join(' · '));
   parts.splice(1, 0, `${Math.round(out.dmg * 100)}%${out.hits > 1 ? ' ×' + out.hits : ''} ธาตุ${ELT[element]}`);
   out.desc = parts.join(' · ');
-  out.design = `${d}|${t}|${hk}|${u}`;
+  out.design = `${d}|${t}|${hk}|${u}|${mech}`;
   out._naming = [d, t, hk];
   return out;
 }

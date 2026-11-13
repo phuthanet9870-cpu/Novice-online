@@ -389,6 +389,7 @@
       case 'mark': G.anims.push({ k: 'mark', id: f.t, t0: t, d: f.d }); break;
       case 'poof': burst(f.x, f.y - 0.4, '#bbb', 8, 2, 0.4); break;
       case 'trait': { const s = SK[f.sk]; const c = s && s.fx ? s.fx.c[1] : '#fff'; G.texts.push({ x: f.x, y: f.y - 2.3, txt: '✦ ' + f.m, col: c, size: 12, t0: t, d: 1.4, vy: -0.5, stroke: 1 }); if (window.VFX && VFX.ok && VFX.recipes[f.sk]) VFX.one('trait', f.x, f.y, { pal: VFX.recipes[f.sk].pal }); else if (s && s.fx) G.anims.push({ k: 'sig', fx: Object.assign({}, s.fx, { s: s.fx.s * 0.6 }), x: f.x, y: f.y, t0: t, d: 0.5, seed: 7 }); break; }
+      case 'echo': if (window.VFX && VFX.ok) { const R = VFX.recipes[f.sk]; VFX.one('echo', f.x, f.y, { pal: R ? R.pal : undefined, el: f.el }); } break;
       case 'pick': if (window.SFX && f.t === G.me) SFX.loot(); break;
       case 'emote': if (ent) { ent.emote = f.e; ent.emoteT = G.t + 3; } break;
       case 'ach': G.anims.push({ k: 'pillar', x: f.x, y: f.y, col: '#ffcc33', t0: t, d: 1.5, big: 1 }); burst(f.x, f.y - 1, '#ffcc33', 30, 3, 1.2, 3, -1); G.texts.push({ x: f.x, y: f.y - 2.8, txt: '🏅 ' + f.m, col: '#ffcc33', size: 16, t0: t, d: 2.2, vy: -0.3, stroke: 1 }); break;
@@ -452,7 +453,7 @@
     g.save(); g.translate(ox, oy); g.scale(scale, scale);
     drawAnims(g);
     if (window.VFX && VFX.ok) VFX.setView({ ox, oy, scale, W, H, dpr: G.dpr, sx: sx * G.dpr, sy: sy * G.dpr });
-    if (window.VFX && VFX.ok) { if ((G._stT = (G._stT || 0) + dt) > 0.15) { G._stT = 0; VFX.syncStatus(G.ents.values(), G.tagList, (e) => Math.abs(e.x - G.cam.x) < 22 && Math.abs(e.y - G.cam.y) < 14); } VFX.draw(g, dt); }
+    if (window.VFX && VFX.ok) { if ((G._stT = (G._stT || 0) + dt) > 0.15) { G._stT = 0; VFX.syncStatus(G.ents.values(), G.tagList, (e) => Math.abs(e.x - G.cam.x) < 22 && Math.abs(e.y - G.cam.y) < 14); VFX.syncZones(G.ents.values()); } VFX.draw(g, dt); }
     drawPets(g, dt);
     for (const p of G.parts) {
       const a = p.life / p.max; g.globalAlpha = a; g.fillStyle = p.col; const sz = p.size / TS * (0.5 + a * 0.5);

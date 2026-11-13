@@ -30,10 +30,10 @@
     const bg = g.createRadialGradient(size / 2, size * 0.6, 2, size / 2, size / 2, size * 0.7);
     bg.addColorStop(0, '#2c3044'); bg.addColorStop(1, '#141622'); g.fillStyle = bg; g.fillRect(0, 0, size, size);
     const s = size / 56;
-    g.save(); g.scale(s, s);
-    ART.drawMonster(g, { sh: sp.shape, col: sp.color, sz: sp.rank >= 2 ? 0.9 : 1.1, rk: sp.rank || 0, id: 1, el: sp.element }, 28, 50, 0);
-    g.restore();
-    const u = c.toDataURL(); monCache.set(k, u); return u;
+    const bossIm = sp.spr && ART.bossImage(sp.spr);
+    if (bossIm) { const A = BOSS_ART[sp.spr], fh = A.ch, sc = size / fh * 1.15; g.imageSmoothingEnabled = false; g.drawImage(bossIm, 0, A.a.idle[0] * A.ch, A.cw, A.ch, size / 2 - A.cw * sc / 2, size - A.ch * sc * 0.95, A.cw * sc, A.ch * sc); }
+    else { g.save(); g.scale(s, s); ART.drawMonster(g, { sh: sp.shape, col: sp.color, sz: sp.rank >= 2 ? 0.9 : 1.1, rk: sp.rank || 0, id: 1, el: sp.element }, 28, 50, 0); g.restore(); }
+    const u = c.toDataURL(); if (!sp.spr || bossIm) monCache.set(k, u); return u;
   };
 
   // ---------------------------------------------------------------- Monster Book

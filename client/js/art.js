@@ -275,7 +275,52 @@
   }
 
   // ------------------------------------------------------------ monsters
+  // ------------------------------------------------------------ animated boss sprites (client/js/bossart.js)
+  const bossImg = {};
+  ART.bossImage = (key) => {
+    const A = window.BOSS_ART && BOSS_ART[key]; if (!A) return null;
+    let im = bossImg[key]; if (!im) { im = bossImg[key] = new Image(); im.src = A.src; }
+    if (!(im.complete && im.naturalWidth)) return null;
+    if (A.foot === undefined) {
+      // find where the feet are (lowest opaque row of the idle frames) so the sprite stands on its shadow
+      A.foot = A.ch; A.cx = A.cw / 2;
+      try {
+        const c = document.createElement('canvas'); c.width = A.cw; c.height = A.ch; const q = c.getContext('2d');
+        const [row, n] = A.a.idle; let lo = 0, sx = 0, cnt = 0;
+        for (let f = 0; f < Math.min(n, 3); f++) {
+          q.clearRect(0, 0, A.cw, A.ch); q.drawImage(im, f * A.cw, row * A.ch, A.cw, A.ch, 0, 0, A.cw, A.ch);
+          const d = q.getImageData(0, 0, A.cw, A.ch).data;
+          for (let y = 0; y < A.ch; y++) for (let x = 0; x < A.cw; x++) if (d[(y * A.cw + x) * 4 + 3] > 40) { if (y > lo) lo = y; if (y > A.ch * 0.5) { sx += x; cnt++; } }
+        }
+        A.foot = lo + 1; if (cnt) A.cx = sx / cnt;
+      } catch (err) { /* tainted canvas: keep defaults */ }
+    }
+    return im;
+  };
+  ART.preloadBosses = () => { if (window.BOSS_ART) for (const k in BOSS_ART) ART.bossImage(k); };
+  function drawBossSprite(g, e, x, y) {
+    const A = BOSS_ART[e.spr], im = ART.bossImage(e.spr);
+    if (!im) return false;
+    const T = (window.G && G.t) || 0;
+    let anim = 'idle', fps = 9, start = 0, loop = true;
+    if (e.dieAt) { anim = 'death'; start = e.dieAt; fps = 12; loop = false; }
+    else if (e.hitAt && T - e.hitAt < 0.22 && !(e.attackAt && T - e.attackAt < 0.7)) { anim = 'hit'; start = e.hitAt; fps = 14; loop = false; }
+    else if (e.attackAt && T - e.attackAt < 0.7) { anim = 'attack'; start = e.attackAt; fps = 20; loop = false; }
+    else if (e.moving) { anim = 'run'; fps = 11; }
+    const a = A.a[anim] || A.a.idle; const [row, n] = a;
+    let f = Math.floor((T - start) * fps + (loop ? (e.id || 0) : 0));
+    f = loop ? ((f % n) + n) % n : Math.min(n - 1, Math.max(0, f));
+    const k = (e.sz || 1) * (e.preview ? 0.9 : 0.8), face = Math.cos(e.dir || 0) >= 0 ? 1 : -1;
+    g.save(); g.translate(x, y + 2); g.scale(k * face, k);
+    const sm = g.imageSmoothingEnabled; g.imageSmoothingEnabled = false;
+    if (e.rk === 4 || e.rk === 2 || e.rk === 3) { const gr = g.createRadialGradient(0, -A.ch * 0.3, 2, 0, -A.ch * 0.3, A.ch * 0.6); gr.addColorStop(0, e.rk === 4 ? 'rgba(255,60,60,0.22)' : 'rgba(255,170,40,0.18)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(-A.ch * 0.6, -A.ch * 0.9, A.ch * 1.2, A.ch * 1.2); }
+    g.drawImage(im, f * A.cw, row * A.ch, A.cw, A.ch, -(A.cx || A.cw / 2), -(A.foot || A.ch), A.cw, A.ch);
+    g.imageSmoothingEnabled = sm;
+    g.restore();
+    return true;
+  }
   ART.drawMonster = function (g, e, x, y, t) {
+    if (e.spr && window.BOSS_ART && BOSS_ART[e.spr] && drawBossSprite(g, e, x, y)) return;
     const s = (e.sz || 1) * (e.rk === 5 ? 0.85 : 1);
     const col = e.col || '#8a8';
     const bob = Math.sin(t * 4 + e.id) * 1.5;

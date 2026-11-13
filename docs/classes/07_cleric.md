@@ -55,20 +55,20 @@
 ## Ultimate (5)
 | # | สกิล | ปลด | ผล |
 |---|---|---|---|
-| U1 | **Mass Resurrection** | Awaken I | ชุบทุกคนในปาร์ตี้/กิลด์ในรัศมี 10 ช่อง HP 50% |
-| U2 | **Divine Judgment Day** | Awaken I | แสงตกทั่วจอ 1,800% Holy, Holy Brand ทุกเป้า |
-| U3 | **Sanctum Eternal** | Awaken II | พื้นที่ 10×10 8s: พวกไม่ตาย, ฮีล 10%/s |
-| U4 | **Archangel Form** | Awaken II | 15s: บิน ไม่ติด CC, ทุกฮีลกลายเป็นดาเมจ AoE ด้วย |
-| U5 | **Miracle** | Awaken III | ฟื้น HP/SP เต็มทั้งปาร์ตี้ + รีเซ็ต CD สกิล (ไม่รวม Ult) |
+| U1 | **Guardian Angel** | Awaken I | ชุบทุกคนในปาร์ตี้/กิลด์ในรัศมี 10 ช่อง HP 50% |
+| U2 | **Wrath of the Saint** | Awaken I | แสงตกทั่วจอ 1,800% Holy, Holy Brand ทุกเป้า |
+| U3 | **Holy Ground** | Awaken II | พื้นที่ 10×10 8s: พวกไม่ตาย, ฮีล 10%/s |
+| U4 | **Resurrection Hymn** | Awaken II | 15s: บิน ไม่ติด CC, ทุกฮีลกลายเป็นดาเมจ AoE ด้วย |
+| U5 | **Divine Benediction** | Awaken III | ฟื้น HP/SP เต็มทั้งปาร์ตี้ + รีเซ็ต CD สกิล (ไม่รวม Ult) |
 
 ## Buff (5)
 | # | สกิล | ผล |
 |---|---|---|
-| B1 | Blessing | STR/INT/DEX +10 ปาร์ตี้ |
-| B2 | Increase Agility | AGI +10, ความเร็ว +25% ปาร์ตี้ |
-| B3 | Kyrie Barrier | โล่ซับ 5 ครั้ง หรือ 25% HP |
+| B1 | Blessing of Wisdom | STR/INT/DEX +10 ปาร์ตี้ |
+| B2 | Renewing Light | AGI +10, ความเร็ว +25% ปาร์ตี้ |
+| B3 | Divine Aegis | โล่ซับ 5 ครั้ง หรือ 25% HP |
 | B4 | Holy Weapon | อาวุธเพื่อนเป็นธาตุ Holy |
-| B5 | Divine Protection | ลดดาเมจ Dark/Undead 30%, ต้าน Curse |
+| B5 | Sacred Ward | ลดดาเมจ Dark/Undead 30%, ต้าน Curse |
 
 ## คอมโบแนะนำ
 - **Holy Burst**: Smite → Holy Nova → Judgment → Heaven's Hammer

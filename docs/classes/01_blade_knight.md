@@ -53,20 +53,20 @@
 ## Ultimate (5)
 | # | สกิล | ปลด | ผล |
 |---|---|---|---|
-| U1 | **Thousand Edges** | Awaken I | ฟันพันดาบ 3s AoE 8×8 รวม 2,000% |
-| U2 | **Sky Emperor's Judgment** | Awaken I | ยกทุกเป้า 6×6 Airborne 3s แล้วฟาดลงจากฟ้า 1,500% |
-| U3 | **Crimson Requiem** | Awaken II | ใส่ Bleed 10 ชั้นทุกเป้ารอบตัว แล้วระเบิดเลือดทั้งหมด |
-| U4 | **Colossus Blade** | Awaken II | ดาบยักษ์ฟันเส้นตรง 15 ช่อง 2,500%, Armor Break 100% |
-| U5 | **Blade Sovereign** | Awaken III | แปลงร่าง 12s: สกิลทั้งหมดไม่มี CD, Blade Charge เต็มตลอด |
+| U1 | **Heavenfall Edge** | Awaken I | ฟันพันดาบ 3s AoE 8×8 รวม 2,000% |
+| U2 | **Steel Tempest** | Awaken I | ยกทุกเป้า 6×6 Airborne 3s แล้วฟาดลงจากฟ้า 1,500% |
+| U3 | **Final Verdict** | Awaken II | ใส่ Bleed 10 ชั้นทุกเป้ารอบตัว แล้วระเบิดเลือดทั้งหมด |
+| U4 | **Judgement Blade** | Awaken II | ดาบยักษ์ฟันเส้นตรง 15 ช่อง 2,500%, Armor Break 100% |
+| U5 | **Sword Saint Awakening** | Awaken III | แปลงร่าง 12s: สกิลทั้งหมดไม่มี CD, Blade Charge เต็มตลอด |
 
 ## Buff (5)
 | # | สกิล | ผล |
 |---|---|---|
-| B1 | Battle Focus | ATK +15%, Hit +30 (30 นาที) |
-| B2 | Sword Mastery Aura | ASPD +15% ทั้งปาร์ตี้ |
-| B3 | Blood Oath | Lifesteal 8%, Bleed ที่ใส่ +1 ชั้น |
-| B4 | Iron Will | ลดดาเมจ 20%, ต้าน Knockback |
-| B5 | Endless Combo | Combo Window +1.5s, โบนัส Combo +1% ต่อ stack |
+| B1 | Edge Focus | ATK +15%, Hit +30 (30 นาที) |
+| B2 | Swift Blade | ASPD +15% ทั้งปาร์ตี้ |
+| B3 | Crimson Thirst | Lifesteal 8%, Bleed ที่ใส่ +1 ชั้น |
+| B4 | Iron Resolve | ลดดาเมจ 20%, ต้าน Knockback |
+| B5 | Flowing Steel | Combo Window +1.5s, โบนัส Combo +1% ต่อ stack |
 
 ## คอมโบแนะนำ
 - **Sky Loop**: Wind Shear → Rising Slash → Sky Pierce → Aerial Rave → Falcon Kick → Meteor Drop
