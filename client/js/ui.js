@@ -400,7 +400,7 @@
     const R = D.RARITY[it.rarity];
     const st = F.itemStats(it, {});
     const base = ['atk', 'matk', 'def', 'mdef', 'hp'].filter((k) => st[k]).map((k) => `<div class="tl">${k.toUpperCase()} <b>${fmt(st[k])}</b></div>`).join('');
-    const opts = (it.imp || []).map(([k, v]) => `<div class="opt imp">✦ ${statLine(k, v)}</div>`).join('') + (it.opts || []).map(([k, v]) => `<div class="opt">◆ ${statLine(k, v)}</div>`).join('');
+    const opts = (it.imp || []).map(([k, v]) => `<div class="opt imp">✦ ${statLine(k, v)}</div>`).join('') + (it.opts || []).map(([k, v, tr]) => `<div class="opt t${tr || 0}">◆ ${statLine(k, v)}${tr ? ` <small class="tier">T${tr}</small>` : ''}</div>`).join('');
     const gb = it.base && D.GEAR[it.base];
     const origin = gb ? `<small class="src">${gb.src === 'field' ? 'ดรอปที่ ' + esc((D.FARM_MAPS.find((f) => f.id === gb.map) || {}).name || '') : gb.src === 'dungeon' ? 'ดรอปในดันเจี้ยน ' + esc(D.DUNGEONS.find((x) => x.id === gb.dungeon).name) : gb.src === 'craft' ? 'คราฟต์ได้ (Alchemist)' : 'Mythic — คราฟต์จากวัตถุดิบ World Boss'}</small>` : '';
     const runes = it.sockets ? `<div class="sock">${Array.from({ length: it.sockets }, (_, i) => it.runes && it.runes[i] ? `<span style="--c:${D.ITEMS[it.runes[i]].icon}">${esc(D.ITEMS[it.runes[i]].n)}</span>` : '<span class="empty">ช่องรูน/การ์ดว่าง</span>').join('')}</div>` : '';
@@ -409,7 +409,7 @@
     const cur = it.slot && G.char.equip[it.slot === 'ring' ? 'ring1' : it.slot];
     let cmp = '';
     if (cur && cur.uid !== it.uid) { const cs = F.itemStats(cur, {}); const diff = ['atk', 'matk', 'def', 'hp'].map((k) => [k, (st[k] || 0) - (cs[k] || 0)]).filter(([, v]) => v); cmp = diff.length ? `<div class="cmp">เทียบกับที่สวม: ${diff.map(([k, v]) => `<span class="${v > 0 ? 'up' : 'down'}">${k.toUpperCase()} ${v > 0 ? '+' : ''}${fmt(v)}</span>`).join(' ')}</div>` : ''; }
-    return `<div class="tt"><b style="color:${R.color}">${it.refine ? '+' + it.refine + ' ' : ''}${esc(it.name)}</b><small style="color:${R.color}">[${R.n}] ${D.SLOT_TH[it.slot] || it.slot} · iLv ${it.ilv} · ต้อง Lv ${it.reqLv}</small>${base}${opts}${runes}${jw}${origin}<small>ใช้ได้: ${cls}</small>${cmp}<small class="price">ขายได้ ${fmt(sellPrice(it))} z</small></div>`;
+    return `<div class="tt"><b style="color:${R.color}">${it.refine ? '+' + it.refine + ' ' : ''}${esc(it.name)}</b><small style="color:${R.color}">[${R.n}] ${D.SLOT_TH[it.slot] || it.slot} · iLv ${it.ilv} · ต้อง Lv ${it.reqLv}${it.quality ? ` · คุณภาพ <b style="color:${it.quality >= 110 ? '#ffd34a' : it.quality < 92 ? '#aaa' : '#fff'}">${it.quality}%</b>` : ''}</small>${base}${opts}${runes}${jw}${origin}<small>ใช้ได้: ${cls}</small>${cmp}<small class="price">ขายได้ ${fmt(sellPrice(it))} z</small></div>`;
   }
   function sellPrice(it) { if (it.type === 'equip') return Math.round((it.ilv * 25 + 40) * (1 + it.rarity * it.rarity * 0.8) * (1 + (it.refine || 0) * 0.15)); const d = D.ITEMS[it.id]; return d.sell || Math.floor((d.price || 10) / 4); }
   const SHAPE_TH = { single: 'เป้าเดียว', circle: 'วงกลม AoE', line: 'เส้นตรง', cone: 'รูปกรวย', chain: 'กระโดดหลายเป้า', self: 'ตัวเอง' };

@@ -50,6 +50,30 @@ const CMDS = {
     p.char.gmf = Object.assign({}, f);
     sync(p); return 'gmmode: ' + (Object.entries(f).filter(([, v]) => v).map(([x, v]) => (v === 1 ? x : x + '×' + v)).join(', ') || 'off');
   }],
+  setclass: [3, '@setclass <class> [player]', 'เปลี่ยนคลาส (เลเวล/ไอเทมคงเดิม · สกิล, Hotbar, Passive รีเซ็ต · อาวุธที่ไม่ตรงคลาสย้ายเข้ากระเป๋าและได้อาวุธคลาสใหม่)', (p, a) => {
+    const cls = (a[0] || '').toLowerCase();
+    if (!D.CLASSES[cls]) return 'classes: ' + D.CLASS_IDS.join(', ');
+    const q = need(target(p, a[1]), a[1]); const ch = q.char;
+    if (ch.cls === cls) return `${q.name} เป็น ${D.CLASSES[cls].name} อยู่แล้ว`;
+    for (const b of [...q.buffs.keys()]) q.buffs.delete(b);
+    q.summons.forEach((s) => W.killQuiet(s)); q.summons = [];
+    ch.cls = cls; q.cls = cls;
+    const first = CLASS_SKILLS[cls][0];
+    ch.skills = { [first]: 1 }; ch.skillPts = F.skillPointsAt(ch.lv) - 1;
+    ch.hotbar = ch.hotbar.map((h) => (h && h.startsWith('item:') ? h : null)); ch.hotbar[0] = first;
+    ch.passives = []; q.res = 0; q.cds = {}; q.combo = 0; q.ult = 0;
+    if (ch.auto) { ch.auto.rotation = []; ch.auto.rotPve = []; ch.auto.rotPvp = []; }
+    if (q.auto) { q.auto.rotation = []; q.auto.rotPve = []; q.auto.rotPvp = []; q.auto._plan = null; q.auto._planKey = null; }
+    const w = ch.equip.weapon, wt = D.CLASSES[cls].weapon;
+    if (w && w.wtype !== wt) {
+      delete ch.equip.weapon; I.addEquip(ch, w);
+      const nw = F.genEquip(r, 'weapon', Math.max(1, w.ilv || ch.lv), w.rarity || 0, wt); nw.uid = 'u' + db.nextId(); nw.refine = w.refine || 0; ch.equip.weapon = nw;
+    }
+    q.sess && q.sess.send({ t: 'cdreset' });
+    W.enterMap(q, q.inst.id, q.x, q.y);
+    sync(q); q.sess && q.sess.send({ t: 'char', ...C.charPayload(q) });
+    return `${q.name} → ${D.CLASSES[cls].name} (Lv ${ch.lv}) — ใช้ @allskills เพื่อเรียนสกิลทั้งหมด`;
+  }],
   book: [1, '@book <species_id>', 'ข้อมูล/ตารางดรอปของมอนสเตอร์ในสมุด', (p, a) => { const s = D.SPECIES[a[0]]; if (!s) return 'ตัวอย่าง id: ' + Object.keys(D.SPECIES).slice(0, 12).join(', '); return `${s.name} Lv${s.lv}-${s.lvMax} ${s.where}\n` + D.dropTable(a[0]).map(([id, c, q]) => `${id.startsWith('gear:') ? D.GEAR[id.slice(5)].n : D.ITEMS[id].n} ${c}%${q > 1 ? ' ×' + q : ''}`).join('\n'); }],
   spawnsp: [2, '@spawnsp <species_id> [n] [lv]', 'เรียกมอนตามสมุดมอนสเตอร์ (ดรอปตามตารางของสายพันธุ์นั้น)', (p, a) => {
     const s = D.SPECIES[a[0]]; if (!s) return 'ไม่พบ species';

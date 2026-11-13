@@ -322,6 +322,9 @@
     const ent = f.t ? G.ents.get(f.t) : null;
     switch (f.k) {
       case 'hit': {
+        // damage from a projectile shows when the projectile actually arrives
+        const hold = !f._held && !f.dot && !f.h && G.hitHold && G.hitHold[f.s];
+        if (hold && t - hold.t < 0.15) { f._held = 1; setTimeout(() => onFx(f), hold.d * 1000); break; }
         const mine = f.s === G.me || f.t === G.me;
         if (UI.onHit) UI.onHit(f);
         if (!mine && !(ent && ent.k === 'p') && !(G.ents.get(f.t) && Math.hypot(f.x - G.self.x, f.y - G.self.y) < 14)) break;
@@ -351,7 +354,7 @@
         }
         if (window.SFX && Math.hypot(f.x - G.self.x, f.y - G.self.y) < 16) SFX.cast(f.el, big);
         if (big) { G.flash = pix ? 0.25 : 0.5; G.flashCol = col; G.shake = 8; if (f.s === G.me || (caster && Math.hypot(caster.x - G.self.x, caster.y - G.self.y) < 20)) UI.ultBanner(SK[f.sk] ? SK[f.sk].name : '', caster ? caster.n : '', col); }
-        if (pix && VFX.cast(f)) break;
+        if (pix) { const tr = VFX.cast(f); if (tr !== false) { if (tr > 0.05) (G.hitHold || (G.hitHold = {}))[f.s] = { t, d: tr }; break; } }
         if (f.sh === 'buff') { burst(f.x, f.y - 0.5, '#9aff9a', 18, 2, 0.9, 3, -1); G.anims.push({ k: 'pillar', x: f.x, y: f.y, col: '#9aff9a', t0: t, d: 0.7 }); break; }
         if (f.sh === 'circle') {
           const ox = f.self ? f.x : f.tx, oy = f.self ? f.y : f.ty;
@@ -368,8 +371,8 @@
         }
         break;
       }
-      case 'swing': { const c = G.ents.get(f.s); if (c) c.attackAt = t; if (window.SFX && f.s === G.me) SFX.swing(); G.anims.push({ k: 'swipe', x: f.tx, y: f.ty - 0.5, col: '#fff', t0: t, d: 0.18, a: Math.atan2(f.ty - f.y, f.tx - f.x) }); break; }
-      case 'proj': { const c = G.ents.get(f.s); if (c) c.attackAt = t; if (window.SFX && f.s === G.me) SFX.shoot(); G.anims.push({ k: 'proj', x: f.x, y: f.y - 0.6, tx: f.tx, ty: f.ty - 0.6, col: ELC(f.el), t0: t, d: 0.22 }); break; }
+      case 'swing': { const c = G.ents.get(f.s); if (c) c.attackAt = t; if (window.SFX && f.s === G.me) SFX.swing(); if (window.VFX && VFX.ok && c && Math.hypot(f.x - G.self.x, f.y - G.self.y) < 16) { VFX.basic(f, c.k === 'p' && D.CLASSES[c.c] ? D.CLASSES[c.c].weapon : 'dagger', false, f.el); break; } G.anims.push({ k: 'swipe', x: f.tx, y: f.ty - 0.5, col: '#fff', t0: t, d: 0.18, a: Math.atan2(f.ty - f.y, f.tx - f.x) }); break; }
+      case 'proj': { const c = G.ents.get(f.s); if (c) c.attackAt = t; if (window.SFX && f.s === G.me) SFX.shoot(); if (window.VFX && VFX.ok && Math.hypot(f.x - G.self.x, f.y - G.self.y) < 18) { const tr = VFX.basic(f, c && c.k === 'p' && D.CLASSES[c.c] ? D.CLASSES[c.c].weapon : 'staff', true, f.el); if (tr > 0.05) (G.hitHold || (G.hitHold = {}))[f.s] = { t, d: tr }; break; } G.anims.push({ k: 'proj', x: f.x, y: f.y - 0.6, tx: f.tx, ty: f.ty - 0.6, col: ELC(f.el), t0: t, d: 0.22 }); break; }
       case 'dash': if (window.VFX && VFX.ok) { VFX.one('arcane/blink-out', f.x, f.y, { sp: 1.6, life: 0.8 }); VFX.one('impacts/heavy-landing', f.tx, f.ty, { sp: 1.4 }); } G.anims.push({ k: 'trail', x: f.x, y: f.y, tx: f.tx, ty: f.ty, t0: t, d: 0.35 }); burst(f.tx, f.ty, '#fff', 8, 3, 0.3); break;
       case 'die': if (window.SFX && ent && Math.hypot(f.x - G.self.x, f.y - G.self.y) < 14) SFX.die(); if (ent && window.VFX && VFX.ok) VFX.one(ent.k === 'p' ? 'spawn/soul-rise' : (ent.rk || 0) >= 3 ? 'spawn/shatter-death' : 'spawn/poof', f.x, f.y, { sp: 1.4, life: 1.4, seed: ent.id % 30 + 1 }); if (ent) { ent.dieAt = t; burst(f.x, f.y - 0.5, ent.col || '#fff', 16, 4, 0.7, 3); } if (f.t === G.target) G.target = 0; break;
       case 'tag': { if (!ent) break; const d = D.TAGS[f.tag]; G.texts.push({ x: f.x, y: f.y - 1.6, txt: d.n.toUpperCase(), col: d.color, size: 12, t0: t, d: 0.9, vy: -0.6 }); break; }
@@ -443,6 +446,7 @@
       list.push(e);
     }
     list.sort((a, b) => a.y - b.y);
+    if (window.VFX && VFX.ok) { g.save(); g.translate(ox, oy); g.scale(scale, scale); VFX.drawGround(g); g.restore(); }
     for (const e of list) drawEntity(g, e, ox + e.x * scale, oy + e.y * scale, z);
     // fx in world space
     g.save(); g.translate(ox, oy); g.scale(scale, scale);

@@ -69,9 +69,20 @@
       it.hp = Math.round((15 + ilv * w[2] * 2.2) * R.mult);
       it.sockets = [0, 0, 1, 1, 2, 2][rarity];
     }
+    // every drop is its own: base stats roll 85–118% quality, options roll their own stats, count and tiers
+    it.quality = Math.round(85 + r() * 33);
+    for (const k of ['atk', 'matk', 'def', 'mdef', 'hp']) if (it[k]) it[k] = Math.max(1, Math.round(it[k] * it.quality / 100));
     rollOptions(r, it);
     it.reqLv = Math.max(1, ilv - 5);
     return it;
+  }
+  // "<Prefix> <base name> <of Suffix>" from the two strongest options
+  function affixName(it, base) {
+    const A = D.AFFIX_NAME; if (!A || !it.opts || !it.opts.length || it.rarity < 1) return base;
+    const sorted = it.opts.slice().sort((a, b) => (a[2] || 5) - (b[2] || 5));
+    const pre = A[sorted[0][0]] ? A[sorted[0][0]][0] : '';
+    const suf = it.rarity >= 2 && sorted[1] && A[sorted[1][0]] && sorted[1][0] !== sorted[0][0] ? ' ' + A[sorted[1][0]][1] : '';
+    return (pre ? pre + ' ' : '') + base + suf;
   }
   // an equipment instance from a named base (shared/itemdb.js): its own name, implicit bonuses and rarity limits
   function genFromBase(r, baseId, rarity, ilv) {
@@ -79,7 +90,8 @@
     rarity = clamp(rarity, b.minR || 0, b.maxR === undefined ? 5 : b.maxR);
     ilv = Math.max(1, Math.round(ilv || b.ilv || 1));
     const it = genEquip(r, b.slot === 'ring' ? 'ring1' : b.slot, ilv, rarity, b.wtype);
-    it.base = baseId; it.name = b.n;
+    it.base = baseId; it.baseName = b.n; it.name = b.rarityLocked ? b.n : affixName(it, b.n);
+    if (b.src === 'mythic' || b.src === 'dungeon' || b.src === 'craft') it.name = b.n + (it.opts.length ? ' ' + ((D.AFFIX_NAME[it.opts[0][0]] || [])[1] || '') : '');
     const k = (1 + ilv / 25) * (1 + rarity * 0.15);
     it.imp = b.imp.map(([s, per]) => { const v = per * 10 * k; return [s, v >= 3 ? Math.round(v) : r1(v)]; });
     if (b.src === 'mythic') it.reqLv = Math.min(it.reqLv, 220);
@@ -89,13 +101,19 @@
     const R = D.RARITY[it.rarity];
     it.opts = [];
     const used = new Set();
-    for (let i = 0; i < R.opts; i++) {
+    // Common gets 1 option, every rarity above one more, plus a 35% chance of a bonus line
+    const n = Math.min(7, 1 + it.rarity + (r() < 0.35 ? 1 : 0));
+    for (let i = 0; i < n; i++) {
       let o; let guard = 0;
-      do { o = r.pick(D.OPTIONS); } while (used.has(o[0]) && guard++ < 20);
+      do { o = r.pick(D.OPTIONS); } while (used.has(o[0]) && guard++ < 40);
       used.add(o[0]);
-      const v = o[2] * (20 + it.ilv) * R.mult * (0.6 + r() * 0.6);
-      it.opts.push([o[0], o[3] ? r1(v) : Math.max(1, Math.round(v))]);
+      // tier 1 (best) .. 5: higher tiers are rarer
+      const roll = r(), tier = roll < 0.06 ? 1 : roll < 0.2 ? 2 : roll < 0.45 ? 3 : roll < 0.75 ? 4 : 5;
+      const v = o[2] * (20 + it.ilv) * R.mult * (0.45 + (6 - tier) * 0.18 + r() * 0.12) * (it.rarity === 0 ? 0.6 : 1);
+      it.opts.push([o[0], o[3] ? r1(Math.max(0.1, v)) : Math.max(1, Math.round(v)), tier]);
     }
+    if (it.baseName === undefined) it.baseName = it.name;
+    it.name = affixName(it, it.baseName);
   }
   const refinePct = (r) => (r * 6 + Math.max(0, r - 10) * 6 + Math.max(0, r - 15) * 12) / 100;
   const runeValue = (kind, tier) => r1(D.RUNE_KINDS[kind].per * tier * 0.6);
@@ -244,5 +262,5 @@
   function skillCd(sk, lv) { return r1((sk.cd || 0) * (lv >= 10 ? 0.9 : 1)); }
 
   return { clamp, r1, expToNext, statPointsAt, skillPointsAt, statCost, STAT_MAX, RANK, monsterStats, weaponTypeOf, classesForWeapon,
-    autoStats, statGrowth, rollRarity, genEquip, genFromBase, autoPlan, rollOptions, refinePct, runeValue, jewelValue, itemStats, gearStats, calcStats, skillMult, skillSp, skillCd };
+    autoStats, statGrowth, rollRarity, genEquip, genFromBase, affixName, autoPlan, rollOptions, refinePct, runeValue, jewelValue, itemStats, gearStats, calcStats, skillMult, skillSp, skillCd };
 });

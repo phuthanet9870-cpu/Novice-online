@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><title>VFX Gallery</title>
+<style>body{margin:0;background:#111;color:#ddd;font:12px sans-serif} #bar{padding:8px;position:sticky;top:0;background:#1a1a22;z-index:2} canvas{display:block}</style></head>
+<body><div id="bar">VFX audit gallery — <select id="cls"></select> <button id="go">render</button> <span id="st"></span></div><div id="out"></div>
+<script src="/shared/rng.js"></script><script src="/shared/data.js"></script><script src="/shared/data2.js"></script><script src="/shared/itemdb.js"></script>
+<script src="/shared/formulas.js"></script><script src="/shared/skills.js"></script>
+<script src="/client/js/vendor/pixelfx.js"></script><script src="/client/js/vfx.js"></script>
+<script>
+// Renders every skill's VFX recipe as frames on a grass backdrop: caster (blue) on the left, target (red) on the right.
+window.G = { cam: { x: 0, y: 0 }, ents: new Map(), settings: { particles: 1, shake: true }, shake: 0, me: 1, fps: 60 };
+const D = NO_DATA, SK = NO_SKILLS.SKILLS, CS = NO_SKILLS.CLASS_SKILLS;
+const sel = document.getElementById('cls'); for (const c of D.CLASS_IDS) sel.add(new Option(D.CLASSES[c].name, c));
+const SCALE = 26, CW = 300, CH = 190, TIMES = [0.18, 0.42, 0.8];
+function scene(g) { g.fillStyle = '#4f7a3e'; g.fillRect(-20, -20, 40, 40); g.fillStyle = 'rgba(0,0,0,0.08)'; for (let i = -20; i < 20; i++) for (let j = -20; j < 20; j++) if ((i + j) % 2) g.fillRect(i, j, 1, 1); }
+function actor(g, x, y, c) { g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(x, y, 0.35, 0.13, 0, 0, 7); g.fill(); g.fillStyle = c; g.fillRect(x - 0.22, y - 1.1, 0.44, 1.1); g.beginPath(); g.arc(x, y - 1.3, 0.25, 0, 7); g.fill(); }
+async function render(cls, cols = 4) {
+  const ids = CS[cls]; const rows = Math.ceil(ids.length / cols);
+  const sheet = document.createElement('canvas'); sheet.width = cols * CW * TIMES.length; sheet.height = rows * (CH + 16); const S = sheet.getContext('2d');
+  S.fillStyle = '#111'; S.fillRect(0, 0, sheet.width, sheet.height);
+  const cv = document.createElement('canvas'); cv.width = CW; cv.height = CH; const g = cv.getContext('2d');
+  for (let i = 0; i < ids.length; i++) {
+    const sk = SK[ids[i]]; VFX.clear();
+    const caster = { x: -3, y: 1 }, tgt = { x: 2.5, y: 1 };
+    const ranged = (sk.range || 2) > 3;
+    const tx = ranged ? tgt.x : caster.x + 1.8;
+    VFX.cast({ s: 1, sk: sk.id, x: caster.x, y: caster.y, tx, ty: tgt.y, sh: sk.shape, r: sk.radius || 0, self: sk.self ? 1 : 0, u: sk.kind === 'ult' ? 1 : 0 });
+    let t = 0, k = 0; const dt = 1 / 30;
+    const hitsAt = 0.2;
+    let hit = false;
+    while (k < TIMES.length) {
+      if (!hit && t >= hitsAt && sk.kind === 'attack') { hit = true; VFX.hit({ x: tx, y: tgt.y, el: sk.element, sk: sk.id, t: 2, c: i % 5 === 0 }, caster); }
+      g.setTransform(SCALE, 0, 0, SCALE, CW / 2, CH * 0.62); scene(g); VFX.drawGround(g); actor(g, caster.x, caster.y, '#5aa8ff'); actor(g, tgt.x, tgt.y, '#ff5a5a');
+      VFX.draw(g, dt); t += dt;
+      if (t >= TIMES[k]) { const col = i % cols, row = (i / cols) | 0; S.drawImage(cv, (col * TIMES.length + k) * CW, row * (CH + 16) + 16); k++; }
+    }
+    const col = i % cols, row = (i / cols) | 0;
+    S.fillStyle = sk.kind === 'ult' ? '#ffcc33' : sk.kind === 'buff' ? '#5ae07a' : '#ddd'; S.font = '12px sans-serif';
+    S.fillText(`${sk.id} · ${sk.name} · ${sk.element || '-'} · ${VFX.describe(sk.id)}`.slice(0, 120), col * CW * TIMES.length + 4, row * (CH + 16) + 12);
+    if (i % 4 === 3) await new Promise((r) => setTimeout(r, 0));
+  }
+  return sheet;
+}
+document.getElementById('go').onclick = async () => { const s = await render(sel.value); const o = document.getElementById('out'); o.innerHTML = ''; o.appendChild(s); };
+window.renderClass = async (c) => (await render(c)).toDataURL('image/png');
+</script></body></html>

@@ -192,6 +192,7 @@
         body = `<div class="gmSplit"><div class="plList scrollKeep">${gmData.players.map((p) => `<div class="${sel && sel.name === p.name ? 'on' : ''}" data-act="pl" data-k="${esc(p.name)}"><img src="${ART.classIcon(p.cls, 26)}"><b>${esc(p.name)}</b><small>Lv${p.lv} · ${esc(p.map)}${p.off ? ' · ออฟไลน์ออโต้' : ''}${p.gm ? ' · GM' + p.gm : ''}</small><span>${p.hp}%</span></div>`).join('')}</div>
           <div class="gmDetail">${sel ? `<div class="gdHead"><img src="${ART.portrait(sel.cls, sel.name, 64)}"><div><b>${esc(sel.name)}</b><small>${D.CLASSES[sel.cls].name} · Lv ${sel.lv} · 💰${fmt(sel.zeny)}</small><small>แผนที่ ${esc(sel.map)} · Karma ${sel.karma}</small></div></div>
             <div class="acts">${a('heal', '❤ ฮีล')}${a('revive', '✚ ชุบ')}${a('goto', '➜ ไปหา')}${a('recall', '⤓ ดึงมา')}${a('kill', '☠ ฆ่า', 'danger')}${a('allskills', '📖 สกิลเต็ม')}${a('passive all', '🌌 Passive เต็ม')}${a('passive reset', '🌌 รีเซ็ต Tree')}${a('resetskill', '📖 รีเซ็ตสกิล')}</div>
+            <label>เปลี่ยนคลาส <select id="gmCls">${D.CLASS_IDS.map((c) => `<option value="${c}" ${c === sel.cls ? 'selected' : ''}>${D.CLASSES[c].name} · ${D.CLASSES[c].th}</option>`).join('')}</select><button class="btn tiny" data-act="setcls">เปลี่ยน</button><button class="btn tiny" data-act="setcls2">เปลี่ยน + สกิลเต็ม</button></label>
             <label>ตั้งเลเวล <input id="gmLv" type="number" min="1" max="250" value="${sel.lv}"><button class="btn tiny" data-act="setlv">ตั้ง</button><button class="btn tiny" data-act="lvup">+10</button></label>
             <label>Zeny <input id="gmZ2" type="number" value="1000000"><button class="btn tiny" data-act="pz">ให้</button></label>
             <label>แต้มสกิล <input id="gmSP" type="number" value="10"><button class="btn tiny" data-act="psp">ให้</button> แต้ม Passive <input id="gmPP" type="number" value="10"><button class="btn tiny" data-act="ppp">ให้</button></label>
@@ -230,6 +231,7 @@
       const pl = () => (gmData.players.find((p) => p.name === o.pl) || {}).name || G.char.name;
       switch (a) {
         case 'tab': o.tab = d.k; re(); break;
+        case 'setcls': case 'setcls2': { const n = pl(); gm(`setclass ${v('gmCls')} ${n}`); if (a === 'setcls2') setTimeout(() => gm(`allskills ${n}`), 300); refresh(); break; }
         case 'refresh': gm('gmdata'); break;
         case 'cat': o.cat = d.k; o.sel = null; re(); break;
         case 'rar': o.rar = +d.i; re(); break;

@@ -13,6 +13,49 @@
   const r1 = (x) => Math.round(x * 10) / 10;
   const add = (id, o) => { D.ITEMS[id] = o; return id; };
 
+  // ---------------------------------------------------------------- bigger affix pool (random options on every piece of gear)
+  const EL_TH = { fire: 'ไฟ', ice: 'น้ำแข็ง', lightning: 'สายฟ้า', water: 'น้ำ', wind: 'ลม', earth: 'ดิน', holy: 'ศักดิ์สิทธิ์', dark: 'มืด', poison: 'พิษ', blood: 'โลหิต', neutral: 'ไร้ธาตุ' };
+  const MORE_OPTS = [
+    ['mdefPct', 'MDEF', 0.04, true], ['flee', 'Flee', 0.12, false], ['hit', 'Hit', 0.12, false], ['castReduce', 'ร่ายเร็ว', 0.025, true], ['dmgReduce', 'ลดดาเมจที่ได้รับ', 0.012, true],
+    ['ccRes', 'ต้านการควบคุม', 0.04, true], ['regenPct', 'ฟื้นฟู HP', 0.25, true], ['spPct', 'SP สูงสุด', 0.04, true], ['dmgPct', 'ดาเมจทั้งหมด', 0.018, true], ['dropPct', 'อัตราดรอป', 0.03, true],
+    ['atk', 'ATK', 0.5, false], ['matk', 'MATK', 0.5, false], ['hp', 'HP', 2.6, false], ['def', 'DEF', 0.3, false]
+  ];
+  for (const el in EL_TH) {
+    MORE_OPTS.push([el + 'Dmg', `ดาเมจธาตุ${EL_TH[el]}`, 0.035, true]);
+    MORE_OPTS.push([el + 'Res', `ต้านธาตุ${EL_TH[el]}`, 0.04, true]);
+  }
+  for (const o of MORE_OPTS) if (!D.OPTIONS.some((x) => x[0] === o[0])) D.OPTIONS.push(o);
+  // name parts from an item's strongest option: "<Prefix> <base> <of Suffix>"
+  D.AFFIX_NAME = {
+    atkPct: ['Brutal', 'of Might'], matkPct: ['Arcane', 'of Sorcery'], hpPct: ['Hearty', 'of the Bear'], defPct: ['Sturdy', 'of the Turtle'], crit: ['Keen', 'of Precision'], critDmg: ['Savage', 'of Ruin'],
+    aspdPct: ['Swift', 'of Haste'], cdr: ['Timeless', 'of Ages'], lifesteal: ['Vampiric', 'of the Leech'], movePct: ['Fleet', 'of the Wind'], str: ['Mighty', 'of the Ox'], agi: ['Nimble', 'of the Cat'],
+    vit: ['Robust', 'of the Oak'], int: ['Wise', 'of the Owl'], dex: ['Deft', 'of the Hawk'], luk: ['Lucky', 'of Fortune'], comboDmg: ['Rhythmic', 'of Chains'], bossDmg: ['Giantslayer', 'of the Titan'],
+    pvpDmg: ['Duelist', 'of Conquest'], pvpRes: ['Stalwart', 'of the Bastion'], mdefPct: ['Warded', 'of Warding'], flee: ['Elusive', 'of Shadows'], hit: ['Accurate', 'of the Eagle'], castReduce: ['Fluent', 'of Incantation'],
+    dmgReduce: ['Bulwark', 'of Endurance'], ccRes: ['Unbending', 'of Will'], regenPct: ['Renewing', 'of Renewal'], spPct: ['Mystic', 'of the Well'], dmgPct: ['Fierce', 'of Slaughter'], dropPct: ['Prospector', 'of Plunder'],
+    atk: ['Sharp', 'of Edges'], matk: ['Charged', 'of Sparks'], hp: ['Vital', 'of Life'], def: ['Plated', 'of Iron'],
+    fireDmg: ['Blazing', 'of Embers'], iceDmg: ['Frigid', 'of Winter'], lightningDmg: ['Shocking', 'of Thunder'], waterDmg: ['Tidal', 'of the Deep'], windDmg: ['Gale', 'of Storms'], earthDmg: ['Quaking', 'of Stone'],
+    holyDmg: ['Hallowed', 'of Light'], darkDmg: ['Umbral', 'of Night'], poisonDmg: ['Venomous', 'of Venom'], bloodDmg: ['Sanguine', 'of Blood'], neutralDmg: ['Pure', 'of Purity'],
+    fireRes: ['Fireproof', 'of the Salamander'], iceRes: ['Insulated', 'of the Yeti'], lightningRes: ['Grounded', 'of the Rod'], waterRes: ['Sealed', 'of the Reef'], windRes: ['Anchored', 'of the Mountain'], earthRes: ['Rooted', 'of the Hills'],
+    holyRes: ['Profane', 'of Heresy'], darkRes: ['Radiant', 'of Dawn'], poisonRes: ['Antidotal', 'of Purging'], bloodRes: ['Clotting', 'of Mending'], neutralRes: ['Tempered', 'of Balance']
+  };
+
+  // ---------------------------------------------------------------- more monster families: every biome gets six more (100+ monster types)
+  const MORE_FAM = {
+    meadow: [['Puffball', 'slime', 'melee', 0, 'wind'], ['Field Mouse', 'beast', 'melee', 0, 'neutral'], ['Honey Moth', 'insect', 'ranged', 0, 'wind'], ['Clover Sprite', 'spirit', 'caster', 0, 'holy'], ['Mud Crab', 'crab', 'melee', 0, 'earth'], ['Scarecrow', 'undead', 'melee', 1, 'neutral']],
+    forest: [['Tusk Boar', 'beast', 'melee', 1, 'earth'], ['Bark Golem', 'golem', 'melee', 0, 'earth'], ['Hornet', 'insect', 'melee', 1, 'poison'], ['Dryad', 'spirit', 'caster', 1, 'earth'], ['Woodland Imp', 'imp', 'caster', 1, 'wind'], ['Grizzly', 'beast', 'melee', 1, 'neutral']],
+    swamp: [['Croco', 'beast', 'melee', 1, 'water'], ['Rot Zombie', 'undead', 'melee', 1, 'poison'], ['Gloom Shroom', 'mushroom', 'caster', 1, 'dark'], ['Mosquito Swarm', 'insect', 'melee', 1, 'blood'], ['Bog Eye', 'eye', 'caster', 1, 'poison'], ['Mire Golem', 'golem', 'melee', 0, 'water']],
+    beach: [['Hermit Crab', 'crab', 'melee', 0, 'earth'], ['Sea Serpent', 'dragon', 'ranged', 1, 'water'], ['Coral Golem', 'golem', 'melee', 0, 'water'], ['Pirate Skeleton', 'undead', 'melee', 1, 'neutral'], ['Siren', 'spirit', 'caster', 1, 'water'], ['Starfish', 'slime', 'melee', 0, 'water']],
+    ruins: [['Lich Acolyte', 'undead', 'caster', 1, 'dark'], ['Stone Sentinel', 'golem', 'melee', 1, 'earth'], ['Ruin Bat', 'bird', 'melee', 1, 'dark'], ['Mimic', 'crab', 'melee', 1, 'neutral'], ['Wraith Knight', 'knight', 'melee', 1, 'dark'], ['Cursed Tome', 'eye', 'caster', 1, 'dark']],
+    desert: [['Sand Golem', 'golem', 'melee', 0, 'earth'], ['Desert Fox', 'beast', 'melee', 1, 'fire'], ['Cactus Brute', 'plant', 'melee', 1, 'earth'], ['Sand Wraith', 'spirit', 'caster', 1, 'wind'], ['Anubis Guard', 'knight', 'melee', 1, 'dark'], ['Fire Ant', 'insect', 'melee', 1, 'fire']],
+    snow: [['Snow Hare', 'beast', 'melee', 0, 'ice'], ['Frost Giant', 'golem', 'melee', 1, 'ice'], ['Ice Wraith', 'spirit', 'caster', 1, 'ice'], ['Penguin Knight', 'knight', 'melee', 1, 'water'], ['Frost Wyrm', 'dragon', 'ranged', 1, 'ice'], ['Snow Slime', 'slime', 'melee', 0, 'ice']],
+    crystal: [['Quartz Bat', 'bird', 'melee', 1, 'lightning'], ['Geode Crab', 'crab', 'melee', 1, 'earth'], ['Crystal Eye', 'eye', 'caster', 1, 'lightning'], ['Amethyst Knight', 'knight', 'melee', 1, 'dark'], ['Lumin Moth', 'insect', 'ranged', 1, 'holy'], ['Mana Elemental', 'spirit', 'caster', 1, 'lightning']],
+    volcano: [['Lava Slime', 'slime', 'melee', 1, 'fire'], ['Hellhound', 'beast', 'melee', 1, 'fire'], ['Obsidian Golem', 'golem', 'melee', 1, 'earth'], ['Flame Knight', 'knight', 'melee', 1, 'fire'], ['Ash Ghoul', 'undead', 'caster', 1, 'fire'], ['Phoenix Chick', 'bird', 'ranged', 1, 'fire']],
+    sky: [['Cloud Sheep', 'beast', 'melee', 0, 'wind'], ['Storm Wisp', 'spirit', 'caster', 1, 'lightning'], ['Valkyrie', 'knight', 'melee', 1, 'holy'], ['Sky Serpent', 'dragon', 'ranged', 1, 'wind'], ['Angel Eye', 'eye', 'caster', 1, 'holy'], ['Feather Golem', 'golem', 'melee', 1, 'wind']],
+    abyss: [['Void Slime', 'slime', 'melee', 1, 'dark'], ['Bone Dragon', 'dragon', 'ranged', 1, 'dark'], ['Abyss Imp', 'imp', 'caster', 1, 'dark'], ['Nightmare', 'beast', 'melee', 1, 'dark'], ['Soul Eater', 'eye', 'caster', 1, 'dark'], ['Void Golem', 'golem', 'melee', 1, 'dark']]
+  };
+  for (const b in MORE_FAM) if (D.FAMILIES[b]) for (const f of MORE_FAM[b]) if (!D.FAMILIES[b].some((x) => x[0] === f[0])) D.FAMILIES[b].push(f);
+  D.FAMILY_COUNT = new Set(Object.values(D.FAMILIES).flat().map((f) => f[0])).size;
+
   // ---------------------------------------------------------------- regions
   D.REGIONS = [
     { id: 'aurelia', n: 'Aurelia Plains', th: 'ที่ราบออเรเลีย', town: 'aurelia', adj: 'Aurelian', maps: [0, 1, 2, 3, 4], color: '#7ad05a' },

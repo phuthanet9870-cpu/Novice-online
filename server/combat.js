@@ -229,6 +229,9 @@ C.dealDamage = function (src, tgt, o) {
     if (srcP && src.kind === 'p') { if (src.nextCrit || W.rand() * 100 < src.st.crit + (o.critBonus || 0)) { src.nextCrit = false; crit = true; dmg *= 1 + src.st.critDmg / 100; } }
     else if (src.kind === 'm' && W.rand() < 0.05) { crit = true; dmg *= 1.5; }
     dmg *= elementMod(o.el, tgt.element);
+    const elk = o.el || 'neutral';
+    if (src.kind === 'p' && src.gear && src.gear[elk + 'Dmg']) dmg *= 1 + src.gear[elk + 'Dmg'] / 100;
+    if (tgt.kind === 'p' && tgt.gear && tgt.gear[elk + 'Res']) dmg *= 1 - Math.min(60, tgt.gear[elk + 'Res']) / 100;
     if (tgt.exposeUntil > t) dmg *= 1 + tgt.exposePct / 100;
     if (src.weakUntil > t) dmg *= 1 - src.weakPct / 100;
     if (tgt.tags.has('knockdown')) dmg *= 1.1;
@@ -290,7 +293,7 @@ C.dealDamage = function (src, tgt, o) {
   }
   if (tgt.kind === 'p' && tgt.pfx && tgt.pfx.thorns && o.kind !== 'reflect' && o.kind !== 'dot' && !src.dead && src.inst === inst && src !== tgt) C.dealDamage(tgt, src, { flat: Math.round(dmg * Math.min(80, tgt.pfx.thorns) / 100), kind: 'reflect' });
   if (src.kind === 'p') { src._dealt = (src._dealt || 0) + dmg; if (crit) src._crits = (src._crits || 0) + 1; }
-  inst.emit({ k: 'hit', t: tgt.id, x: tgt.x, y: tgt.y, d: dmg, c: crit ? 1 : 0, r: o.reaction || undefined, el: o.el, dot: o.kind === 'dot' ? 1 : undefined, s: srcP ? srcP.id : 0 });
+  inst.emit({ k: 'hit', t: tgt.id, x: tgt.x, y: tgt.y, d: dmg, c: crit ? 1 : 0, r: o.reaction || undefined, el: o.el, dot: o.kind === 'dot' ? 1 : undefined, s: srcP ? srcP.id : src.id || 0, sk: o.sk ? o.sk.id : undefined });
   // reflect
   if (tgt.kind === 'p' && tgt.flags.reflect && o.kind !== 'reflect' && o.kind !== 'dot' && !src.dead && src.inst === inst) {
     C.dealDamage(tgt, src, { flat: Math.round(dmg * tgt.flags.reflect / 100), kind: 'reflect' });
