@@ -830,7 +830,7 @@
 
   // ---------------------------------------------------------------- world map / teleport
   WIN.map = {
-    title: '🗺 แผนที่โลก & เทเลพอร์ต', w: 760,
+    title: '🗺 แผนที่โลก & เทเลพอร์ต', w: 900,
     onOpen() { G.send({ t: 'info', what: 'boss' }); },
     render() {
       const boss = (UI.lastInfo && UI.lastInfo.boss) ? Object.fromEntries(UI.lastInfo.boss.list.map((b) => [b.map, b])) : {};
@@ -840,7 +840,7 @@
         const b = boss[f.name]; const ok = G.char.lv >= f.min - 5;
         return `<div class="farm ${ok ? '' : 'hard'}"><span class="biome" style="background:${D.BIOMES[f.biome].ground[0]}"></span><div><b>${f.name}</b> ${f.pk ? '<span class="badge red">PK</span>' : ''}<small>${f.th} · Lv ${f.min}–${f.max} · ${f.w}×${f.h}</small><small>${b ? (b.alive ? '👹 Field Boss อยู่!' : b.next != null ? `บอสเกิดใน ${Math.ceil(b.next / 60)} นาที` : '') : ''}</small></div><button class="btn tiny" data-act="warp" data-m="${f.id}" ${inTown || G.char.gm ? '' : 'disabled'}>${f.min * 15}z</button></div>`;
       }).join('')}</div>`).join('');
-      return `<div class="mapTop"><div class="curMap"><canvas id="bigMap" width="220" height="220"></canvas><div><b>${esc(G.info.name)}</b><small>${esc(G.info.th)}</small><small>ตำแหน่ง ${G.self.x | 0}, ${G.self.y | 0}</small><small>${G.map.w}×${G.map.h} ช่อง</small></div></div>
+      return (UI.worldMapHtml ? UI.worldMapHtml() : '') + `<div class="mapTop"><div class="curMap"><canvas id="bigMap" width="220" height="220"></canvas><div><b>${esc(G.info.name)}</b><small>${esc(G.info.th)}</small><small>ตำแหน่ง ${G.self.x | 0}, ${G.self.y | 0}</small><small>${G.map.w}×${G.map.h} ช่อง</small></div></div>
         <div class="towns">${towns}</div></div>
         ${inTown ? '' : '<div class="warn">วาร์ปไปแผนที่ฟาร์มได้จากในเมือง (Gatekeeper) — ใช้ Return Scroll / Waygate เพื่อกลับเมือง</div>'}
         <div class="special"><button class="btn" data-act="warp" data-m="pvp_arena">⚔ Blood Colosseum (PvP)</button><button class="btn" data-act="warp" data-m="wb_arena">🌋 Ruined Sanctum (World Boss)</button><button class="btn" data-act="dg">🗼 ดันเจี้ยน 5×1000 ชั้น</button></div>
@@ -849,7 +849,7 @@
     act(a, d) { if (a === 'warp') G.send({ t: 'warp', map: d.m }); if (a === 'dg') UI.show('dungeon'); }
   };
   const _renderWin = renderWin;
-  renderWin = function (name) { _renderWin(name); if (name === 'map') drawBigMap(); };
+  renderWin = function (name) { _renderWin(name); if (name === 'map') { drawBigMap(); if (UI.drawWorldMap) UI.drawWorldMap(); } };
   UI.renderWin = renderWin;
   function drawBigMap() {
     const cv = document.getElementById('bigMap'); if (!cv || !G.mini) return;

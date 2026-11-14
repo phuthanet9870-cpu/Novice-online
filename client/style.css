@@ -950,3 +950,11 @@ body.touch #chat { display: none; }
 .lb2Main .lbPage.case { inset: 70px 20px 90px 240px; }
 @media (max-width: 900px) { .lb2Menu { top: 80px; width: 150px; } .lb2Menu button { padding: 8px 10px; font-size: 12px; } .lb2Cards { display: none; } .lb2Hero .nm { left: auto; right: 0; bottom: 4%; } .lb2Enter { width: 200px; height: 56px; font-size: 24px; } .lb2Tabs button { padding: 0 8px; font-size: 11px; } .lb2Main .lbPage { inset: 80px 10px 90px 160px; } .lb2Chat { display: none; } }
 #lobby .lbBg { background: url(assets/ui/lobby_bg.webp) center / cover no-repeat; filter: none; transform: none; }
+
+/* world map */
+.worldMapBox { margin-bottom: 10px; }
+.worldMapBox canvas { width: 100%; height: auto; display: block; border: 1px solid rgba(232, 192, 104, .35); border-radius: 6px; cursor: crosshair; }
+.wmLegend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 6px; font-size: 11px; color: #c9bfa6; align-items: center; }
+.wmLegend i { display: inline-block; width: 12px; height: 12px; margin-right: 4px; vertical-align: -2px; border-radius: 50%; }
+.wmLegend i.town { border: 2px solid #e8c068; } .wmLegend i.farm { border: 2px solid #7a6aa8; } .wmLegend i.road { width: 18px; height: 3px; border-radius: 0; background: #ffd678; }
+.wmLegend i.gate { width: 10px; height: 6px; background: #9a7aff; } .wmLegend i.here { border: 2px solid #5ad0ff; } .wmLegend .sep { color: #8f8570; }
