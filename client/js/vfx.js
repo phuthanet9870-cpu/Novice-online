@@ -489,9 +489,29 @@
 
   // ------------------------------------------------------------------ effect painters: draw(g, e, k) with k = 0..1
   const DRAW = {};
+  // ---- the arrow: a fixed pixel sprite (white + red fletching, banded wooden shaft, steel head, speed lines),
+  //      drawn after the effect layer so its colours are never re-mapped to a skill palette
+  const ARROW = (() => {
+    if (typeof document === 'undefined') return null;
+    const W = 72, H = 13, c = document.createElement('canvas'); c.width = W; c.height = H; const q = c.getContext('2d');
+    const px = (x, y, col, w = 1, h = 1) => { q.fillStyle = col; q.fillRect(x, y, w, h); };
+    // speed lines behind the arrow (detached dashes)
+    px(0, 2, '#7f86a8', 3, 1); px(5, 2, '#7f86a8', 13, 1); px(20, 2, '#7f86a8', 7, 1); px(16, 10, '#b4bce0', 7, 1); px(25, 10, '#e4e8f8', 2, 1);
+    // fletching: white upper feathers, red lower feathers
+    px(31, 2, '#f4f0e6', 3, 1); px(32, 3, '#f4f0e6', 4, 1); px(33, 4, '#e8e0cc', 5, 1); px(34, 5, '#d8cfb8', 3, 1);
+    px(34, 7, '#a83030', 3, 1); px(33, 8, '#b83a3a', 4, 1); px(32, 9, '#a03030', 3, 1); px(31, 10, '#8a2626', 3, 1);
+    // shaft: wood with lighter bands and a dark underside
+    px(31, 6, '#5a3818', 34, 1); px(32, 6, '#8a5a2a', 32, 1);
+    for (const x of [44, 50, 56, 62]) px(x, 6, '#c8964a', 2, 1);
+    // steel head
+    px(64, 4, '#e8eef8', 2, 1); px(64, 5, '#c8d0e0', 4, 1); px(64, 6, '#f8fbff', 7, 1); px(71, 6, '#ffffff', 1, 1); px(64, 7, '#8a94aa', 4, 1); px(64, 8, '#5a6478', 2, 1);
+    return c;
+  })();
+  const sprites = [];
   DRAW.proj = (g, e, k) => {
     const x = e.x + (e.tx - e.x) * k, y0 = e.y + (e.ty - e.y) * k, lift = e.arc ? Math.sin(k * Math.PI) * 2.2 + 0.4 : 0.75, y = y0 - lift;
     const c = e.pal, a = e.ang, cs = Math.cos(a), sn = Math.sin(a), sz = e.small ? 0.7 : e.big ? 1.6 : 1;
+    if (e.style === 'arrow' && ARROW) { sprites.push({ img: ARROW, x, y, a: Math.atan2(sn * FLOOR + (e.arc ? -Math.cos(k * Math.PI) * 0.9 : 0), cs), len: 3.2 * sz }); return; }
     P.ellipse(g, x, y0, 0.22 * sz, 0.09 * sz, '#000', 0.35);
     const tl = (0.6 + (e.trail || 0) * 0.3) * sz;
     for (let i = 1; i <= 5; i++) { const q = i / 5; P.ellipse(g, x - cs * tl * q, y - sn * tl * q * FLOOR, 0.11 * sz * (1 - q * 0.7), 0.08 * sz * (1 - q * 0.7), P.col(c, 6 - i), 0.8 - q * 0.6); }
@@ -820,6 +840,14 @@
       if (!root.G || !G.fx || G.fx().bloom) { g.imageSmoothingEnabled = true; g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.16;
       g.drawImage(bloom, 0, 0, bw * 4 * px, bh * 4 * px); }
       g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+      // crisp pixel sprites (arrows) on top, in world position, nearest-neighbour scaled
+      g.imageSmoothingEnabled = false;
+      for (const sp of sprites) {
+        const w = sp.len * view.scale, s1 = w / sp.img.width;
+        g.save(); g.translate(view.ox + sp.x * view.scale, view.oy + sp.y * view.scale); g.rotate(sp.a);
+        g.drawImage(sp.img, -w * 0.72, -sp.img.height * s1 / 2, w, sp.img.height * s1); g.restore();
+      }
+      sprites.length = 0;
       g.imageSmoothingEnabled = sm; g.restore();
     }
     for (let i = debris.length - 1; i >= 0; i--) {
