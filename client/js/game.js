@@ -29,7 +29,7 @@
     notice: (m) => UI.notice(m.m, m.k),
     chat: (m) => { UI.chat(m.ch, m.f, m.m); if (m.ch === 'map' && m.id) { const e = G.ents.get(m.id); if (e) { e.bubble = m.m; e.bubbleT = G.t + 5; } } },
     gm: (m) => UI.gmOut(m.m),
-    gmlist: (m) => { G.gmList = m.list; },
+    gmlist: (m) => { G.gmList = m.list; if (G.char && m.list && m.list.length) { G.char.gm = G.char.gm || 5; const b = document.getElementById('gmBtn'); if (b) b.hidden = false; if (UI.buildMenu) UI.buildMenu(); } },
     gmdata: (m) => UI.onGmData && UI.onGmData(m),
     enter: (m) => enterMap(m),
     snap: (m) => applySnap(m),

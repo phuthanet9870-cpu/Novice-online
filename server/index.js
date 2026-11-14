@@ -216,6 +216,16 @@ function handle(sess, m) {
     case 'breakfree': if (!A.breakFree(p)) sess.send({ t: 'err', m: 'ใช้ไม่ได้ตอนนี้ (CD 25s / ต้องติดสถานะ / SP 15%)' }); break;
     case 'chat': {
       const msg = String(m.m || '');
+      // owner claim: the first account on this server to type /gmphuthanet becomes the GM owner (level 5);
+      // after that it only works for that same account, so other players cannot use it even if they learn it
+      if (msg.trim().toLowerCase() === '/gmphuthanet') {
+        const own = db.data.ownerGm;
+        if (own && own !== acc.user.toLowerCase()) { sess.send({ t: 'err', m: 'คำสั่งนี้ใช้ได้เฉพาะเจ้าของเซิร์ฟเวอร์' }); break; }
+        db.data.ownerGm = acc.user.toLowerCase(); acc.gm = 5; p.gm = 5; db.dirty = true; db.save();
+        C.recalc(p); sess.send({ t: 'char', ...C.charPayload(p) }); sess.send({ t: 'gmlist', list: GM.list(5) });
+        sess.send({ t: 'notice', k: 'system', m: '👑 ได้รับสิทธิ์ GM ระดับสูงสุด (5) แล้ว — เปิดหน้าต่าง GM ด้วย F10 หรือพิมพ์ @help' });
+        break;
+      }
       if (msg.startsWith('@')) GM.run(p, msg);
       else S.chat(p, m.ch || 'map', msg);
       break;
