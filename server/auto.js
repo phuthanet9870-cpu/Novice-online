@@ -218,11 +218,23 @@ A.update = function (p, dt, t) {
     if (a._planKey !== key) { a._planKey = key; a._plan = F.autoPlan(Object.keys(ch.skills).map((id) => SKILLS[id]).filter(Boolean), a.fight); }
     rot = a._plan;
   }
+  // skill choice — every skill in the set rotation gets used, not just the first one that is ready:
+  //  1. entries with a condition (opener, target HP below, tag, mobs around …) fire as soon as their condition holds, in list order
+  //  2. otherwise the ready 'always' entry that has waited longest since its last use (round-robin), ties go to list order
+  //  skills the server refused (out of range, blocked …) are skipped for 1.5 s so the rotation keeps moving
+  a.used = a.used || {}; a.fail = a.fail || {};
+  const usable = (id) => skillReady(p, id, t) && !(a.fail[id] > t);
   let choice = null;
   if (a.useUlt !== 'never' && (a.useUlt === 'always' || tgt.rank >= 1 || tgt.kind === 'p')) {
-    for (const id in ch.skills) if (SKILLS[id].kind === 'ult' && !SKILLS[id].gauge && skillReady(p, id, t)) { choice = id; break; }
+    const ults = Object.keys(ch.skills).filter((id) => SKILLS[id] && SKILLS[id].kind === 'ult' && !SKILLS[id].gauge && usable(id)).sort((x, y) => (a.used[x] || 0) - (a.used[y] || 0));
+    if (ults.length) choice = ults[0];
   }
-  if (!choice) for (const e of rot) { if (skillReady(p, e.id, t) && condOk(p, e, tgt, a)) { choice = e.id; break; } }
+  if (!choice) {
+    const ready = rot.map((e, i) => ({ e, i })).filter(({ e }) => usable(e.id) && condOk(p, e, tgt, a));
+    const gated = ready.find(({ e }) => e.cond && e.cond !== 'always');
+    const pick = gated || ready.sort((x, y) => ((a.used[x.e.id] || 0) - (a.used[y.e.id] || 0)) || (x.i - y.i))[0];
+    if (pick) choice = pick.e.id;
+  }
   const d = W.dist(p, tgt);
   if (choice) {
     const sk = SKILLS[choice];
@@ -230,7 +242,8 @@ A.update = function (p, dt, t) {
     if (d > need) { a.moveTo = { x: tgt.x, y: tgt.y, r: need * 0.85 }; W.stepToward(p, tgt.x, tgt.y, dt, need * 0.85); return; }
     a.moveTo = null;
     const res = C.useSkill(p, choice, tgt.id);
-    if (res && res.ok) return;
+    if (res && res.ok) { a.used[choice] = t; return; }
+    if (!(res && res.gcd)) a.fail[choice] = t + 1.5;
   }
   p.atkTarget = tgt.id;
   const br = p.st.range + (tgt.size || 0.6) * 0.4;
