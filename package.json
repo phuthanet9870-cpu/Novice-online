@@ -4,10 +4,10 @@
   "description": "HTML5 online action MMORPG \u2014 combo skills, PvP, Guild War, World Boss, refine +20, 5 dungeons x 1000 floors",
   "main": "server/index.js",
   "scripts": {
-    "build:skills": "node tools/build-classes.js && node tools/gen-class-docs.js && node tools/build-skills.js",
-    "start": "node tools/build-skills.js && node server/index.js",
+    "build:skills": "node tools/build-classes.js && node tools/build-skills5.js",
+    "start": "node tools/build-skills5.js && node server/index.js",
     "dev": "node server/index.js",
-    "build:artifact": "node tools/build-skills.js && node tools/build-artifact.js"
+    "build:artifact": "node tools/build-skills5.js && node tools/build-artifact.js"
   },
   "engines": {
     "node": ">=18"

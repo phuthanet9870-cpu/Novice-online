@@ -40,7 +40,7 @@ I.newChar = function (acc, name, cls) {
   const ch = {
     id, acc: acc.user.toLowerCase(), name, cls, lv: 1, exp: 0, statPts: 5, stats: Object.assign({}, c.start), skillPts: 3, skills: {},
     hotbar: new Array(50).fill(null), inv: [], equip: {}, zeny: 2500, map: 'aurelia', lastTown: 'aurelia', x: undefined, y: undefined,
-    dungeonBest: {}, created: Date.now(), ult: 0, pity: 0, kills: 0, pvpKills: 0, kitVer: 5
+    dungeonBest: {}, created: Date.now(), ult: 0, pity: 0, kills: 0, pvpKills: 0, kitVer: 6
   };
   const first = CLASS_SKILLS[cls][0];
   ch.skills[first] = 1; ch.hotbar[0] = first;

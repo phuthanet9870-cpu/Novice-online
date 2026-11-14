@@ -1,0 +1,71 @@
+// Chrono Stalker — a chakram hunter who bends time: delays, rewinds, repeats and stops it.
+// Concept sources (ideas only): time mages that rewind position/HP, "replay" mechanics that repeat a hit, stasis fields,
+// delayed-detonation marks, cooldown manipulation.
+module.exports = {
+  material: 'clock',
+  concept: 'นักล่าที่ใช้จักรคู่บิดเวลา — ทุกสกิลเป็นกลไกนาฬิกา: เข็ม เฟือง หน้าปัด ทราย ย้อน/หยุด/เร่ง/ทำซ้ำเวลา',
+  inspired: 'จอมเวทย้อนเวลา, ระบบ replay ซ้ำการโจมตี, สนามหยุดเวลา, ระเบิดหน่วงเวลา',
+  passives: [
+    ['Second Hand', 'stat', 'aspd8 cdr5', 'เข็มวินาทีเดินเร็วกว่าคนอื่นเสมอ'],
+    ['Borrowed Second', 'skill', 'ch15 icd4 | cdr1', 'บางครั้งสกิลที่โดนจะคืนเวลาให้สกิลอื่น'],
+    ['Pendulum', 'hurt', 'ch20 icd8 | rewind2', 'ถูกตีแล้วบางครั้งตัวจะย้อนกลับไปที่เดิม 2 วิก่อน'],
+    ['Hourglass Heart', 'lowhp', 'icd30 | immune1.5 heal10', 'ใกล้ตายเมื่อไหร่ ทรายในใจหยุดไหล 1.5 วิ'],
+    ['Clockwork Precision', 'crit', 'd0.6 icd2 | slow2', 'คริติคอลทุกครั้งปล่อยเข็มนาฬิกาซ้ำอีกนัด']
+  ],
+  actives: [
+    ['Tick Disc', 'bolt d1.5 l8 | res+1 slow1', 'จักรเล็กพุ่งตรง ติ๊ก! เก็บแต้มเวลา'],
+    ['Tock Return', 'boomer d0.9 l7 | slow1.5', 'ขว้างจักรไปแล้ววกกลับ ช่วงขากลับทำให้เป้าช้าลง'],
+    ['Minute Fan', 'fan d0.7 n3 a30 | vs:slow+40', 'จักรสามใบแผ่เป็นเข็มนาที'],
+    ['Pocket Watch Trap', 'mine d1.6 r2 t12 | freeze1.2', 'นาฬิกาพกระเบิดเมื่อเหยียบ หยุดเวลาเป้าชั่วขณะ'],
+    ['Gear Grinder', 'orbit d0.45 n2 r1.7 t4 | sunder', 'เฟืองสองชิ้นหมุนรอบตัวบดเกราะ'],
+    ['Déjà Vu', 'burst d1.1 r2 | echo70', 'ระเบิดเล็กที่เกิดซ้ำอีกครั้งเหมือนเคยเห็นมาก่อน'],
+    ['Pendulum Swing', 'sweep d0.8 l5 a160 h5 | push2', 'ลูกตุ้มยักษ์เหวี่ยงกวาดครึ่งวง'],
+    ['Alarm Bell', 'nova d0.9 r4 | stun0.8 weaken10', 'ระฆังปลุกดังก้อง คลื่นเสียงทำให้มึน'],
+    ['Stopwatch Pin', 'thrust d1.4 l4 | root1.5 next20', 'ตอกเข็มจับเวลาตรึงเป้า'],
+    ['Sand Spill', 'arc d1 r2.4 | slow3 blind1', 'โยนนาฬิกาทรายแตก ทรายฟุ้งปิดตา'],
+    ['Lapse Step', 'blink d1.6 | behind+60 haste20', 'ก้าวข้ามเสี้ยววินาทีไปอยู่หลังเป้า'],
+    ['Overwind', 'self | res+3 hpcost6 next40', 'ไขลานตัวเองจนสุด แลกเลือดเพื่อพลังเวลา'],
+    ['Delayed Second', 'mark d2.2 dl2 r2.2 | vs:slow+50', 'ประทับเข็มวินาที ระเบิดเมื่อครบเวลา'],
+    ['Escapement', 'dash d0.9 l5 | cleanse haste25', 'กลไกปลดเฟืองให้หลุดจากทุกพันธนาการ'],
+    ['Twelve Strikes', 'star d0.55 n12 l3.5 | crit+15', 'หน้าปัดแตกเป็น 12 เข็มพุ่งออกทุกชั่วโมง'],
+    ['Rewind Shot', 'bolt d1.2 l9 | rewind2', 'ยิงแล้วดึงตัวเองย้อนกลับไปที่เดิม'],
+    ['Chime Chain', 'bounce d1 n5 l5 | shock1', 'เสียงกริ่งเด้งต่อจากเป้าหนึ่งไปอีกเป้า'],
+    ['Cuckoo Burst', 'homing d0.8 n4 l9 | 30%stun1', 'นกกาเหว่าโผล่จากนาฬิกาบินจิกเป้า'],
+    ['Stasis Ring', 'ring d1.3 r3.2 w1.2 | freeze1.5', 'วงแหวนหยุดเวลา ใครยืนบนขอบแข็งค้าง'],
+    ['Slow Hour Field', 'field d0.35 r3.2 t6 k1 | slow2 weaken15', 'อาณาเขตที่เวลาเดินช้าลงครึ่งหนึ่ง'],
+    ['Tick-Tock Combo', 'slash d0.7 r2.3 a100 h2 | combo+3 >> thrust d0.8 l3.5 | pop:slow+70', 'ฟันซ้ายขวาแล้วแทงปิดท้าย'],
+    ['Hand of the Hour', 'pierce d1.6 l11 w1 | pierce+25 slow1', 'เข็มชั่วโมงยาวพุ่งทะลุทั้งแนว'],
+    ['Paradox Split', 'split d1.2 n3 sub0.6 | expose12', 'จักรแตกเป็นอนาคตหลายทาง'],
+    ['Time Debt', 'tether d0.5 h5 t2.5 l8 | drain30 slow1', 'ยืมเวลาชีวิตเป้ามาใช้ ดูดเลือดตามสาย'],
+    ['Grandfather Drop', 'meteor d2.6 r2.8 dl1.4 | knockdown1.5', 'นาฬิกาตั้งพื้นยักษ์ตกลงจากฟ้า'],
+    ['Spring Recoil', 'cone d1.3 r4 a60 | push3 back3 cdr1', 'สปริงดีดกลับ ผลักทั้งเป้าและตัวเอง'],
+    ['Leap Second', 'leap d1.4 l6 r2.4 | refund25', 'กระโดดแทรกวินาทีพิเศษเข้าไปในเวลา'],
+    ['Gearstorm', 'rain d0.7 n10 r3.6 t1.5 | armorbreak5 slow1', 'เฟืองร่วงเป็นห่าฝน'],
+    ['Clockwork Hound', 'summon d1.5 n1 t15 nm=หมากลไก | haste20', 'หมาไขลานวิ่งกัดเป้าให้'],
+    ['Midnight Toll', 'echo d0.9 r2.2 h4 k0.5 | silence1', 'ระฆังเที่ยงคืนดังซ้ำ 4 ครั้ง'],
+    ['Hourglass Vortex', 'vortex d0.45 r3.4 h6 t2.4 | slow2', 'ทรายในนาฬิกาดูดทุกอย่างลงก้นแก้ว'],
+    ['Time Skip', 'swap d1.3 | stealth1', 'กระโดดข้ามเวลาไปแทนที่เป้า'],
+    ['Overclock Beam', 'beam d0.5 l10 w0.9 h6 t1.2 | haste15', 'เร่งเฟืองจนเกิดลำแสงความร้อน'],
+    ['Calendar Rain', 'drop d1 n6 l8 | mark', 'หน้าปฏิทินฉีกขาดร่วงเป็นแนว'],
+    ['Wound Back', 'self | rewind3 cleanse cdr1', 'ย้อนตัวเองกลับไปก่อนโดนแผล'],
+    ['Fracture of Now', 'shards d1.2 n8 l4.5 sub0.7 | freeze1', 'แก้วของปัจจุบันแตกกระจาย'],
+    ['Paradox Wall', 'wall d0.5 l6 t4 k0.7 | root1 weaken10', 'กำแพงเวลาที่ก้าวข้ามไม่ได้'],
+    ['Spiral of Ages', 'spiral d0.6 r5.5 h7 t1.4 | lift1', 'เกลียวกาลเวลาหมุนกวาดออกไป'],
+    ['Final Countdown', 'mark d3.4 dl3 r2.6 | low30 exec12 slow2', 'นับถอยหลังสู่จุดจบ'],
+    ['Eternal Recurrence', 'chainline d0.9 n5 l7 | echo60 res+2', 'ทุกเป้าถูกเชื่อมกับช่วงเวลาซ้ำไม่รู้จบ']
+  ],
+  ults: [
+    ['World Stop', 'nova d0.3 r12 | freeze3 >> rain d1.2 n18 r6 t2 | vs:freeze+80', 'หยุดเวลาทั้งจอ แล้วโปรยจักรค้างกลางอากาศ'],
+    ['Rewind the World', 'self | rewind5 pheal35 pcleanse >> nova d1 r7 | slow3', 'ย้อนเวลาให้ทั้งปาร์ตี้'],
+    ['Thousand Ticks', 'aura d0.5 r3.2 t5 k0.25 | res+1', 'จักรหมุนรอบตัวพันรอบในห้าวินาที'],
+    ['Big Ben', 'meteor d5 r5 dl2 | stun2 >> echo d1.2 r5 h3 k0.6 | knockdown1', 'หอนาฬิกายักษ์ร่วงลงแล้วตีบอกเวลา'],
+    ['Eternal Hour', 'self | buff:cdr45,aspd35,move20/12 immune2', 'แปลงร่างเป็นนาฬิกามีชีวิต เวลาของเราเร็วกว่าโลก']
+  ],
+  buffs: [
+    ['Accelerate', 'aspd18 move12', 600, 0],
+    ['Time Dilation', 'cdr10', 600, 0],
+    ['Foresight', 'flee30 crit8', 15, 0],
+    ['Borrowed Time', 'regen150 sp15', 900, 0],
+    ['Temporal Anchor', 'ccimm dr15', 8, 0]
+  ]
+};

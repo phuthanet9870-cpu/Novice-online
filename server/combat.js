@@ -11,7 +11,9 @@ const P = require('./progress');
 const C = module.exports;
 const T = require('../shared/passives.js');
 const WMx = require('./wbmech');
+const SV = require('./skillvm');
 WMx.init(C, W, S);
+SV.init(C, W);
 const now = () => Date.now() / 1000;
 const HARD = new Set(D.TAG_IDS.filter((t) => D.TAGS[t].cc === 'hard'));
 const DOT = { bleed: 1, poison: 1, burn: 1 };
@@ -58,6 +60,7 @@ C.recalc = function (p) {
       mods[k] = (mods[k] || 0) + v;
     }
   }
+  { const pm = SV.passiveMods(p); for (const k in pm) { if (k === 'cdr') cdrBonus += pm[k]; else if (['ccImmune', 'stealth', 'summonBuff'].includes(k)) p.flags[k] = 1; else mods[k] = (mods[k] || 0) + pm[k]; } }
   const ext = P.extraMods(p);
   for (const k in ext) { if (k === 'cdr') cdrBonus += ext[k]; else if (k !== 'expPct') mods[k] = (mods[k] || 0) + ext[k]; }
   const castle = S.castleBonus(p);
@@ -288,7 +291,8 @@ C.dealDamage = function (src, tgt, o) {
     inst.emit({ k: 'txt', t: tgt.id, x: tgt.x, y: tgt.y, m: 'LAST STAND!', c: '#ffd34a', big: 1 });
   }
   tgt.hp -= dmg;
-  if (tgt.kind === 'p' && o.kind !== 'dot') tgt.lastHurt = t;
+  if (src.kind === 'p' && tgt !== src && !tgt.dead) SV.onDealt(src, tgt, dmg, crit, o);
+  if (tgt.kind === 'p' && o.kind !== 'dot') { tgt.lastHurt = t; SV.onHurt(tgt, dmg, src); }
   if (src.kind === 'p' && src.pfx && o.kind !== 'dot' && o.kind !== 'reflect') {
     const pf = src.pfx;
     if (crit && pf.critHeal && (src._critHealAt || 0) < t - 1) { src._critHealAt = t; C.heal(src, src.maxHp * pf.critHeal / 100, src, true); }
@@ -347,6 +351,7 @@ C.onDeath = function (e, killer) {
     if (e.dmgBy.size) { let bd = 0; for (const [pid, d] of e.dmgBy) if (d > bd) { const q = inst.entities.get(pid); if (q) { bd = d; best = q; } } }
     if (best && !e.owner) I.onMonsterKilled(e, best);
     if (kp && kp.pfx) C.onKillFx(kp, e);
+    if (kp) SV.onKill(kp, e);
     for (const p of inst.players) if (p.auto && p.auto.target === e) p.auto.target = null;
     if (e.rank >= 2 && e.rank !== 4) S.onBossDeath(e, best);
     if (e.rank === 4) S.onWorldBossDeath(e, best);
@@ -456,6 +461,7 @@ C.updatePlayer = function (p, dt, t, sec) {
       }
     }
   }
+  SV.tick(p, t, sec);
   if (sec) C.secondTick(p, t);
 };
 // class resource gain (original rules; the Gunslinger's Heat now lives on the Marksman, Element Orbs on the Elementalist id)
@@ -734,6 +740,8 @@ const execCore = function (p, sk, lv, tgt, ax, ay) {
   if (sk.kind !== 'buff' && sk.shape !== 'self' && !sk.stealth && p.stealthUntil > t && !p.flags.stealth) p.stealthUntil = Math.min(p.stealthUntil, t + 0.1);
   if (tgt) { p.dir = Math.atan2(tgt.y - p.y, tgt.x - p.x); if (sk.kind === 'attack') p.atkTarget = tgt.id; }
   else if (ax !== undefined) p.dir = Math.atan2(ay - p.y, ax - p.x);
+  // ---- v5 programs (hand-designed skills, server/skillvm.js)
+  if (sk.prog) { inst.emit({ k: 'svc', s: p.id, sk: sk.id, x: p.x, y: p.y, u: sk.kind === 'ult' ? 1 : 0 }); SV.run(p, sk, lv, tgt, ax, ay); return afterCast(p, sk, true); }
   const el = (sk.element === 'neutral' && p.weaponEl) ? p.weaponEl : sk.element;
 
   // ---- buffs (B)
@@ -912,6 +920,8 @@ function lowestAlly(p, r) {
   return best;
 }
 C.partyNear = partyNear;
+C.pushAway = (o, x, y, d) => pushAway(o, x, y, d);
+C.pullTo = (o, x, y, d) => pullTo(o, x, y, d);
 function pushAway(o, fx, fy, dist) {
   const a = Math.atan2(o.y - fy, o.x - fx);
   for (let i = 0; i < dist * 4; i++) { const nx = o.x + Math.cos(a) * 0.25, ny = o.y + Math.sin(a) * 0.25; if (!M.walkable(o.inst.map, nx, ny)) { if (i < dist * 4 - 1) C.applyTag(o, 'stun', 1, 0.8, null, { quiet: true }); break; } o.inst.moveTo(o, nx, ny); }

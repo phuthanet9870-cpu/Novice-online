@@ -170,7 +170,7 @@ const CMDS = {
   auto: [3, '@auto <on|off|reset> [map]', 'อนุญาต/ห้ามออโต้ในแผนที่', (p, a) => { const id = a[1] || p.inst.mapId; const f = W.flags[id] = W.flags[id] || {}; if (a[0] === 'reset') delete f.noAuto; else f.noAuto = a[0] === 'off'; for (const q of W.players.values()) if (q.inst && q.inst.mapId === id && f.noAuto && q.auto.on) A.setOn(q, false); return `${id} auto=${!f.noAuto}`; }],
   weather: [2, '@weather <none|rain|snow|ash|petals> [map]', 'สภาพอากาศ', (p, a) => { const id = a[1] || p.inst.mapId; (W.flags[id] = W.flags[id] || {}).weather = a[0] === 'none' ? '' : a[0]; for (const q of W.players.values()) if (q.inst && q.inst.mapId === id) q.sess && q.sess.send({ t: 'weather', w: W.flags[id].weather }); return 'ok'; }],
   reload: [5, '@reload', 'คอมไพล์สกิลจาก docs ใหม่ + โหลดใหม่ (ไม่ต้องรีสตาร์ท)', () => {
-    require('child_process').execFileSync(process.execPath, [require('path').join(__dirname, '..', 'tools', 'build-skills.js')]);
+    require('child_process').execFileSync(process.execPath, [require('path').join(__dirname, '..', 'tools', 'build-skills5.js')]);
     const pth = require.resolve('../shared/skills.js'); delete require.cache[pth];
     const fresh = require('../shared/skills.js'); Object.assign(SKILLS, fresh.SKILLS); Object.assign(CLASS_SKILLS, fresh.CLASS_SKILLS);
     S.broadcast({ t: 'reloadSkills' }); return `reloaded ${Object.keys(SKILLS).length} skills`;

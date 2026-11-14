@@ -360,6 +360,8 @@
         if (window.SFX && !f.h && !f.dot) { if (f.t === G.me) SFX.hurt(); else SFX.hit(f.c, f.el, mine); }
         break;
       }
+      case 'sv': if (window.VFX5) VFX5.on(f); break;
+      case 'svc': { const c = G.ents.get(f.s); if (c) c.attackAt = t; if (window.VFX5) VFX5.on({ f: 'cast', s: f.s, sk: f.sk, x: f.x, y: f.y }); if (window.SFX && f.s === G.me) SFX.swing(); if (f.u && window.VFX && VFX.ok && VFX.dim) VFX.dim(0.35); break; }
       case 'cast': {
         const col = ELC(f.el);
         const caster = G.ents.get(f.s); if (caster) caster.attackAt = t;
@@ -501,6 +503,7 @@
     drawAnims(g);
     if (window.VFX && VFX.ok) VFX.setView({ ox, oy, scale, W, H, dpr: G.dpr, sx: sx * G.dpr, sy: sy * G.dpr });
     if (window.VFX && VFX.ok) { if ((G._stT = (G._stT || 0) + dt) > 0.15) { G._stT = 0; VFX.syncStatus(G.ents.values(), G.tagList, (e) => Math.abs(e.x - G.cam.x) < 22 && Math.abs(e.y - G.cam.y) < 14); VFX.syncZones(G.ents.values()); } VFX.draw(g, dt); }
+    if (window.VFX5) { g.save(); g.setTransform(G.dpr, 0, 0, G.dpr, sx * G.dpr, sy * G.dpr); g.translate(ox, oy); g.scale(scale, scale); VFX5.draw(g, dt); g.restore(); }
     drawPets(g, dt);
     for (const p of G.parts) {
       const a = p.life / p.max; g.globalAlpha = a; g.fillStyle = p.col; const sz = p.size / TS * (0.5 + a * 0.5);
