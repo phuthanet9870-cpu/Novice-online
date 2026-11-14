@@ -14,6 +14,8 @@
   const clamp = (v, a = 0, b = 1) => (v < a ? a : v > b ? b : v);
   const rnd = Math.random;
   const ease = { out: (k) => 1 - (1 - k) * (1 - k), out3: (k) => 1 - Math.pow(1 - k, 3) };
+  // abilities whose glyph shows over the caster (the rest show over the target)
+  const SELF_RIDERS = new Set(['stack', 'swift', 'cdr', 'mend', 'refund', 'rally', 'immune', 'reflect', 'resetMove', 'amp', 'regen', 'haste', 'lastStand', 'guard', 'fury', 'leech', 'reset', 'overheal', 'invuln', 'empower', 'trail', 'spirit', 'decoy', 'thorns', 'cleanse', 'critUp']);
   function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 
   // ------------------------------------------------------------------ colour
@@ -163,7 +165,23 @@
       case 'invuln': case 'immune': case 'lastStand': add({ k: 'shield', at: 'caster', follow: 1, d: 0.1, dur: 1, r: 1.1 }); break;
       case 'cleanse': case 'purge': add({ k: 'prismflash', at: x === 'purge' ? 'target' : 'caster', d: 0.15, dur: 0.4, r: 1 }); break;
       case 'reflect': case 'thorns': add({ k: 'spikes', at: 'caster', d: 0.1, dur: 0.6, r: 1, n: 6, style: el }); break;
+      case 'swift': add({ k: 'gust', at: 'caster', d: 0.05, r: 0.9, style: 'side' }); break;
+      case 'backstab': add({ k: 'slash', at: 'target', d: 0.2, dur: 0.22, r: 1, style: 'x', n: 2 }); break;
+      case 'pierceUp': add({ k: 'beam', at: 'line', d: 0.1, dur: 0.25, w: 0.12, style: 'needle' }); break;
+      case 'critUp': case 'critDmg': add({ k: 'burst', at: 'target', d: 0.12, dur: 0.35, r: 1.1, style: 'star' }); break;
+      case 'crush': add({ k: 'crater', at: 'target', d: 0.18, dur: 1, r: 1.2 }); break;
+      case 'cdr': case 'reset': add({ k: 'clock', at: 'caster', d: 0.15, dur: 0.6, r: 0.7 }); break;
+      case 'refund': add(Object.assign(motes('caster', 0.2, 7, 0.7), { style: 'coin' })); break;
+      case 'resetMove': add({ k: 'blink', at: 'caster', d: 0.1, dur: 0.4, r: 0.9 }); break;
+      case 'far': case 'near': add({ k: 'mark', at: 'target', d: 0.1, dur: 0.5, r: x === 'far' ? 1.3 : 0.7 }); break;
+      case 'decoy': add({ k: 'poof', at: 'caster', d: 0.15, dur: 0.6, r: 1 }); break;
+      case 'explodeOnEnd': add({ k: 'blast', at: 'target', d: 0.55, dur: 0.6, r: 1.6 }); break;
+      case 'spirit': add(Object.assign(motes('caster', 0.2, 8, 1), { style: 'wisp' })); break;
+      case 'shatter': add({ k: 'shatter', at: 'target', d: 0.2, r: 0.9 }); break;
+      case 'knockup': break;
     }
+    // the ability's own pixel glyph pops over whoever it affects
+    for (const x of rk) add({ k: 'glyph', at: SELF_RIDERS.has(x) ? 'caster' : 'target', d: 0.22, dur: 0.85, r: 1, style: x });
     if (tags.includes('freeze')) add({ k: 'shatter', at: 'target', d: 0.2, r: 0.7, style: 'frost' });
     if (tags.includes('root')) add({ k: 'spikes', at: 'target', d: 0.2, dur: 0.8, r: 0.9, n: 5, style: 'vine' });
     if (tags.includes('stun')) add({ k: 'nova', at: 'target', d: 0.15, dur: 0.35, r: 1.1, style: 'soft' });
@@ -187,6 +205,13 @@
     for (const id of Object.keys(SK).sort()) {
       const sk = SK[id];
       const steps = build(sk);
+      // pixel-effect timing: a short charge at the caster first (everything else waits a beat), then the release;
+      // area hits leave smoke and embers behind, self skills shed rising sparkles
+      const sd = hash(id), ult = sk.kind === 'ult', area = ['ground', 'nova', 'leap', 'zone', 'trap'].includes(sk.arch) || (sk.arch === 'proj' && sk.radius);
+      for (const st of steps) st.d = (st.d || 0) + (ult ? 0.16 : 0.08);
+      steps.unshift({ k: 'charge', at: 'caster', d: 0, dur: ult ? 0.34 : 0.18, r: ult ? 1.6 : 0.9 + (sd % 4) * 0.1, n: 6 + (sd % 7), style: sd % 2 ? 'cw' : 'ccw' });
+      if (area && sk.kind !== 'buff') steps.push({ k: 'smoke', at: 'target', d: (ult ? 0.6 : 0.4), dur: 1.3, r: Math.max(0.8, (sk.radius || 2) * 0.55), n: 4 + (sd % 4) }, { k: 'embers', at: 'target', d: 0.35, dur: 1.1, r: Math.max(0.7, (sk.radius || 2) * 0.6), n: 8 + (sd % 6) });
+      else if (sk.kind === 'buff' || sk.arch === 'heal' || sk.arch === 'shield') steps.push({ k: 'embers', at: 'caster', follow: 1, d: 0.2, dur: 1.2, r: 0.7, n: 7 + (sd % 5), style: 'rise' });
       const sig = steps.map((s) => [s.k, s.style || '', s.n || 0, s.at].join(':')).join('>');
       let bump = 0;
       while (used.has(sig + '#' + bump)) bump++;
@@ -457,6 +482,30 @@
       }
     }
     lg.putImageData(im, 0, 0);
+    if (quality === 'high') pixelLight(d);
+  }
+  // pixel light: every bright pixel throws a stepped halo (2 rings) onto the empty pixels around it — the glow stays
+  // made of pixels instead of a soft blur
+  let lightCv = null, lightCtx = null, lightOn = false;
+  function pixelLight(d) {
+    const n = LW * LH, R = new Float32Array(n), Gc = new Float32Array(n), B = new Float32Array(n);
+    let any = false;
+    for (let y = 2; y < LH - 2; y++) for (let x = 2; x < LW - 2; x++) {
+      const i = y * LW + x, j = i * 4; if (!d[j + 3]) continue;
+      const lum = d[j] * 0.3 + d[j + 1] * 0.59 + d[j + 2] * 0.11; if (lum < 175) continue;
+      any = true;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const m = Math.abs(dx) + Math.abs(dy); if (!m || m > 2) continue; const w = m === 1 ? 0.5 : 0.22, q = i + dy * LW + dx; R[q] += d[j] * w; Gc[q] += d[j + 1] * w; B[q] += d[j + 2] * w; }
+    }
+    lightOn = any; if (!any) return;
+    if (!lightCv) { lightCv = document.createElement('canvas'); lightCtx = lightCv.getContext('2d'); }
+    if (lightCv.width !== LW || lightCv.height !== LH) { lightCv.width = LW; lightCv.height = LH; }
+    const im = lightCtx.createImageData(LW, LH), o = im.data;
+    for (let i = 0; i < n; i++) {
+      const mx = Math.max(R[i], Gc[i], B[i]); if (mx < 14 || d[i * 4 + 3]) continue;
+      const a = mx > 160 ? 0.55 : mx > 80 ? 0.32 : 0.16, k = 255 / mx; // three light steps
+      o[i * 4] = Math.min(255, R[i] * k); o[i * 4 + 1] = Math.min(255, Gc[i] * k); o[i * 4 + 2] = Math.min(255, B[i] * k); o[i * 4 + 3] = a * 255;
+    }
+    lightCtx.putImageData(im, 0, 0);
   }
   const FLOOR = 0.55;
   const P = {};
@@ -537,6 +586,51 @@
         if (e.el === 'ice') for (let i = 0; i < 4; i++) { const an = i * 1.57 + k * 4; P.line(g, x, y, x + Math.cos(an) * pr * 1.6, y + Math.sin(an) * pr * 1.3, 0.04, c[7]); }
       }
     }
+  };
+  // ---- charge: motes spiral in to the caster's hands, then a cross flash
+  DRAW.charge = (g, e, k) => {
+    const c = e.pal, rr = rngOf(e.seed), dir = e.style === 'ccw' ? -1 : 1, n = e.n || 8, y0 = e.y - 0.75;
+    for (let i = 0; i < n; i++) { const a0 = rr() * TAU, sp = 0.6 + rr() * 0.6, q = clamp(k * (1 + rr() * 0.4)), a = a0 + dir * q * 2.4, R = e.r * (1 - ease.out(q)) + 0.06;
+      const x = e.x + Math.cos(a) * R, y = y0 + Math.sin(a) * R * 0.7; P.ellipse(g, x, y, 0.07 * sp, 0.07 * sp, c[5 + (i % 3)], 0.9); P.line(g, x, y, x - Math.cos(a + dir * 0.9) * 0.18, y - Math.sin(a + dir * 0.9) * 0.12, 0.04, c[4], 0.6); }
+    if (k > 0.72) { const f = (k - 0.72) / 0.28, s = 0.2 + f * 0.5; P.line(g, e.x - s, y0, e.x + s, y0, 0.07, c[7], 1 - f); P.line(g, e.x, y0 - s, e.x, y0 + s, 0.07, c[7], 1 - f); P.ellipse(g, e.x, y0, 0.12, 0.12, '#ffffff', 1 - f); }
+  };
+  // ---- smoke: dark puffs that swell, rise and thin out after an area hit
+  DRAW.smoke = (g, e, k) => {
+    const c = e.pal, rr = rngOf(e.seed + 7), n = e.n || 5, fade = 1 - clamp((k - 0.45) / 0.55);
+    for (let i = 0; i < n; i++) { const a = rr() * TAU, d = rr() * e.r, x = e.x + Math.cos(a) * d, y = e.y + Math.sin(a) * d * FLOOR - ease.out(k) * (0.6 + rr() * 0.9), s = (0.22 + rr() * 0.22) * (0.6 + ease.out(k) * 1.1);
+      P.ellipse(g, x, y, s, s * 0.8, mixHex(c[1], '#3a3640', 0.6), 0.75 * fade); P.ellipse(g, x - s * 0.25, y - s * 0.25, s * 0.55, s * 0.45, mixHex(c[2], '#5a5660', 0.5), 0.7 * fade); }
+  };
+  // ---- embers: hot pixels flicking up and out (style 'rise' = gentle sparkles drifting up from a buff)
+  DRAW.embers = (g, e, k) => {
+    const c = e.pal, rr = rngOf(e.seed + 11), n = e.n || 10;
+    for (let i = 0; i < n; i++) { const st = rr() * 0.4, q = clamp((k - st) / (1 - st)); if (q <= 0 || q >= 1) continue;
+      const a = rr() * TAU, d = rr() * e.r, up = e.style === 'rise' ? 0.6 + rr() * 1.2 : 0.3 + rr() * 0.9, sway = Math.sin((e.t + i) * 7) * 0.08;
+      const x = e.x + Math.cos(a) * d + sway, y = e.y + Math.sin(a) * d * FLOOR - 0.3 - q * up; const blink = ((e.t * 14 + i) | 0) % 3 !== 0;
+      if (blink) P.ellipse(g, x, y, 0.05, 0.05, c[q < 0.4 ? 7 : q < 0.75 ? 5 : 3], 1 - q * 0.6); }
+  };
+  // ---- ability glyph: a small pixel icon of the skill's ✦ ability pops up, bobs, then fades
+  const GLYPHS = {
+    stack: ['01110', '11111', '01110', '11111', '01110'], echo: ['10101', '01010', '10101', '01010', '10101'], knockup: ['00100', '01110', '10101', '00100', '00100'], swift: ['10010', '01001', '00100', '01001', '10010'],
+    backstab: ['10001', '01010', '00100', '01010', '10001'], splash: ['00100', '10101', '01110', '10101', '00100'], pierceUp: ['00100', '00100', '11111', '00100', '00100'], critUp: ['00100', '01110', '11111', '01110', '00100'],
+    crush: ['11111', '10001', '10101', '10001', '11111'], bleed: ['00100', '01110', '01110', '11111', '01110'], fear: ['01110', '10101', '11111', '01010', '10101'], cdr: ['01110', '10101', '10111', '10001', '01110'],
+    mend: ['01010', '11111', '11111', '01110', '00100'], burn: ['00100', '01100', '01110', '11111', '01110'], refund: ['01110', '11011', '10001', '11011', '01110'], rally: ['10000', '11100', '11111', '10000', '10000'],
+    immune: ['01110', '11111', '11111', '11111', '01110'], reflect: ['11000', '10100', '10010', '10100', '11000'], resetMove: ['01110', '10001', '10101', '00001', '01110'], amp: ['00100', '01110', '00100', '01110', '00100'],
+    execute: ['10001', '11011', '01110', '11011', '10001'], detonate: ['10101', '01110', '11111', '01110', '10101'], purge: ['11111', '10001', '01110', '00100', '01110'], toxin: ['01110', '10101', '11111', '01110', '01010'],
+    sunder: ['11011', '11011', '00000', '11011', '11011'], slowField: ['00100', '10101', '01110', '10101', '00100'], shatter: ['10010', '01100', '00110', '01100', '10010'], weaken: ['00100', '00100', '11111', '01110', '00100'],
+    taunt: ['01110', '10001', '00010', '00100', '00100'], vortex: ['01110', '10000', '10110', '10010', '01100'], cleanse: ['00100', '01010', '10001', '01010', '00100'], blind: ['01110', '10001', '11111', '10001', '01110'],
+    thorns: ['10101', '01110', '11111', '01110', '10101'], regen: ['00100', '00100', '11111', '00100', '00100'], haste: ['11000', '01100', '00110', '01100', '11000'], lastStand: ['00100', '00100', '00100', '00000', '00100'],
+    far: ['00001', '00010', '10100', '11000', '11100'], critDmg: ['10101', '01110', '11011', '01110', '10101'], guard: ['11111', '11111', '11111', '01110', '00100'], fury: ['10001', '01010', '11111', '01110', '10001'],
+    leech: ['01010', '11111', '01110', '00100', '01110'], trueDmg: ['11111', '00100', '00100', '00100', '00100'], steal: ['01110', '11011', '11111', '11011', '01110'], reset: ['01111', '10000', '10011', '10001', '01110'],
+    overheal: ['01010', '11111', '11011', '01110', '00100'], invuln: ['11111', '10001', '10101', '10001', '11111'], starMark: ['00100', '11111', '01110', '01010', '10001'], mark: ['01110', '10001', '10101', '10001', '01110'],
+    chill: ['10101', '01110', '11011', '01110', '10101'], burnField: ['01010', '11011', '11111', '11111', '01110'], near: ['11100', '11000', '10100', '00010', '00001'], empower: ['00100', '01110', '11111', '00100', '01110'],
+    trail: ['10000', '01000', '00100', '00010', '00001'], timeLock: ['11111', '01010', '00100', '01010', '11111'], spirit: ['01110', '11111', '10101', '11111', '10101'], explodeOnEnd: ['00110', '00100', '01110', '11111', '01110'],
+    decoy: ['01110', '01110', '00100', '01110', '01010']
+  };
+  DRAW.glyph = (g, e, k) => {
+    const G2 = GLYPHS[e.style]; if (!G2) return;
+    const c = e.pal, pop = k < 0.15 ? 0.6 + k / 0.15 * 0.6 : 1.2 - Math.min(0.2, (k - 0.15) * 0.5), px = 0.075 * pop, y0 = e.y - 1.9 - ease.out(k) * 0.5, fade = 1 - clamp((k - 0.7) / 0.3);
+    for (let y = 0; y < 5; y++) for (let x = 0; x < 5; x++) if (G2[y][x] === '1') { g.globalAlpha = fade; g.fillStyle = y < 2 ? c[7] : c[6]; g.fillRect(e.x + (x - 2.5) * px, y0 + (y - 2.5) * px, px, px); }
+    g.globalAlpha = 1;
   };
   DRAW.slash = (g, e, k) => {
     const a = Math.atan2(e.ty - e.y, e.tx - e.x), c = e.pal, sz = e.r * (e.big ? 1.15 : 1);
@@ -832,13 +926,13 @@
       if (!bloom) { bloom = document.createElement('canvas'); bgc = bloom.getContext('2d'); }
       const bw = Math.max(1, Math.ceil(w / 4)), bh = Math.max(1, Math.ceil(h / 4));
       if (bloom.width !== bw || bloom.height !== bh) { bloom.width = bw; bloom.height = bh; }
-      const doBloom = !root.G || !G.fx || G.fx().bloom;
+      const doBloom = false; // replaced by the stepped pixel light
       if (doBloom) { bgc.clearRect(0, 0, bw, bh); bgc.imageSmoothingEnabled = true; bgc.drawImage(layer, 0, 0, bw, bh); }
       g.save(); g.setTransform(view.dpr, 0, 0, view.dpr, view.sx || 0, view.sy || 0);
       const sm = g.imageSmoothingEnabled; g.imageSmoothingEnabled = false;
       g.drawImage(layer, 0, 0, w * px, h * px);
-      if (!root.G || !G.fx || G.fx().bloom) { g.imageSmoothingEnabled = true; g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.16;
-      g.drawImage(bloom, 0, 0, bw * 4 * px, bh * 4 * px); }
+      if (lightOn && lightCv && (!root.G || !G.fx || G.fx().bloom)) { g.imageSmoothingEnabled = false; g.globalCompositeOperation = 'lighter'; g.globalAlpha = 1;
+      g.drawImage(lightCv, 0, 0, w * px, h * px); lightOn = false; }
       g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
       // crisp pixel sprites (arrows) on top, in world position, nearest-neighbour scaled
       g.imageSmoothingEnabled = false;
