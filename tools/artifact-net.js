@@ -49,15 +49,31 @@
     };
     return ob;
   }
+  // batches are handed on strictly in the order they were sent: a big batch split into many chunks can finish arriving
+  // after a smaller, later one, and running them out of order let an old map's snapshot land after a map change
   function makeInbox(onBatch) {
-    const asm = new Map();
+    const asm = new Map(), done = new Map();
+    let busy = false;
+    const pump = async () => {
+      if (busy) return; busy = true;
+      try {
+        for (;;) {
+          const ids = [...done.keys()].sort((a, b) => a - b); if (!ids.length) break;
+          const id = ids[0];
+          if ([...asm.keys()].some((k) => k < id && Date.now() - asm.get(k).at < 4000)) break; // an earlier batch is still arriving
+          const a = done.get(id); done.delete(id);
+          try { const arr = JSON.parse(await unpack(a.parts.join(''))); onBatch(arr); } catch (e) {}
+        }
+      } finally { busy = false; }
+    };
     return async (d) => {
       if (!d || typeof d.z !== 'string') return;
-      let a = asm.get(d.id); if (!a) { a = { parts: new Array(d.n), got: 0, at: Date.now() }; asm.set(d.id, a); }
+      let a = asm.get(d.id); if (!a) { if (done.has(d.id)) return; a = { parts: new Array(d.n), got: 0, at: Date.now() }; asm.set(d.id, a); }
       if (!a.parts[d.i]) { a.parts[d.i] = d.z; a.got++; }
-      if (a.got < d.n) { for (const [k, v] of asm) if (Date.now() - v.at > 8000) asm.delete(k); return; }
-      asm.delete(d.id);
-      try { const arr = JSON.parse(await unpack(a.parts.join(''))); onBatch(arr); } catch (e) {}
+      for (const [k, v] of asm) if (Date.now() - v.at > 8000) asm.delete(k);
+      if (a.got >= d.n) { asm.delete(d.id); done.set(d.id, a); }
+      await pump();
+      if (done.size) setTimeout(pump, 300);
     };
   }
 

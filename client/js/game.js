@@ -56,7 +56,7 @@
   };
 
   function enterMap(m) {
-    G.mapId = m.map; G.info = m.info; G.me = m.me;
+    G.mapId = m.map; G.info = m.info; G.me = m.me; G.instId = m.inst;
     G.map = M.getMap(m.map);
     G.mini = ART.minimap(G.map);
     ART.resetChunks();
@@ -70,6 +70,7 @@
   }
 
   function applySnap(m) {
+    if (m.i !== undefined && G.instId !== undefined && m.i !== G.instId) return; // a snapshot from the map we just left
     for (const a of m.a || []) {
       const e = Object.assign(G.ents.get(a.id) || {}, a);
       e.x = e.tx = a.x / 10; e.y = e.ty = a.y / 10;

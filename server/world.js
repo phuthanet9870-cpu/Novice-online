@@ -513,7 +513,7 @@ W.sendSnapshots = function (t) {
     const fx = [];
     for (const f of inst.fx) if (Math.abs(f.x - p.x) < VIEW_X + 6 && Math.abs(f.y - p.y) < VIEW_Y + 6) fx.push(f);
     const me = C.selfState(p, t);
-    const msg = { t: 'snap', u, me };
+    const msg = { t: 'snap', u, me, i: inst.id };
     if (a.length) msg.a = a; if (r.length) msg.r = r; if (fx.length) msg.fx = fx;
     p.sess.send(msg);
   }
