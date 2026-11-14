@@ -255,7 +255,7 @@
   function renderTarget() {
     const e = G.ents.get(G.target);
     const tf = $('#tframe');
-    if (!e || e.id === G.me || e.k === 'z') { tf.hidden = true; return; }
+    if (!e || e.id === G.me || e.k === 'z' || e.k === 'n' || e.k === 'i') { tf.hidden = true; return; }
     tf.hidden = false;
     let badge = '', sub = '';
     if (e.k === 'm') { badge = e.rk === 4 ? '<span class="badge red">WORLD BOSS</span>' : e.rk >= 2 ? '<span class="badge orange">BOSS</span>' : e.rk === 1 ? '<span class="badge gold">ELITE</span>' : ''; sub = `Lv ${e.lv} · ${(D.ELEMENTS[e.el] || {}).n || ''}${e.ws ? ' · ' + e.ws : ''}`; }

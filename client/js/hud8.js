@@ -59,7 +59,7 @@
     // target / boss
     const e = G.ents.get(G.target), tf = $('#tf8'), bb = $('#boss8');
     const boss = e && e.k === 'm' && e.rk >= 2;
-    if (!e || e.id === G.me || e.k === 'z') { tf.hidden = true; bb.hidden = true; }
+    if (!e || e.id === G.me || e.k === 'z' || e.k === 'n' || e.k === 'i') { tf.hidden = true; bb.hidden = true; } // gates, stairs, chests and NPCs have no HP bar
     else if (boss) {
       tf.hidden = true; bb.hidden = false;
       if (lastTarget !== e.id) { lastTarget = e.id; ghostP = e.hp / 100; }
