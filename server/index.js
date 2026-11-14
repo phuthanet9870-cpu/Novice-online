@@ -158,8 +158,9 @@ function handle(sess, m) {
   const p = sess.p;
   switch (m.t) {
     case 'mv': if (typeof m.x === 'number' && typeof m.y === 'number') C.clientMove(p, m.x, m.y); break;
-    case 'atk': { P.dismount(p); const e = p.inst.entities.get(m.id); p.atkTarget = e && C.isEnemy(p, e) ? e.id : null; break; }
-    case 'stop': p.atkTarget = null; break;
+    // manual play: one click = one basic attack (queued until in range / off cooldown); AUTO keeps attacking on its own
+    case 'atk': { P.dismount(p); const e = p.inst.entities.get(m.id); p.atkTarget = e && C.isEnemy(p, e) ? e.id : null; p.atkOnce = !!p.atkTarget; break; }
+    case 'stop': p.atkTarget = null; p.atkOnce = false; break;
     case 'sk': if (typeof m.id === 'string') { if (p.auto.on) return; P.dismount(p); C.useSkill(p, m.id, m.tid | 0, typeof m.x === 'number' ? m.x : undefined, typeof m.y === 'number' ? m.y : undefined); } break;
     case 'breakfree': if (!A.breakFree(p)) sess.send({ t: 'err', m: 'ใช้ไม่ได้ตอนนี้ (CD 25s / ต้องติดสถานะ / SP 15%)' }); break;
     case 'chat': {

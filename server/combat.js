@@ -441,13 +441,14 @@ C.updatePlayer = function (p, dt, t, sec) {
   const cls = D.CLASSES[p.cls];
   AF.tick(p, dt, t, sec);
   // basic attack
-  if (p.atkTarget && !p.casting) {
+  if (p.atkTarget && !p.casting && (p.atkOnce || (p.auto && p.auto.on))) {
     const tgt = inst.entities.get(p.atkTarget);
     if (!tgt || tgt.dead || !C.isEnemy(p, tgt)) p.atkTarget = null;
     else {
       const d = W.dist(p, tgt);
       if (d <= p.st.range + (tgt.size || 0.6) * 0.4 + 0.5 && t >= p.atkReady && !C.isHardCC(p)) {
         p.atkReady = t + 1 / p.st.aspd;
+        p.atkOnce = false; // the click is used up — the next hit needs another click (unless AUTO is on)
         p.dir = Math.atan2(tgt.y - p.y, tgt.x - p.x);
         const ranged = cls.scale !== 'melee';
         inst.emit({ k: ranged ? 'proj' : 'swing', s: p.id, x: p.x, y: p.y, tx: tgt.x, ty: tgt.y, el: p.weaponEl || cls.element, b: 1 });

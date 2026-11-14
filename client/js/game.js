@@ -257,7 +257,7 @@
         const need = pend ? G.pending.r : G.st.range + (goal.sz || 0.6) * 0.4 + 0.3;
         const d = Math.hypot(goal.x - G.self.x, goal.y - G.self.y);
         if (d > need) { if (!G.path || !G.pathGoal || Math.hypot(G.pathGoal[0] - goal.x, G.pathGoal[1] - goal.y) > 1.5) { G.walkTo(goal.x, goal.y); G.pathGoal = [goal.x, goal.y]; } }
-        else { G.path = null; if (pend) { G.send({ t: 'sk', id: G.pending.id, tid: G.pending.tid }); G.pending = null; } }
+        else { G.path = null; if (pend) { G.send({ t: 'sk', id: G.pending.id, tid: G.pending.tid }); G.pending = null; } else if (ch && !G.autoOn()) G.chase = null; /* in range: the click's single hit lands, no more following */ }
       } else if (ch) G.chase = null;
       if (G.lootGoal) { const it = G.ents.get(G.lootGoal); if (!it) G.lootGoal = null; else if (Math.hypot(it.x - G.self.x, it.y - G.self.y) < 1.9) { G.path = null; G.send({ t: 'pickup', id: it.id }); G.lootGoal = null; } }
       if (G.npcGoal) { const n = G.ents.get(G.npcGoal); if (n && Math.hypot(n.x - G.self.x, n.y - G.self.y) < 2.6) { G.path = null; UI.openNpc(n); G.npcGoal = null; } }
