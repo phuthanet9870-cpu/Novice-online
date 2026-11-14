@@ -73,8 +73,12 @@ wss.on('connection', (ws, req) => {
   });
 });
 
+// classes from before the Ashfall roster → their closest new class (applied when the character enters the game,
+// and shown that way on the character list so old saves always display)
+const OLD_CLASS = { blade_knight: 'blademaster', guardian: 'guardian', berserker: 'berserker', shadow_assassin: 'assassin', ranger: 'ranger', elementalist: 'stormcaller', cleric: 'cleric', monk: 'monk', warlock: 'warlock', gunslinger: 'marksman', chrono_stalker: 'chronomancer', divine_sovereign: 'deity', hellfiend: 'demon', void_walker: 'shadowmancer', lightbringer: 'lightbringer' };
+const shownClass = (cls) => (D.CLASSES[cls] ? cls : OLD_CLASS[cls] || 'blademaster');
 function charList(acc) {
-  return acc.chars.map((id) => db.data.chars[id]).filter(Boolean).map((c) => ({ id: c.id, name: c.name, cls: c.cls, lv: c.lv, map: c.map, guild: c.guild && db.data.guilds[c.guild] ? db.data.guilds[c.guild].name : '', eq: c.equip && c.equip.weapon ? [c.equip.weapon.rarity, c.equip.weapon.refine || 0] : [0, 0] }));
+  return acc.chars.map((id) => db.data.chars[id]).filter(Boolean).map((c) => ({ id: c.id, name: c.name, cls: shownClass(c.cls), lv: c.lv, map: c.map, guild: c.guild && db.data.guilds[c.guild] ? db.data.guilds[c.guild].name : '', eq: c.equip && c.equip.weapon ? [c.equip.weapon.rarity, c.equip.weapon.refine || 0] : [0, 0] }));
 }
 
 function handle(sess, m) {
@@ -117,8 +121,7 @@ function handle(sess, m) {
       // classes were replaced by the Ashfall roster: old characters move to the closest new class and get every skill point back
       if (ch.kitVer === 2 && D.CLASSES[ch.cls]) { ch.hotbar = new Array(50).fill(null); I.defaultHotbar(ch); ch.kitVer = 3; }
       if (!D.CLASSES[ch.cls] || ch.kitVer !== 3) {
-        const MAP = { blade_knight: 'blademaster', guardian: 'guardian', berserker: 'berserker', shadow_assassin: 'assassin', ranger: 'ranger', elementalist: 'stormcaller', cleric: 'cleric', monk: 'monk', warlock: 'warlock', gunslinger: 'marksman', chrono_stalker: 'chronomancer', divine_sovereign: 'deity', hellfiend: 'demon', void_walker: 'shadowmancer', lightbringer: 'lightbringer' };
-        const old = ch.cls; if (!D.CLASSES[ch.cls]) ch.cls = MAP[ch.cls] || 'blademaster';
+        const old = ch.cls; if (!D.CLASSES[ch.cls]) ch.cls = OLD_CLASS[ch.cls] || 'blademaster';
         const first = require('../shared/skills.js').CLASS_SKILLS[ch.cls][0];
         ch.skills = { [first]: 1 }; ch.skillPts = F.skillPointsAt(ch.lv) - 1; ch.hotbar = new Array(50).fill(null); I.defaultHotbar(ch); ch.passives = []; ch.kitVer = 3;
         if (ch.equip && ch.equip.weapon && ch.equip.weapon.wtype !== D.CLASSES[ch.cls].weapon) { ch.inv = ch.inv || []; ch.inv.push(ch.equip.weapon); ch.equip.weapon = null; }

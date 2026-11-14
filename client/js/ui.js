@@ -48,8 +48,11 @@
   UI.onChars = function (m) {
     UI.chars = m.chars;
     const list = $('#charList');
-    list.innerHTML = m.chars.map((c) => `<div class="charCard" data-id="${c.id}"><img src="${ART.portrait(c.cls, c.name, 96)}"><div><b>${esc(c.name)}</b><span>Lv ${c.lv} ${D.CLASSES[c.cls].name}</span><small>${esc(c.guild ? '<' + c.guild + '> ' : '')}${esc(mapName(c.map))}</small></div><button class="btn gold" data-play="${c.id}">เข้าเกม ▶</button><button class="btn tiny danger" data-del="${c.id}" data-name="${esc(c.name)}">ลบ</button></div>`).join('')
+    // a card that fails to draw (unknown class from an old save…) must never blank the whole list
+    const card = (c) => { try { return cardHtml(c); } catch (e) { return `<div class="charCard" data-id="${c.id}"><div><b>${esc(c.name || '?')}</b><span>Lv ${c.lv || 1}</span></div><button class="btn gold tiny" data-play="${c.id}">เข้าเกม ▶</button></div>`; } };
+    list.innerHTML = m.chars.map(card).join('')
       + (m.chars.length < 6 ? `<div class="charCard new" id="newCharBtn"><div class="plus">＋</div><div><b>สร้างตัวละครใหม่</b><span>เลือกได้ 30 อาชีพ</span></div></div>` : '');
+    function cardHtml(c) { return `<div class="charCard" data-id="${c.id}"><img src="${ART.portrait(c.cls, c.name, 96)}"><div><b>${esc(c.name)}</b><span>Lv ${c.lv} ${D.CLASSES[c.cls].name}</span><small>${esc(c.guild ? '<' + c.guild + '> ' : '')}${esc(mapName(c.map))}</small></div><button class="btn gold" data-play="${c.id}">เข้าเกม ▶</button><button class="btn tiny danger" data-del="${c.id}" data-name="${esc(c.name)}">ลบ</button></div>`; }
     list.onclick = (e) => {
       const pl = e.target.closest('[data-play]'); if (pl) { rememberChar(pl.dataset.play); return G.send({ t: 'play', id: pl.dataset.play }); }
       const dl = e.target.closest('[data-del]'); if (dl) { UI.ask(`พิมพ์ชื่อ "${dl.dataset.name}" เพื่อยืนยันการลบตัวละคร`, { input: true, danger: true, ok: 'ลบตัวละคร' }).then((n) => { if (n) G.send({ t: 'deleteChar', id: dl.dataset.del, confirm: n }); }); return; }
