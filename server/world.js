@@ -562,13 +562,12 @@ W.freeSpot = function (map, x, y, min = 0) {
   for (let r = min; r < 12; r += 0.5) for (let a = 0; a < 16; a++) { const tx = x + Math.cos(a / 16 * Math.PI * 2) * r, ty = y + Math.sin(a / 16 * Math.PI * 2) * r; if (M.walkable(map, tx, ty)) return { x: Math.floor(tx) + 0.5, y: Math.floor(ty) + 0.5 }; }
   return { x: map.spawn.x, y: map.spawn.y };
 };
-// every town and field is linked by warp gates: town ↔ each of its fields, field ↔ previous / next field, town ↔ next town
+// every town and field is linked by warp gates: town ↔ each of its fields, field ↔ previous / next field (the field chain runs on into the next region)
 W.gateLinks = function (def) {
   const out = [];
   if (def.kind === 'town') {
+    // towns have no gate to another town: you travel there field by field
     for (const f of D.FARM_MAPS.filter((x) => x.town === def.id)) out.push([f.id, f.name]);
-    const ti = D.TOWNS.findIndex((t) => t.id === def.id);
-    if (ti >= 0) { const nx = D.TOWNS[(ti + 1) % D.TOWNS.length], pv = D.TOWNS[(ti - 1 + D.TOWNS.length) % D.TOWNS.length]; out.push([nx.id, nx.name]); if (pv.id !== nx.id) out.push([pv.id, pv.name]); }
   } else if (def.kind === 'farm') {
     out.push([def.town, (D.TOWNS.find((t) => t.id === def.town) || {}).name || def.town]);
     const i = D.FARM_MAPS.findIndex((x) => x.id === def.id);

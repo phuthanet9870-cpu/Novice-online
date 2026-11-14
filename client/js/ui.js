@@ -835,7 +835,7 @@
     render() {
       const boss = (UI.lastInfo && UI.lastInfo.boss) ? Object.fromEntries(UI.lastInfo.boss.list.map((b) => [b.map, b])) : {};
       const inTown = G.info.kind === 'town';
-      const towns = D.TOWNS.map((t) => `<div class="town" style="--c:${D.BIOMES[t.biome].ground[0]}"><b>${t.name}</b><small>${t.th}</small><small>แนะนำ Lv${t.lv}+</small><button class="btn gold tiny" data-act="warp" data-m="${t.id}">วาร์ป (ฟรี)</button></div>`).join('');
+      const towns = D.TOWNS.map((t) => `<div class="town" style="--c:${D.BIOMES[t.biome].ground[0]}"><b>${t.name}</b><small>${t.th}</small><small>แนะนำ Lv${t.lv}+</small>${t.id === G.info.id || (G.map && G.map.def.id === t.id) ? '<small class="hint">● คุณอยู่ที่นี่</small>' : G.char.gm ? `<button class="btn gold tiny" data-act="warp" data-m="${t.id}">GM วาร์ป</button>` : '<small class="hint">เดินทางผ่านแมพฟาร์ม</small>'}</div>`).join('');
       const regions = D.TOWNS.map((t) => `<div class="region"><h4>${t.name} Region</h4>${D.FARM_MAPS.filter((f) => f.town === t.id).map((f) => {
         const b = boss[f.name]; const ok = G.char.lv >= f.min - 5;
         return `<div class="farm ${ok ? '' : 'hard'}"><span class="biome" style="background:${D.BIOMES[f.biome].ground[0]}"></span><div><b>${f.name}</b> ${f.pk ? '<span class="badge red">PK</span>' : ''}<small>${f.th} · Lv ${f.min}–${f.max} · ${f.w}×${f.h}</small><small>${b ? (b.alive ? '👹 Field Boss อยู่!' : b.next != null ? `บอสเกิดใน ${Math.ceil(b.next / 60)} นาที` : '') : ''}</small></div><button class="btn tiny" data-act="warp" data-m="${f.id}" ${inTown || G.char.gm ? '' : 'disabled'}>${f.min * 15}z</button></div>`;

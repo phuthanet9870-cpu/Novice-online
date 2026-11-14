@@ -28,7 +28,7 @@
   }
   function links(id) {
     const out = [], town = D.TOWNS.find((t) => t.id === id), farm = D.FARM_MAPS.find((f) => f.id === id);
-    if (town) { for (const f of D.FARM_MAPS.filter((x) => x.town === id)) out.push(f.id); const ti = D.TOWNS.indexOf(town); out.push(D.TOWNS[(ti + 1) % D.TOWNS.length].id); }
+    if (town) { for (const f of D.FARM_MAPS.filter((x) => x.town === id)) out.push(f.id); }
     else if (farm) { out.push(farm.town); const i = D.FARM_MAPS.indexOf(farm); if (i < D.FARM_MAPS.length - 1) out.push(D.FARM_MAPS[i + 1].id); }
     return out;
   }
@@ -59,9 +59,8 @@
     const roads = new Set();
     for (const id in place) for (const o of links(id)) {
       if (!place[o]) continue; const key = [id, o].sort().join('|'); if (roads.has(key)) continue; roads.add(key);
-      if (!(place[id].town && place[o].town) && Math.hypot(place[id].cx - place[o].cx, place[id].cy - place[o].cy) > 1.5) continue; // only roads between neighbouring land
       const [ax, ay] = centre(id), [bx, by] = centre(o), mx = (ax + bx) / 2 + (h2(ax | 0, by | 0) - 0.5) * 30, my = (ay + by) / 2 + (h2(bx | 0, ay | 0) - 0.5) * 30;
-      const main = place[id].town && place[o].town;
+      const main = !!(place[id].town || place[o].town);
       for (const [w, c] of [[main ? 6 : 4, 'rgba(60,40,20,0.75)'], [main ? 3 : 2, main ? '#e8c890' : '#c8a870']]) { g.strokeStyle = c; g.lineWidth = w; g.setLineDash(main ? [] : [7, 4]); g.beginPath(); g.moveTo(ax, ay); g.quadraticCurveTo(mx, my, bx, by); g.stroke(); }
       g.setLineDash([]);
       const gx = (ax + 2 * mx + bx) / 4, gy = (ay + 2 * my + by) / 4; g.fillStyle = '#2a1a50'; g.beginPath(); g.ellipse(gx, gy, 6, 3.5, 0, 0, 7); g.fill(); g.fillStyle = '#b49aff'; g.beginPath(); g.ellipse(gx, gy, 4, 2.2, 0, 0, 7); g.fill();

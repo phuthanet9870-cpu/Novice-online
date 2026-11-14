@@ -257,6 +257,7 @@ function handle(sess, m) {
       if (dest === 'pvp_arena' || dest === 'wb_arena') { W.warp(p, dest); break; }
       if (D.CASTLES.find((c) => c.id === dest)) { S.enterCastle(p, dest); break; }
       if (!town && !farm) return;
+      if (town && town.id !== p.inst.mapId && !p.gm) return sess.send({ t: 'err', m: 'วาร์ปข้ามเมืองไม่ได้ — เดินทางผ่านแมพฟาร์มตามประตูวาปจนถึงเมืองนั้น' });
       const cost = farm ? farm.min * 15 : 0;
       if (p.inst.def.kind !== 'town' && !p.gm && farm) return sess.send({ t: 'err', m: 'วาร์ปไปแผนที่ฟาร์มได้จากเมือง (Gatekeeper) เท่านั้น' });
       if (p.char.zeny < cost) return sess.send({ t: 'err', m: `ค่าวาร์ป ${cost} Zeny` });
