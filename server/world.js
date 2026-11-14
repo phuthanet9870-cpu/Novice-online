@@ -577,12 +577,24 @@ W.gateLinks = function (def) {
   }
   return out;
 };
+// gates stand on the roads: for each link a road tile far out in that link's direction (towns: where the roads
+// leave town; fields: along the trails), spaced apart so every gate sits on its own stretch of road
 function addGates(inst) {
   const map = inst.map, links = W.gateLinks(inst.def); if (!links.length) return;
-  const n = links.length, R = inst.def.kind === 'town' ? Math.min(map.w, map.h) * 0.36 : Math.min(map.w, map.h) * 0.2;
+  const roads = [];
+  for (let y = 2; y < map.h - 2; y++) for (let x = 2; x < map.w - 2; x++) if (map.tiles[y * map.w + x] === M.T.PATH && M.walkable(map, x + 0.5, y + 0.5)) roads.push([x + 0.5, y + 0.5]);
+  const sx = map.spawn.x, sy = map.spawn.y, n = links.length, maxR = Math.min(map.w, map.h) * (inst.def.kind === 'town' ? 0.42 : 0.3), placed = [];
   links.forEach(([dest, name], i) => {
-    const a = (i / n) * Math.PI * 2 - Math.PI / 2 + 0.3;
-    const s = W.freeSpot(map, map.spawn.x + Math.cos(a) * R, map.spawn.y + Math.sin(a) * R);
+    const a = (i / n) * Math.PI * 2 - Math.PI / 2 + 0.3, dx = Math.cos(a), dy = Math.sin(a);
+    let best = null, bv = -1e9;
+    for (const [x, y] of roads) {
+      const rx = x - sx, ry = y - sy, d = Math.hypot(rx, ry); if (d < 8 || d > maxR) continue;
+      if (placed.some((q) => Math.hypot(q.x - x, q.y - y) < 10)) continue;
+      const v = (rx * dx + ry * dy) / d * 3 + Math.min(d, maxR) / maxR; // in the right direction, as far out as allowed
+      if (v > bv) { bv = v; best = { x, y }; }
+    }
+    const s = best || W.freeSpot(map, sx + dx * maxR * 0.6, sy + dy * maxR * 0.6);
+    placed.push(s);
     inst.add({ id: W.nextEnt++, kind: 'n', name: 'Warp → ' + name, role: 'portal', dest, color: '#9a7aff', x: s.x, y: s.y, tags: new Map(), hp: 1, maxHp: 1, gate: 1 });
   });
 }
