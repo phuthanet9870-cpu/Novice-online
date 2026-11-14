@@ -81,6 +81,25 @@ function charList(acc) {
   return acc.chars.map((id) => db.data.chars[id]).filter(Boolean).map((c) => ({ id: c.id, name: c.name, cls: shownClass(c.cls), lv: c.lv, map: c.map, guild: c.guild && db.data.guilds[c.guild] ? db.data.guilds[c.guild].name : '', eq: c.equip && c.equip.weapon ? [c.equip.weapon.rarity, c.equip.weapon.refine || 0] : [0, 0] }));
 }
 
+// ---------------- lobby: one character per class (each with its own level, bag and zeny), 3 starter classes,
+// every other class comes from the class case (5M zeny per roll, paid by the class you are on, always a class you don't own yet)
+function lobbyOf(acc) {
+  const chars = acc.chars.map((id) => db.data.chars[id]).filter(Boolean);
+  if (!acc.nick && chars.length) acc.nick = chars[0].name;
+  if (!acc.sel || !chars.some((c) => c.id === acc.sel)) acc.sel = chars.length ? chars.slice().sort((a, b) => b.lv - a.lv)[0].id : null;
+  return { t: 'lobby', nick: acc.nick || '', sel: acc.sel, gm: acc.gm || 0, cost: D.CLASS_ROLL_COST, starters: D.STARTER_CLASSES,
+    chars: chars.map((c) => ({ id: c.id, cls: shownClass(c.cls), lv: c.lv, zeny: c.zeny || 0, map: c.map, name: c.name })) };
+}
+function rollClass(acc, rnd) {
+  const owned = new Set(acc.chars.map((id) => db.data.chars[id]).filter(Boolean).map((c) => shownClass(c.cls)));
+  const pool = [];
+  for (const t of D.CASE_TIERS) { const left = t.cls.filter((c) => !owned.has(c)); for (const c of left) pool.push([c, t.w / t.cls.length]); }
+  if (!pool.length) return null;
+  let r = rnd() * pool.reduce((a, x) => a + x[1], 0);
+  for (const [c, w] of pool) { if ((r -= w) < 0) return c; }
+  return pool[pool.length - 1][0];
+}
+
 function handle(sess, m) {
   // ---------------- auth
   if (!sess.acc) {
@@ -92,12 +111,42 @@ function handle(sess, m) {
     else { acc = db.checkLogin(user, pass); if (!acc) return sess.send({ t: 'auth', ok: false, m: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' }); }
     if (acc.banned && acc.banned > Date.now()) return sess.send({ t: 'auth', ok: false, m: `บัญชีถูกแบนถึง ${new Date(acc.banned).toLocaleString('th-TH')} ${acc.banReason || ''}` });
     sess.acc = acc;
-    return sess.send({ t: 'auth', ok: true, user: acc.user, gm: acc.gm, chars: charList(acc) });
+    sess.send({ t: 'auth', ok: true, user: acc.user, gm: acc.gm, chars: charList(acc) });
+    return sess.send(lobbyOf(acc));
   }
   const acc = sess.acc;
   // ---------------- character select
   if (!sess.p) {
+    if (m.t === 'lobby') return sess.send(lobbyOf(acc));
+    if (m.t === 'selClass') { if (acc.chars.includes(m.id)) { acc.sel = m.id; db.dirty = true; } return sess.send(lobbyOf(acc)); }
+    if (m.t === 'starter') {
+      // first visit: pick a nickname and one of the 3 starter classes
+      if (acc.chars.length) return sess.send({ t: 'err', m: 'บัญชีนี้เลือกคลาสเริ่มต้นไปแล้ว' });
+      const name = String(m.name || '').trim();
+      if (!NAME_RE.test(name)) return sess.send({ t: 'err', m: 'ชื่อตัวละคร 2-14 ตัวอักษร (ไทย/อังกฤษ/ตัวเลข)' });
+      if (db.charByName(name)) return sess.send({ t: 'err', m: 'ชื่อนี้ถูกใช้แล้ว' });
+      if (!D.STARTER_CLASSES.includes(m.cls)) return sess.send({ t: 'err', m: 'เลือกได้เฉพาะ นักดาบ / นักธนู / นักเวท' });
+      const ch = I.newChar(acc, name, m.cls);
+      db.data.chars[ch.id] = ch; acc.chars.push(ch.id); acc.nick = name; acc.sel = ch.id; db.save();
+      return sess.send(lobbyOf(acc));
+    }
+    if (m.t === 'rollClass') {
+      const cur = db.data.chars[acc.sel]; if (!cur || !acc.chars.includes(cur.id)) return sess.send({ t: 'err', m: 'เลือกตัวละครก่อน' });
+      const free = acc.gm >= 2 && m.free;
+      if (!free && (cur.zeny || 0) < D.CLASS_ROLL_COST) return sess.send({ t: 'err', m: `ต้องมี ${D.CLASS_ROLL_COST.toLocaleString()} Zeny ในคลาส ${D.CLASSES[shownClass(cur.cls)].name} (มี ${(cur.zeny || 0).toLocaleString()})` });
+      const got = rollClass(acc, Math.random);
+      if (!got) return sess.send({ t: 'err', m: 'คุณมีครบทุกคลาสแล้ว!' });
+      if (!free) cur.zeny -= D.CLASS_ROLL_COST;
+      // the new class starts fresh: its own character at level 1 (same nickname), farmed separately
+      const ch = I.newChar(acc, acc.nick || cur.name, got);
+      db.data.chars[ch.id] = ch; acc.chars.push(ch.id); db.save();
+      const tier = D.classTier(got);
+      if (tier >= 3) S.broadcast({ t: 'notice', k: 'loot', m: `🎰 ${acc.nick || cur.name} เปิดกล่องคลาสได้ [${D.CASE_TIERS[tier].n}] ${D.CLASSES[got].name}!` });
+      sess.send({ t: 'roll', cls: got, tier, id: ch.id });
+      return sess.send(lobbyOf(acc));
+    }
     if (m.t === 'createChar') {
+      if (!D.STARTER_CLASSES.includes(m.cls)) return sess.send({ t: 'err', m: 'คลาสอื่นได้จากกล่องสุ่มคลาสเท่านั้น' });
       const name = String(m.name || '').trim();
       if (!NAME_RE.test(name)) return sess.send({ t: 'err', m: 'ชื่อตัวละคร 2-14 ตัวอักษร (ไทย/อังกฤษ/ตัวเลข)' });
       if (!D.CLASSES[m.cls]) return sess.send({ t: 'err', m: 'เลือกคลาส' });
@@ -117,6 +166,7 @@ function handle(sess, m) {
     }
     if (m.t === 'play') {
       const ch = db.data.chars[m.id]; if (!ch || !acc.chars.includes(m.id)) return;
+      acc.sel = ch.id;
       for (const q of W.players.values()) if (q.char.acc === ch.acc && q.sess && q.char.id !== ch.id) q.sess.kick('ล็อกอินตัวละครอื่นจากบัญชีเดียวกัน');
       // classes were replaced by the Ashfall roster: old characters move to the closest new class and get every skill point back
       if (ch.kitVer === 4 && ch.hotbar && ch.hotbar[30]) { const v = ch.hotbar[30]; ch.hotbar[30] = null; const j = ch.hotbar.findIndex((x, k) => k >= 25 && k < 30 && !x); if (j >= 0) ch.hotbar[j] = v; } // 6th quick slot folded into the 30-slot bar

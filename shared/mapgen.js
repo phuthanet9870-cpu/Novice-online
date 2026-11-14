@@ -283,7 +283,7 @@
     return true;
   }
   // A* with binary heap; returns array of [x,y] tile centers
-  function findPath(m, sx, sy, tx, ty, maxNodes = 6000) {
+  function findPath(m, sx, sy, tx, ty, maxNodes = 6000, raw = false) {
     const w = m.w;
     sx = Math.floor(sx); sy = Math.floor(sy); tx = Math.floor(tx); ty = Math.floor(ty);
     if (!walkable(m, tx, ty)) {
@@ -318,6 +318,7 @@
     const path = []; let c = goal;
     while (c !== start) { path.push([(c % w) + 0.5, ((c / w) | 0) + 0.5]); c = came.get(c); }
     path.reverse();
+    if (raw) return path; // grid walking: tile-centre to tile-centre steps (8 directions)
     // string-pull smoothing
     const out = []; let ax = sx + 0.5, ay = sy + 0.5, i = 0;
     while (i < path.length) {

@@ -42,6 +42,8 @@
     revived: () => UI.hideDead(),
     loot: (m) => UI.loot(m),
     chest: (m) => UI.chestView(m),
+    lobby: (m) => UI.onLobby && UI.onLobby(m),
+    roll: (m) => UI.onRoll && UI.onRoll(m),
     refineRes: (m) => UI.refineResult(m),
     info: (m) => UI.info(m),
     invite: (m) => UI.invite(m),
@@ -157,10 +159,12 @@
     const i = list.findIndex((e) => e.id === G.target);
     G.target = list[(i + 1) % list.length].id;
   };
+  // grid walking (tile to tile, 8 directions): the destination snaps to the tile centre; the route shows as arrows
   G.walkTo = function (x, y) {
     if (G.autoOn()) return;
-    const p = M.findPath(G.map, G.self.x, G.self.y, x, y, 12000);
+    const p = M.findPath(G.map, G.self.x, G.self.y, x, y, 12000, true);
     G.path = p && p.length ? p : null;
+    G.moveGoal = G.path ? G.path[G.path.length - 1].slice() : null; G.moveGoalT = G.t;
   };
   G.clickEntity = function (e) {
     if (e.k === 'i') { G.stopAuto(); G.lootGoal = e.id; G.walkTo(e.x, e.y); return; }
@@ -456,7 +460,23 @@
     }
     const tg = G.ents.get(G.target);
     if (tg) { g.strokeStyle = G.isEnemy(tg) ? '#ff5050' : '#5ad0ff'; g.lineWidth = 0.07; g.setLineDash([0.25, 0.15]); g.lineDashOffset = -G.t; g.beginPath(); g.ellipse(tg.x, tg.y, 0.8 * (tg.sz || 1), 0.4 * (tg.sz || 1), 0, 0, 7); g.stroke(); g.setLineDash([]); }
-    if (G.path && G.path.length) { const l = G.path[G.path.length - 1]; g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 0.05; g.beginPath(); g.arc(l[0], l[1], 0.3 + Math.sin(G.t * 6) * 0.05, 0, 7); g.stroke(); }
+    // hovered tile + walking route (Ragnarok-style): corner brackets on the tile, chevron arrows along the route
+    const tileBracket = (cx, cy, col, k) => { const h = 0.5 * k, L = 0.18; g.strokeStyle = col; g.lineWidth = 0.07; g.beginPath();
+      for (const [sx2, sy2] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { const x0 = cx + sx2 * h, y0 = cy + sy2 * h; g.moveTo(x0, y0 - sy2 * L); g.lineTo(x0, y0); g.lineTo(x0 - sx2 * L, y0); } g.stroke(); };
+    if (G.mouse && !G.autoOn() && !(UI.typing && UI.typing())) { const [mx, my] = G.toWorld(G.mouse.x, G.mouse.y); const hx = Math.floor(mx) + 0.5, hy = Math.floor(my) + 0.5; if (M.walkable(G.map, hx, hy)) { g.fillStyle = 'rgba(80,220,170,0.10)'; g.fillRect(hx - 0.5, hy - 0.5, 1, 1); tileBracket(hx, hy, 'rgba(90,230,180,0.75)', 0.92); } }
+    if (G.path && G.path.length && G.moveGoal) {
+      const P2 = [[G.self.x, G.self.y], ...G.path];
+      for (let i = 1; i < P2.length - 1; i++) {
+        if (i % 2) continue; const [ax, ay] = P2[i], [bx, by] = P2[i + 1]; const an = Math.atan2(by - ay, bx - ax);
+        g.save(); g.translate(ax, ay); g.rotate(an); g.globalAlpha = 0.9;
+        g.fillStyle = '#2a1a08'; g.beginPath(); g.moveTo(0.28, 0); g.lineTo(-0.16, -0.26); g.lineTo(-0.02, 0); g.lineTo(-0.16, 0.26); g.closePath(); g.fill();
+        g.fillStyle = '#ffd04a'; g.beginPath(); g.moveTo(0.22, 0); g.lineTo(-0.12, -0.2); g.lineTo(-0.0, 0); g.lineTo(-0.12, 0.2); g.closePath(); g.fill();
+        g.restore();
+      }
+      const [gx, gy] = G.moveGoal, pulse = 0.85 + Math.sin(G.t * 6) * 0.08;
+      g.fillStyle = 'rgba(255,208,74,0.16)'; g.fillRect(gx - 0.5, gy - 0.5, 1, 1);
+      tileBracket(gx, gy, '#3de0a0', pulse);
+    } else G.moveGoal = null;
     g.restore();
     // entities (y-sorted)
     const list = [];

@@ -402,6 +402,18 @@
     return ok[ok.length - 1][0];
   };
   D.CHESTS.forEach((c, i) => add('key_' + i, { n: c.key, th: `${c.kth} — เปิด${c.th} (หาได้จากมอนสเตอร์ในดันเจี้ยนชั้น ${c.minF}+ เท่านั้น)`, type: 'key', tier: i, icon: c.color, img: `client/assets/items/key_${i}.png`, sell: [40, 300, 1500, 6000, 20000, 60000][i], noShop: 1 }));
+  // ------------------------------------------------------------------ class roster: 3 starters + the class case
+  D.STARTER_CLASSES = ['blademaster', 'ranger', 'pyromancer']; // นักดาบ · นักธนู · นักเวท
+  D.CLASS_ROLL_COST = 5000000;
+  // case grades (low → high) and their total weight; every class in a grade shares that grade's weight
+  D.CASE_TIERS = [
+    { id: 'common', n: 'Common', th: 'ธรรมดา', color: '#4b69ff', w: 60, cls: ['blademaster', 'ranger', 'pyromancer', 'guardian', 'berserker', 'cryomancer', 'cleric', 'marksman', 'monk', 'druid', 'engineer', 'stormcaller'] },
+    { id: 'rare', n: 'Rare', th: 'หายาก', color: '#8847ff', w: 25, cls: ['paladin', 'necromancer', 'assassin', 'spellblade', 'beastmaster', 'warlock', 'shadowdancer'] },
+    { id: 'epic', n: 'Epic', th: 'มหากาพย์', color: '#d32ce6', w: 10, cls: ['chronomancer', 'starhunter', 'darkknight', 'seraph', 'jester'] },
+    { id: 'legend', n: 'Legendary', th: 'ตำนาน', color: '#eb4b4b', w: 4, cls: ['lightbringer', 'shadowmancer', 'reaper', 'demon'] },
+    { id: 'mythic', n: 'Mythic', th: 'เทพ', color: '#e4ae39', w: 1, cls: ['deity', 'loki'] }
+  ];
+  D.classTier = (cls) => Math.max(0, D.CASE_TIERS.findIndex((t) => t.cls.includes(cls)));
   // item categories for UI filters
   D.itemCategory = (d) => ({ potion: 'support', buffitem: 'support', cure: 'support', wing: 'support', scroll: 'support', loot: 'material', mat: 'refine', anvil: 'refine', rune: 'socket', jewel: 'socket', card: 'socket', junk: 'junk', treasure: 'sell', box: 'box', currency: 'other', pet: 'other', mount: 'other', petfood: 'support', zeny: 'other', key: 'box' }[d.type] || 'other');
   D.ITEM_COUNT = Object.keys(D.ITEMS).length + Object.keys(D.GEAR).length;
