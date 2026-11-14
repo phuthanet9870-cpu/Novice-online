@@ -74,7 +74,41 @@
   };
   const MELEE_WEAPON = { sword: 1, spear: 1, axe: 1, dagger: 1, knuckle: 1, scythe: 1, mace: 1, claw: 1, katana: 1 };
   const IMPACT = { ember: 'blast', shard: 'shatter', spark: 'zap', smoke: 'implode', feather: 'burst', leaf: 'burst', dust: 'burst', glyph: 'burst', drop: 'splash', tick: 'burst', bubble: 'splash', swirl: 'gust', ringlet: 'burst', twinkle: 'burst' };
+  // ---- Chronomancer: every skill is clockwork — dials, time rings, gears, hands, hourglasses, rewinds
+  const C_ = (k, at, o) => Object.assign({ k: 'chrono', at, style: k }, o);
+  const CHRONO = [
+    /*00 Time Bolt      */ () => [C_('dial', 'caster', { dur: 0.35, r: 0.6, up: 1, spin: 6 }), { k: 'proj', at: 'path', style: 'clock', dur: 0.4 }, C_('dial', 'target', { d: 0.3, dur: 0.6, r: 0.8, up: 1, spin: -4, freeze: 1 })],
+    /*01 Rewind Lance   */ () => [C_('rewind', 'caster', { dur: 0.45, r: 1 }), C_('hand', 'line', { d: 0.1, dur: 0.45, w: 0.3, back: 1 })],
+    /*02 Clock Shards   */ () => [{ k: 'proj', at: 'fan', n: 3, style: 'gear', dur: 0.35 }, C_('gear', 'target', { d: 0.3, dur: 0.5, r: 0.7, teeth: 10 })],
+    /*03 Temporal Rift  */ () => [C_('rings', 'target', { d: 0.05, dur: 2.4, r: 2.4, n: 3, flat: 1 }), C_('dial', 'target', { d: 0.05, dur: 2.4, r: 1.1, flat: 1, spin: -1.5 })],
+    /*04 Age Strike     */ () => [C_('dial', 'target', { dur: 0.7, r: 1.4, up: 1, drop: 1, spin: 10 }), C_('crack', 'target', { d: 0.45, dur: 0.6, r: 1.4 })],
+    /*05 Chrono Chain   */ () => [C_('chain', 'line', { dur: 0.6 }), C_('gear', 'target', { d: 0.25, dur: 0.5, r: 0.6, teeth: 8 })],
+    /*06 Second Hand    */ () => [C_('sweep', 'caster', { dur: 0.5, r: 2.4, turns: 1 }), C_('dial', 'caster', { dur: 0.5, r: 2.4, flat: 1, faint: 1 })],
+    /*07 Paradox Nova   */ () => [C_('dial', 'caster', { dur: 0.6, r: 2.6, flat: 1, grow: 1, spin: 3 }), C_('rings', 'caster', { d: 0.15, dur: 0.6, r: 2.8, n: 2, flat: 1, grow: 1 })],
+    /*08 Time Stop      */ () => [C_('dial', 'target', { dur: 1.4, r: 1.8, up: 1, spin: 0.001, freeze: 1 }), C_('shatterdial', 'target', { d: 1.2, dur: 0.5, r: 1.8 })],
+    /*09 Slow Field     */ () => [C_('hourglass', 'target', { dur: 2.6, r: 0.9 }), C_('rings', 'target', { dur: 2.6, r: 3.6, n: 4, flat: 1, slow: 1 })],
+    /*10 Epoch Orb      */ () => [{ k: 'proj', at: 'path', style: 'clock', dur: 0.55, big: 1 }, C_('dial', 'target', { d: 0.4, dur: 0.6, r: 1, up: 1, spin: 8, burst: 1 })],
+    /*11 Hour Crash     */ () => [C_('dial', 'target', { dur: 0.8, r: 1.9, flat: 1, drop: 1, spin: 2 }), C_('hand', 'target', { d: 0.4, dur: 0.4, r: 1.9, stab: 1 })],
+    /*12 Paradox Laser  */ () => [C_('dial', 'caster', { dur: 0.6, r: 0.8, up: 1, spin: 12 }), C_('beam', 'line', { d: 0.15, dur: 0.45, w: 0.35 })],
+    /*13 Tick Field     */ () => [C_('ticks', 'target', { dur: 2.4, r: 2.9 }), C_('dial', 'target', { dur: 2.4, r: 0.7, up: 1, spin: 2 })],
+    /*14 Eternity Arc   */ () => [C_('chain', 'line', { dur: 0.7, gold: 1 }), C_('rings', 'target', { d: 0.3, dur: 0.5, r: 1, n: 2 })],
+    /*15 Haste          */ () => [C_('dial', 'caster', { follow: 1, dur: 1.1, r: 1, up: 1, spin: 14 }), C_('speed', 'caster', { follow: 1, dur: 1.1, r: 1 })],
+    /*16 Chrono Shield  */ () => [C_('rings', 'caster', { follow: 1, dur: 1.4, r: 1.3, n: 3, shield: 1 }), C_('dial', 'caster', { follow: 1, dur: 1.4, r: 1.3, flat: 1, faint: 1, spin: 1 })],
+    /*17 Time Skip      */ () => [C_('rewind', 'caster', { dur: 0.4, r: 0.9, fwd: 1 }), C_('afterimage', 'line', { dur: 0.5 })],
+    /*18 Accelerate     */ () => [C_('gear', 'caster', { follow: 1, dur: 1.1, r: 1.1, teeth: 14, up: 1, pair: 1 }), C_('speed', 'caster', { follow: 1, dur: 1.1, r: 0.9 })],
+    /*19 Epoch Focus    */ () => [C_('hourglass', 'caster', { follow: 1, dur: 1.3, r: 0.8, up: 1 }), C_('rings', 'caster', { follow: 1, dur: 1.3, r: 1, n: 1 })],
+    /*20 End of Time    */ () => [C_('dial', 'caster', { dur: 1.6, r: 6.5, flat: 1, grow: 1, spin: 6, roman: 1 }), C_('rings', 'caster', { d: 0.2, dur: 1.5, r: 7.2, n: 3, flat: 1, grow: 1 }), C_('dial', 'caster', { d: 0.2, dur: 1.4, r: 1.8, up: 1, spin: 20, roman: 1 })],
+    /*21 Tick Requiem   */ () => [C_('dial', 'target', { dur: 1.6, r: 5.4, flat: 1, spin: -2, roman: 1 }), C_('ticks', 'target', { d: 0.1, dur: 1.5, r: 5.6, hammer: 1 })],
+    /*22 Eternity Eclipse*/ () => [C_('dial', 'caster', { dur: 1, r: 1.6, up: 1, spin: 4, eclipse: 1, roman: 1 }), C_('beam', 'line', { d: 0.35, dur: 0.7, w: 0.6, eclipse: 1 })],
+    /*23 Chrono Apocalypse*/ () => [C_('rain', 'target', { dur: 1.4, r: 2.4, n: 9 }), C_('dial', 'target', { dur: 1.4, r: 2.2, flat: 1, spin: 5, roman: 1 })],
+    /*24 End of Time (set)*/ () => [C_('dial', 'target', { dur: 2.2, r: 5.4, flat: 1, spin: -1, roman: 1, grow: 1 }), C_('rings', 'target', { dur: 2.2, r: 6, n: 4, flat: 1 }), C_('hourglass', 'target', { d: 0.2, dur: 2, r: 1.4, up: 1, big: 1 }), C_('shatterdial', 'target', { d: 1.9, dur: 0.5, r: 5.4, flat: 1 })]
+  ];
   function build(sk) {
+    if (sk.cls === 'chronomancer' && CHRONO[sk.idx]) {
+      const steps = CHRONO[sk.idx]().map((x) => Object.assign({}, x));
+      for (const r0 of sk.riders || []) steps.push({ k: 'glyph', at: SELF_RIDERS.has(r0.k) ? 'caster' : 'target', d: 0.22, dur: 0.85, r: 1, style: r0.k });
+      return steps;
+    }
     const cs = CLASS_STYLE[sk.cls] || CLASS_STYLE.blademaster;
     const cls = D_().CLASSES[sk.cls] || {}, wpn = cls.weapon || 'sword';
     const el = sk.element || 'neutral', efx = sk.efx || 'dust', h = hash(sk.id);
@@ -242,6 +276,7 @@
     if (big) { dim = Math.max(dim, 0.4); hitStop = Math.max(hitStop, 0.06); }
     for (const s of R.steps) {
       const base = { k: s.k, pal: R.pal, el: R.el, style: s.style, n: s.n || 1, r: s.r || 1, dur: s.dur, d: s.d || 0, big: s.big || big, prio, ang, flip: s.flip, len: s.len, w: s.w, cls: R.cls, var: s.var || 0 };
+      if (s.k === 'chrono') for (const kk of ['up', 'spin', 'flat', 'freeze', 'drop', 'grow', 'faint', 'roman', 'eclipse', 'burst', 'teeth', 'pair', 'stab', 'back', 'fwd', 'turns', 'shield', 'slow', 'hammer', 'gold']) if (s[kk] !== undefined) base[kk] = s[kk];
       if (s.at === 'return') { const dur = clamp(dist / 22, 0.1, 0.5); add(Object.assign({}, base, { k: 'proj', x: f.tx, y: f.ty, tx: f.x, ty: f.y, dur, ang: ang + Math.PI })); continue; }
       if (s.at === 'path' || s.at === 'bounce' || s.at === 'fan') {
         const n = s.at === 'fan' ? s.n : 1;
@@ -567,6 +602,8 @@
     switch (e.style) {
       case 'arrow': case 'spear': case 'kunai': P.line(g, x - cs * 0.55 * sz, y - sn * 0.55 * sz, x, y, 0.07, e.style === 'arrow' ? '#8a6a3a' : '#9aa0b0'); P.line(g, x - cs * 0.15, y - sn * 0.15, x + cs * 0.12, y + sn * 0.12, 0.12, '#e8eef8'); if (e.style === 'arrow') P.line(g, x - cs * 0.55 * sz, y - sn * 0.55 * sz, x - cs * 0.45 * sz - sn * 0.1, y - sn * 0.45 * sz + cs * 0.1, 0.06, c[6]); break;
       case 'bullet': P.line(g, x - cs * 0.5, y - sn * 0.5, x, y, 0.07, c[6], 0.7); P.ellipse(g, x, y, 0.09, 0.07, '#fff8d0'); break;
+      case 'clock': dial(g, x, y, 0.32 * sz, 1, e.t * 9, 0, { proj: 1 }); break;
+      case 'gear': gear(g, x, y, 0.22 * sz, 9, e.t * 14, 1); break;
       case 'chakram': P.ring(g, x, y, 0.26 * sz, 0.2 * sz, 0.07, c[6]); for (let i = 0; i < 3; i++) { const an = k * 30 + (i / 3) * TAU; P.line(g, x + Math.cos(an) * 0.1, y + Math.sin(an) * 0.08, x + Math.cos(an) * 0.3 * sz, y + Math.sin(an) * 0.24 * sz, 0.06, c[7]); } break;
       case 'blade': case 'voidblade': P.crescent(g, x, y, 0.42 * sz, a - 1.1, a + 1.1, 0.16 * sz, e.style === 'voidblade' ? c[2] : c[6]); P.crescent(g, x, y, 0.36 * sz, a - 0.9, a + 0.9, 0.07, c[7]); break;
       case 'axe': { const sp = k * 22; for (let i = 0; i < 2; i++) { const an = sp + i * Math.PI; P.ellipse(g, x + Math.cos(an) * 0.2, y + Math.sin(an) * 0.14, 0.14, 0.1, c[5]); } P.ellipse(g, x, y, 0.07, 0.07, '#5a3a1a'); break; }
@@ -728,6 +765,79 @@
     for (let i = 0; i < 8; i++) { const an = -rot * 1.5 + (i / 8) * TAU; P.ellipse(g, e.x + Math.cos(an) * R * 0.88, e.y + Math.sin(an) * R * 0.88 * FLOOR, 0.05, 0.04, c[7], fade); }
   };
   DRAW.mark = (g, e, k) => { const c = e.pal, R = e.r * (1.6 - k * 0.6); P.ring(g, e.x, e.y, R, R * FLOOR, 0.06, c[5], 0.9); for (let i = 0; i < 4; i++) { const an = (i / 4) * TAU + k * 4; P.line(g, e.x + Math.cos(an) * R * 0.7, e.y + Math.sin(an) * R * 0.7 * FLOOR, e.x + Math.cos(an) * R * 1.15, e.y + Math.sin(an) * R * 1.15 * FLOOR, 0.06, c[6]); } P.ellipse(g, e.x, e.y, 0.08, 0.06, c[7], ((k * 6) | 0) % 2 ? 1 : 0.3); };
+  // ---- realistic clockwork pieces (brass bezel, enamel face, black indices, blued-steel hands, glass glint)
+  const BRASS = ['#5a3c14', '#8a6224', '#c8962e', '#f0c860', '#fff0b0'], FACE = '#f4ecd4', INK = '#2a2018', STEEL = '#1e2a48';
+  function dial(g, x, y, R, sy, t, fade, o) {
+    o = o || {}; const a = (fade === 0 ? 1 : 1 - fade), ry = R * sy;
+    if (!o.proj && !o.faint) P.ellipse(g, x, y + R * 0.08, R * 1.08, ry * 1.08, '#000', 0.25 * a);
+    P.ellipse(g, x, y, R * 1.06, ry * 1.06, BRASS[1], a); P.ellipse(g, x, y, R, ry, BRASS[3], a); P.ellipse(g, x, y, R * 0.92, ry * 0.92, BRASS[2], a);
+    P.ellipse(g, x, y, R * 0.84, ry * 0.84, o.eclipse ? '#160e24' : FACE, o.faint ? a * 0.35 : a * 0.92);
+    const ink = o.eclipse ? '#f0c860' : INK;
+    for (let i = 0; i < 60; i += o.proj ? 5 : 1) { const an = i / 60 * TAU, big = i % 5 === 0, r0 = R * (big ? 0.66 : 0.74), r1 = R * 0.8; P.line(g, x + Math.cos(an) * r0, y + Math.sin(an) * r0 * sy, x + Math.cos(an) * r1, y + Math.sin(an) * r1 * sy, (big ? 0.05 : 0.02) * Math.max(0.6, R), ink, a * (o.faint ? 0.5 : 1)); }
+    if (o.roman && R > 1) for (let i = 0; i < 12; i++) { const an = i / 12 * TAU - Math.PI / 2, rr = R * 0.55, cx = x + Math.cos(an) * rr, cy = y + Math.sin(an) * rr * sy, n = (i % 3 === 0) ? 3 : (i % 2) + 1; for (let q = 0; q < n; q++) P.line(g, cx + (q - (n - 1) / 2) * R * 0.035, cy - R * 0.05 * sy, cx + (q - (n - 1) / 2) * R * 0.035, cy + R * 0.05 * sy, 0.025 * R, ink, a); }
+    const mn = -Math.PI / 2 + t, hr = -Math.PI / 2 + t / 12;
+    P.line(g, x, y, x + Math.cos(hr) * R * 0.42, y + Math.sin(hr) * R * 0.42 * sy, 0.075 * R, o.eclipse ? '#f0c860' : STEEL, a);
+    P.line(g, x, y, x + Math.cos(mn) * R * 0.68, y + Math.sin(mn) * R * 0.68 * sy, 0.05 * R, o.eclipse ? '#ffe090' : STEEL, a);
+    if (!o.proj) { const sc = -Math.PI / 2 + t * 6; P.line(g, x - Math.cos(sc) * R * 0.15, y - Math.sin(sc) * R * 0.15 * sy, x + Math.cos(sc) * R * 0.74, y + Math.sin(sc) * R * 0.74 * sy, 0.02 * R, '#c8202a', a); }
+    P.ellipse(g, x, y, R * 0.07, R * 0.07 * sy, BRASS[3], a);
+    P.crescent(g, x - R * 0.12, y - R * 0.12 * sy, R * 0.7, -2.6, -1.4, R * 0.12, 'rgba(255,255,255,0.55)', a * (o.faint ? 0.3 : 0.8)); // glass glint
+  }
+  function gear(g, x, y, R, teeth, rot, a) {
+    P.ellipse(g, x, y, R * 0.82, R * 0.82, BRASS[2], a);
+    for (let i = 0; i < teeth; i++) { const an = rot + i / teeth * TAU; P.line(g, x + Math.cos(an) * R * 0.75, y + Math.sin(an) * R * 0.75, x + Math.cos(an) * R * 1.05, y + Math.sin(an) * R * 1.05, R * 0.28, BRASS[3], a); }
+    P.ellipse(g, x, y, R * 0.55, R * 0.55, BRASS[1], a); P.ellipse(g, x, y, R * 0.42, R * 0.42, BRASS[3], a); P.ellipse(g, x, y, R * 0.16, R * 0.16, BRASS[0], a);
+    for (let i = 0; i < 4; i++) { const an = rot + i / 4 * TAU; P.line(g, x, y, x + Math.cos(an) * R * 0.5, y + Math.sin(an) * R * 0.5, R * 0.08, BRASS[1], a); }
+  }
+  function timeRing(g, x, y, R, sy, rot, w, col, a, ticks) {
+    P.ring(g, x, y, R, R * sy, w, col, a); P.ring(g, x, y, R - w * 1.6, (R - w * 1.6) * sy, w * 0.35, col, a * 0.6);
+    for (let i = 0; i < ticks; i++) { const an = rot + i / ticks * TAU; P.line(g, x + Math.cos(an) * (R - w * 0.5), y + Math.sin(an) * (R - w * 0.5) * sy, x + Math.cos(an) * (R + w * 1.2), y + Math.sin(an) * (R + w * 1.2) * sy, w * 0.5, i % 3 ? col : '#ffffff', a); }
+  }
+  DRAW.chrono = (g, e, k) => {
+    const c = e.pal, T = e.t, fade = clamp((k - 0.78) / 0.22), a = 1 - fade, grow = e.grow ? ease.out3(clamp(k * 2.2)) : 1;
+    const sy = e.flat ? FLOOR : 1, up = e.up ? 1.25 + e.r * 0.35 : 0, x = e.x, y = e.y - up;
+    switch (e.style) {
+      case 'dial': {
+        let yy = y; if (e.drop) yy -= (1 - ease.out3(clamp(k * 2.5))) * 4;
+        const spin = (e.spin || 3) * (e.freeze && k > 0.25 ? 0.02 : 1);
+        if (!e.faint) P.ellipse(g, x, e.y, e.r * 1.4 * grow, e.r * 1.4 * grow * FLOOR, c[5], 0.18 * a);
+        dial(g, x, yy, Math.max(0.05, e.r * grow), sy, T * spin + e.seed, fade, e);
+        if (e.burst && k > 0.35) { const q = (k - 0.35) / 0.65; for (let i = 0; i < 12; i++) { const an = i / 12 * TAU; P.line(g, x + Math.cos(an) * e.r * (1 + q), yy + Math.sin(an) * e.r * (1 + q), x + Math.cos(an) * e.r * (1.2 + q * 1.4), yy + Math.sin(an) * e.r * (1.2 + q * 1.4), 0.06, BRASS[4], 1 - q); } }
+        break;
+      }
+      case 'rings': for (let i = 0; i < (e.n || 2); i++) { const R = e.r * grow * (1 - i * 0.18), dir = i % 2 ? -1 : 1; timeRing(g, x, e.shield ? e.y - 0.8 : y, R, e.shield ? (0.35 + i * 0.3) : sy, T * dir * (e.slow ? 0.4 : 1.6) + i, 0.07, i === 0 ? c[6] : BRASS[3], a * (0.9 - i * 0.15), 12); } break;
+      case 'gear': { const yy = e.up ? e.y - 1.4 : e.y - 0.6; gear(g, x, yy, e.r * 0.6, e.teeth || 10, T * 4, a); if (e.pair) gear(g, x + e.r * 0.7, yy + e.r * 0.45, e.r * 0.38, 8, -T * 6.6 + 0.2, a); break; }
+      case 'hand': {
+        if (e.stab) { const L = e.r * 1.2, yy = e.y - L * (1 - ease.out3(clamp(k * 3))); P.line(g, x, yy - L, x, yy, 0.16, STEEL, a); P.line(g, x, yy - L, x, yy - L * 0.25, 0.08, '#4a6aa8', a); P.ellipse(g, x, yy - L, 0.16, 0.16, BRASS[3], a); break; }
+        const x2 = e.tx, y2 = e.ty - 0.6, ln = Math.hypot(x2 - e.x, y2 - (e.y - 0.6)), q = ease.out3(clamp(k * 2.2)), back = e.back ? -1 : 1;
+        const hx = e.x + (x2 - e.x) * q, hy = e.y - 0.6 + (y2 - e.y + 0.6) * q;
+        P.line(g, e.x, e.y - 0.6, hx, hy, e.w || 0.25, STEEL, a); P.line(g, e.x, e.y - 0.6, hx, hy, (e.w || 0.25) * 0.35, '#6a8ad8', a);
+        const an = Math.atan2(hy - e.y + 0.6, hx - e.x); P.ellipse(g, hx + Math.cos(an) * 0.2, hy + Math.sin(an) * 0.2, 0.22, 0.12, STEEL, a);
+        for (let i = 1; i < 4; i++) { const qq = q - i * 0.08 * back; if (qq <= 0) continue; P.line(g, e.x, e.y - 0.6, e.x + (x2 - e.x) * qq, e.y - 0.6 + (y2 - e.y + 0.6) * qq, 0.04, c[6], a * (0.5 - i * 0.12)); }
+        if (ln) {} break;
+      }
+      case 'sweep': { const an = -Math.PI / 2 + ease.out(k) * TAU * (e.turns || 1); for (let i = 0; i < 10; i++) { const aa = an - i * 0.09; P.line(g, x, e.y, x + Math.cos(aa) * e.r, e.y + Math.sin(aa) * e.r * FLOOR, i ? 0.06 : 0.14, i ? c[6] : STEEL, a * (1 - i / 10)); } P.ellipse(g, x, e.y, 0.18, 0.1, BRASS[3], a); break; }
+      case 'rewind': { for (let i = 0; i < 3; i++) { const R = e.r * (0.5 + i * 0.3), dir = e.fwd ? 1 : -1, a0 = T * 6 * dir + i * 2; P.ring(g, x, e.y - 0.8, R, R, 0.05, c[6 - i], a * 0.9, a0, a0 + 4.6); const tip = a0 + (dir > 0 ? 4.6 : 0); const tx = x + Math.cos(tip) * R, ty = e.y - 0.8 + Math.sin(tip) * R; P.star(g, tx, ty, 0.1, c[7], a, tip); } break; }
+      case 'hourglass': {
+        const H = e.r * 1.4 * (e.big ? 1.4 : 1), yy = (e.up ? e.y - 1.5 : e.y - 0.2) - H / 2, W2 = H * 0.45, sand = clamp(k * 1.15);
+        P.line(g, x - W2, yy - H / 2, x + W2, yy - H / 2, 0.1, BRASS[2], a); P.line(g, x - W2, yy + H / 2, x + W2, yy + H / 2, 0.1, BRASS[2], a);
+        P.line(g, x - W2 * 0.92, yy - H / 2, x - W2 * 0.92, yy + H / 2, 0.05, BRASS[1], a); P.line(g, x + W2 * 0.92, yy - H / 2, x + W2 * 0.92, yy + H / 2, 0.05, BRASS[1], a);
+        g.globalAlpha = a * 0.35; g.fillStyle = '#d8f0ff'; g.beginPath(); g.moveTo(x - W2 * 0.8, yy - H * 0.47); g.lineTo(x + W2 * 0.8, yy - H * 0.47); g.lineTo(x + 0.04, yy); g.lineTo(x + W2 * 0.8, yy + H * 0.47); g.lineTo(x - W2 * 0.8, yy + H * 0.47); g.lineTo(x - 0.04, yy); g.closePath(); g.fill();
+        g.globalAlpha = a; g.fillStyle = '#f0c870'; const top = (1 - sand) * H * 0.4; g.beginPath(); g.moveTo(x - W2 * 0.8 * (top / (H * 0.47)), yy - top); g.lineTo(x + W2 * 0.8 * (top / (H * 0.47)), yy - top); g.lineTo(x, yy); g.closePath(); g.fill();
+        const bot = sand * H * 0.4; g.beginPath(); g.moveTo(x - W2 * 0.8, yy + H * 0.47); g.lineTo(x + W2 * 0.8, yy + H * 0.47); g.lineTo(x, yy + H * 0.47 - bot); g.closePath(); g.fill();
+        if (sand < 1) P.line(g, x, yy, x, yy + H * 0.47 - bot, 0.03, '#f0c870', a);
+        g.globalAlpha = 1; break;
+      }
+      case 'ticks': for (let i = 0; i < 12; i++) { const an = i / 12 * TAU, lit = ((T * 4) | 0) % 12 === i, R = e.r; P.line(g, x + Math.cos(an) * R * 0.82, e.y + Math.sin(an) * R * 0.82 * FLOOR, x + Math.cos(an) * R, e.y + Math.sin(an) * R * FLOOR, lit ? 0.16 : 0.08, lit ? '#ffffff' : BRASS[3], a); if (e.hammer && lit) P.ellipse(g, x + Math.cos(an) * R * 0.9, e.y + Math.sin(an) * R * 0.9 * FLOOR, 0.35, 0.16, c[6], a * 0.6); } P.ring(g, x, e.y, e.r, e.r * FLOOR, 0.05, BRASS[2], a); break;
+      case 'chain': { const n = 9, dx = (e.tx - e.x) / n, dy = (e.ty - e.y) / n, q = clamp(k * 2.5); for (let i = 0; i < n * q; i++) gear(g, e.x + dx * (i + 0.5), e.y - 0.6 + dy * (i + 0.5), 0.16, 7, T * 8 * (i % 2 ? -1 : 1), a); break; }
+      case 'beam': { const q = clamp(k * 3); const x2 = e.x + (e.tx - e.x) * q, y2 = e.ty - 0.6; P.line(g, e.x, e.y - 0.6, x2, e.y - 0.6 + (y2 - e.y + 0.6) * q, (e.w || 0.35) * 1.6, e.eclipse ? '#2a1640' : c[4], a * 0.7); P.line(g, e.x, e.y - 0.6, x2, e.y - 0.6 + (y2 - e.y + 0.6) * q, (e.w || 0.35) * 0.6, e.eclipse ? '#f0c860' : '#ffffff', a);
+        for (let i = 0; i < 6; i++) { const qq = ((T * 2 + i / 6) % 1) * q; timeRing(g, e.x + (e.tx - e.x) * qq, e.y - 0.6 + (e.ty - e.y) * qq, (e.w || 0.35) * 1.4, 1, T * 5 + i, 0.03, BRASS[3], a * 0.8, 6); } break; }
+      case 'crack': { const rr = rngOf(e.seed); for (let i = 0; i < 7; i++) { const an = rr() * TAU; P.jag(g, x, e.y, x + Math.cos(an) * e.r, e.y + Math.sin(an) * e.r * FLOOR, e.seed + i, 0.05, '#3a2a18', a, 0.12); } break; }
+      case 'shatterdial': { const rr = rngOf(e.seed); for (let i = 0; i < 16; i++) { const an = rr() * TAU, d = ease.out(k) * e.r * (0.5 + rr()), px = x + Math.cos(an) * d, py = (e.flat ? e.y : e.y - 1.2) + Math.sin(an) * d * sy - (e.flat ? 0 : k * 0.5); P.ellipse(g, px, py, 0.12, 0.08, i % 3 ? FACE : BRASS[3], a); } break; }
+      case 'speed': for (let i = 0; i < 7; i++) { const yy = e.y - 0.2 - i * 0.22, ph = (T * 3 + i * 0.37) % 1; P.line(g, x - 0.9 + ph * 0.3, yy, x - 0.4 + ph * 0.3, yy, 0.04, i % 2 ? BRASS[3] : c[6], a * (1 - ph)); } break;
+      case 'afterimage': for (let i = 0; i < 5; i++) { const q = i / 4, px = e.x + (e.tx - e.x) * q, py = e.y + (e.ty - e.y) * q; dial(g, px, py - 1, 0.35, 1, T * 6 + i, Math.min(1, fade + (1 - q) * 0.5), { proj: 1 }); } break;
+      case 'rain': { const rr = rngOf(e.seed); for (let i = 0; i < (e.n || 8); i++) { const st = rr() * 0.6, q = clamp((k - st) / 0.35); if (q <= 0) continue; const px = x + (rr() - 0.5) * e.r * 2, py = e.y + (rr() - 0.5) * e.r * FLOOR * 2; if (q < 1) dial(g, px, py - (1 - q) * 5 - 0.4, 0.38, 1, T * 10 + i, 0, { proj: 1 }); else P.ellipse(g, px, py, 0.5, 0.22, c[5], (1 - clamp((k - st - 0.35) / 0.3)) * 0.8); } break; }
+    }
+  };
   DRAW.clock = (g, e, k) => {
     const c = e.pal, R = e.r * 1.2, fade = 1 - clamp((k - 0.8) / 0.2), y = e.y - 1.2;
     P.ring(g, e.x, y, R, R, 0.08, c[6], fade); P.ring(g, e.x, y, R * 0.85, R * 0.85, 0.03, c[5], fade * 0.8);
@@ -912,7 +1022,7 @@
       lg.setTransform(PPT, 0, 0, PPT, view.ox / px, view.oy / px);
       // pixel-art timing: poses step at 14 fps (projectiles/zones at 30) like hand-drawn sprite effects
       for (const e of live) {
-        if (e.t < 0) continue; const f = DRAW[e.k]; if (!f) continue;
+        if (e.t < 0 || e.k === 'chrono') continue; const f = DRAW[e.k]; if (!f) continue; // clockwork is drawn smooth, below
         const fps = e.k === 'proj' || e.k === 'status' || e.k.endsWith('fx') ? 24 : 12, tr = e.t, tq = Math.floor(tr * fps) / fps;
         e.t = tq; try { f(lg, e, clamp(tq / e.dur)); } catch (err) { e.dur = 0; } e.t = tr;
       }
@@ -936,6 +1046,10 @@
       g.drawImage(lightCv, 0, 0, w * px, h * px); lightOn = false; }
       if (glowK) { g.imageSmoothingEnabled = true; g.globalCompositeOperation = 'lighter'; g.globalAlpha = glowK; g.drawImage(bloom, 0, 0, bw * 4 * px, bh * 4 * px); g.globalAlpha = glowK * 0.55; g.drawImage(bloom, -bw * px, -bh * px, bw * 6 * px, bh * 6 * px); }
       g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+      // clockwork (Chronomancer): drawn at full resolution with smooth edges and its own brass / enamel colours
+      g.imageSmoothingEnabled = true; g.save(); g.translate(view.ox, view.oy); g.scale(view.scale, view.scale);
+      for (const e of live) { if (e.k !== 'chrono' || e.t < 0) continue; try { DRAW.chrono(g, e, clamp(e.t / e.dur)); } catch (err) { e.dur = 0; } }
+      g.restore(); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
       // crisp pixel sprites (arrows) on top, in world position, nearest-neighbour scaled
       g.imageSmoothingEnabled = false;
       for (const sp of sprites) {
