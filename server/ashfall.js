@@ -16,6 +16,74 @@ const shield = (q, f) => { q.shield = Math.max(q.shield || 0, q.maxHp * f); };
 const healPct = (q, f, src) => C.heal(q, q.maxHp * f, src || q, true);
 function cds(p, fn) { for (const k in p.cds) fn(k); p.sess && p.sess.send({ t: 'cdsync', cds: Object.fromEntries(Object.entries(p.cds).map(([k, v]) => [k, Math.max(0, Math.round((v - now()) * 100) / 100)])) }); }
 
+// ================================================================== class ultimates (each class: its own idea)
+// u = { p, inst, ox, oy (centre), R (radius), M (big hit), m (small hit), el, t, lv, tgt }
+const later = (u, s, fn) => u.inst.after(s, () => { if (!u.p.dead && u.p.inst === u.inst) fn(); });
+const ring = (u, r, fn) => { for (const e of foes(u.p, u.ox, u.oy, r)) fn(e); };
+const zone = (u, o) => W.spawnZone(u.inst, Object.assign({ zk: 'zone', owner: u.p, x: u.ox, y: u.oy, r: u.R, until: now() + 4, tick: 0.5, mult: 0, sk: null, lv: u.lv, el: u.el, color: D.CLASSES[u.p.cls].color }, o));
+const CLASS_ULT = {
+  // Blademaster — Thousand Cuts: blinks between up to 8 enemies, one cut each, then sheathes for a delayed cross-slash on all of them
+  blademaster: (u) => { const L = foes(u.p, u.ox, u.oy, u.R + 2, 8); L.forEach((e, i) => later(u, i * 0.12, () => { u.p.x = e.x - 0.8; u.p.y = e.y; hit(u.p, e, u.m * 3); })); later(u, L.length * 0.12 + 0.5, () => { for (const e of L) if (!e.dead) hit(u.p, e, u.M); say(u.p, '— 納刀 —', '#ffffff'); }); },
+  // Guardian — Bastion: plants a fortress, allies inside get a 30% shield and enemies are taunted and pushed to its edge
+  guardian: (u) => { for (const a of C.partyNear(u.p, u.R)) shield(a, 0.3); shield(u.p, 0.4); ring(u, u.R, (e) => { e.target = u.p; const an = Math.atan2(e.y - u.oy, e.x - u.ox); if (!isBoss(e)) { e.x = u.ox + Math.cos(an) * u.R * 0.95; e.y = u.oy + Math.sin(an) * u.R * 0.95; } hit(u.p, e, u.m * 2); }); },
+  // Berserker — Blood Price: pays 30% HP, then every hit for 6s heals; ends with a cleave scaled by HP lost
+  berserker: (u) => { const lost = u.p.hp * 0.3; u.p.hp -= lost; C.addBuff(u.p, 'ult:blood', { atkPct: 60, lifesteal: 25 }, 6, 'Blood Price', '#c81e32'); later(u, 6, () => ring(u, 3.5, (e) => hit(u.p, e, u.M * (1 + lost / u.p.maxHp * 3)))); },
+  // Paladin — Judgement Hammer: a hammer falls on the strongest enemy, stunning it, and heals allies by the damage dealt
+  paladin: (u) => { const L = foes(u.p, u.ox, u.oy, u.R + 3); const e = L.sort((a, b) => b.hp - a.hp)[0]; if (!e) return; later(u, 0.6, () => { const h0 = e.hp; hit(u.p, e, u.M * 2.2, 'holy'); C.applyTag(e, 'stun', 1, 2, u.p); const dealt = Math.max(0, h0 - e.hp); for (const a of C.partyNear(u.p, 9)) C.heal(a, dealt * 0.25, u.p, true); }); },
+  // Pyromancer — Supernova: a sun grows for 2s (bigger the longer), then bursts; the ground keeps burning
+  pyromancer: (u) => { later(u, 2, () => { ring(u, u.R * 1.3, (e) => { hit(u.p, e, u.M * 1.4, 'fire'); C.applyTag(e, 'burn', 3, 5, u.p); }); zone(u, { mult: u.m * 0.6, until: now() + 5, el: 'fire', color: '#ff6a2a', zf: 'burn' }); }); },
+  // Cryomancer — Absolute Zero: freezes everything for 2.5s; frozen enemies shatter for bonus damage when it ends
+  cryomancer: (u) => { const L = foes(u.p, u.ox, u.oy, u.R); for (const e of L) C.applyTag(e, 'freeze', 1, 2.5, u.p); later(u, 2.5, () => { for (const e of L) if (!e.dead) hit(u.p, e, u.M * (isBoss(e) ? 1 : 1.6), 'ice'); }); },
+  // Stormcaller — Eye of the Storm: 12 lightning strikes that always hit the enemy with the most HP left
+  stormcaller: (u) => { for (let i = 0; i < 12; i++) later(u, 0.2 + i * 0.22, () => { const e = foes(u.p, u.ox, u.oy, u.R + 3).sort((a, b) => b.hp - a.hp)[0]; if (e) { hit(u.p, e, u.m * 2.4, 'lightning'); u.inst.emit({ k: 'bolt', x: e.x, y: e.y - 8, tx: e.x, ty: e.y }); } }); },
+  // Necromancer — Mass Grave: every enemy killed within 6s rises as your skeleton for 12s
+  necromancer: (u) => { u.p.ultGrave = now() + 6; ring(u, u.R, (e) => hit(u.p, e, u.M * 0.7, 'dark')); },
+  // Cleric — Sanctuary: allies inside can't drop below 1 HP for 5s and regain 6% HP every second
+  cleric: (u) => { for (const a of C.partyNear(u.p, u.R)) { a.ultSanct = now() + 5; for (let i = 1; i <= 5; i++) later(u, i, () => healPct(a, 0.06, u.p)); } },
+  // Druid — World Tree: a tree roots enemies around it and heals allies near it for 8s; it explodes into thorns at the end
+  druid: (u) => { for (let i = 0; i < 8; i++) later(u, i, () => { ring(u, u.R, (e) => C.applyTag(e, 'root', 1, 1.1, u.p)); for (const a of C.partyNear(u.p, u.R)) healPct(a, 0.04, u.p); }); later(u, 8, () => ring(u, u.R, (e) => hit(u.p, e, u.M, 'earth'))); },
+  // Assassin — Death Mark: marks one target; after 4s it takes damage equal to 35% of all damage dealt to it meanwhile
+  assassin: (u) => { const e = u.tgt || foes(u.p, u.ox, u.oy, u.R + 3)[0]; if (!e) return; const h0 = e.hp; C.applyTag(e, 'mark', 1, 4, u.p); later(u, 4, () => { if (e.dead) return; const taken = Math.max(0, h0 - e.hp); hit(u.p, e, u.M, 'poison'); C.dealDamage(u.p, e, { flat: taken * 0.35, kind: 'true', el: 'poison' }); }); },
+  // Shadowdancer — Eclipse Waltz: stealth + 5 shadow clones each dance-strike a random enemy
+  shadowdancer: (u) => { u.p.stealthUntil = now() + 2; for (let i = 0; i < 5; i++) later(u, 0.25 * i, () => { const L = foes(u.p, u.ox, u.oy, u.R + 2); const e = L[(W.rand() * L.length) | 0]; if (e) { hit(u.p, e, u.m * 3, 'dark'); C.applyTag(e, 'blind', 1, 1.5, u.p); } }); },
+  // Ranger — Rain of the Hunt: arrows fall in a growing spiral for 3s, the outer rings slow
+  ranger: (u) => { for (let i = 0; i < 10; i++) later(u, i * 0.3, () => { const r = u.R * (i / 10 + 0.15); ring(u, r, (e) => { hit(u.p, e, u.m * 1.3); if (i > 5) C.applyTag(e, 'slow', 1, 2, u.p); }); }); },
+  // Marksman — Deadeye: locks the farthest enemy for 1.5s, then one shot that crits for sure and pierces every enemy on the line
+  marksman: (u) => { const L = foes(u.p, u.p.x, u.p.y, 16).sort((a, b) => W.dist(u.p, b) - W.dist(u.p, a)); const e = L[0]; if (!e) return; C.applyTag(e, 'mark', 1, 1.5, u.p); later(u, 1.5, () => { const an = Math.atan2(e.y - u.p.y, e.x - u.p.x); for (const o of foes(u.p, u.p.x, u.p.y, 18)) { const dx = o.x - u.p.x, dy = o.y - u.p.y, al = dx * Math.cos(an) + dy * Math.sin(an), pe = Math.abs(-dx * Math.sin(an) + dy * Math.cos(an)); if (al > 0 && pe < 1) hit(u.p, o, u.M * 1.8, null, { critBonus: 100 }); } }); },
+  // Engineer — Orbital Strike: places a beacon; after 3s a laser sweeps from it in a full circle
+  engineer: (u) => { later(u, 3, () => { for (let i = 0; i < 8; i++) later(u, i * 0.12, () => { const an = i / 8 * Math.PI * 2; for (const e of foes(u.p, u.ox, u.oy, u.R)) { const a2 = Math.atan2(e.y - u.oy, e.x - u.ox); if (Math.abs(((a2 - an + Math.PI * 3) % (Math.PI * 2)) - Math.PI) < 0.45) hit(u.p, e, u.m * 2.2); } }); }); },
+  // Monk — Hundred Fists: 20 rapid palm strikes on the nearest enemy; the last one knocks everything around away
+  monk: (u) => { const e = u.tgt || foes(u.p, u.p.x, u.p.y, 4)[0]; if (!e) return; for (let i = 0; i < 20; i++) later(u, i * 0.07, () => { if (!e.dead) hit(u.p, e, u.m * 0.6); }); later(u, 1.5, () => ring(u, 3, (o) => { hit(u.p, o, u.M * 0.6); C.applyTag(o, 'knockdown', 1, 1, u.p); })); },
+  // Spellblade — Runic Arsenal: 6 rune swords orbit you for 6s, each fires at the nearest enemy once per second
+  spellblade: (u) => { for (let s = 1; s <= 6; s++) later(u, s, () => { const L = foes(u.p, u.p.x, u.p.y, 7, 6); L.forEach((e) => hit(u.p, e, u.m * 1.2, 'water')); }); },
+  // Beastmaster — Stampede: a herd charges in a line through the area 3 times, knocking down
+  beastmaster: (u) => { for (let w = 0; w < 3; w++) later(u, 0.5 + w * 0.6, () => ring(u, u.R, (e) => { hit(u.p, e, u.m * 2, 'earth'); if (!isBoss(e)) C.applyTag(e, 'knockdown', 1, 0.6, u.p); })); },
+  // Chronomancer — Time Collapse: saves everyone's position and HP; after 3s enemies snap back but keep the damage, you heal back to your saved HP
+  chronomancer: (u) => { const saved = foes(u.p, u.ox, u.oy, u.R).map((e) => [e, e.x, e.y]); const hp0 = u.p.hp; later(u, 3, () => { for (const [e, x, y] of saved) if (!e.dead) { if (!isBoss(e)) { e.x = x; e.y = y; } hit(u.p, e, u.M, 'neutral'); } u.p.hp = Math.max(u.p.hp, hp0); }); },
+  // Warlock — Pact of Ruin: curses all, then every curse detonates and spreads to the nearest uncursed enemy
+  warlock: (u) => { const L = foes(u.p, u.ox, u.oy, u.R); for (const e of L) C.applyTag(e, 'curse', 2, 3, u.p); later(u, 3, () => { for (const e of L) { if (e.dead) continue; hit(u.p, e, u.M * 0.9, 'poison'); const n = foes(u.p, e.x, e.y, 4).find((o) => !L.includes(o)); if (n) hit(u.p, n, u.M * 0.6, 'poison'); } }); },
+  // Star Hunter — Constellation: links the 5 closest enemies with star lines; damage hits every enemy touching any line
+  starhunter: (u) => { const L = foes(u.p, u.ox, u.oy, u.R + 2, 5); later(u, 0.8, () => { for (const o of foes(u.p, u.ox, u.oy, u.R + 3)) { for (let i = 0; i + 1 < L.length; i++) { const A = L[i], B = L[i + 1], dx = B.x - A.x, dy = B.y - A.y, l2 = dx * dx + dy * dy || 1, q = Math.max(0, Math.min(1, ((o.x - A.x) * dx + (o.y - A.y) * dy) / l2)); if (Math.hypot(A.x + dx * q - o.x, A.y + dy * q - o.y) < 1) { hit(u.p, o, u.M * 1.1, 'holy'); break; } } } }); },
+  // Abyss Reaver — Abyssal Chains: chains up to 6 enemies to you for 4s; each second drains them and heals you
+  darkknight: (u) => { const L = foes(u.p, u.p.x, u.p.y, u.R, 6); for (let s = 1; s <= 4; s++) later(u, s, () => { for (const e of L) if (!e.dead) { if (!isBoss(e)) { e.x += (u.p.x - e.x) * 0.3; e.y += (u.p.y - e.y) * 0.3; } const h0 = e.hp; hit(u.p, e, u.m * 1.4, 'dark'); C.heal(u.p, Math.max(0, h0 - e.hp) * 0.3, u.p, true); } }); },
+  // Solar Arbiter — Verdict of Noon: enemies above 50% HP are burned, enemies below are executed by a sun pillar
+  lightbringer: (u) => { later(u, 0.7, () => ring(u, u.R, (e) => { if (!isBoss(e) && e.hp < e.maxHp * 0.5) hit(u.p, e, u.M * 3, 'holy'); else { hit(u.p, e, u.M * 0.8, 'holy'); C.applyTag(e, 'burn', 2, 4, u.p); } })); },
+  // Umbral Devourer — Feast: the shadow eats every summon/zone of enemies and the weakest 3 enemies; you gain 10% max HP shield per eaten foe
+  shadowmancer: (u) => { const L = foes(u.p, u.ox, u.oy, u.R).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp).slice(0, 3); later(u, 0.9, () => { for (const e of L) { if (e.dead) continue; hit(u.p, e, u.M * 1.5, 'dark'); shield(u.p, 0.1 * L.length); } }); },
+  // Seraph — Ascension: you fly (untargetable) for 3s and rain feathers on enemies, then land healing allies by 25%
+  seraph: (u) => { u.p.invulnUntil = now() + 3; for (let i = 0; i < 6; i++) later(u, 0.4 + i * 0.4, () => ring(u, u.R, (e) => hit(u.p, e, u.m, 'holy'))); later(u, 3, () => { for (const a of C.partyNear(u.p, u.R)) healPct(a, 0.25, u.p); }); },
+  // Grim Reaper — Harvest: one huge scythe swing; enemies killed by it return 15% max HP and reset your skill cooldowns
+  reaper: (u) => { later(u, 0.4, () => { let kills = 0; ring(u, u.R, (e) => { hit(u.p, e, u.M * 1.3, 'dark'); if (e.dead || e.hp <= 0) kills++; }); if (kills) { healPct(u.p, 0.15 * kills, u.p); u.p.cds = {}; u.p.sess && u.p.sess.send({ t: 'cdreset' }); say(u.p, `HARVEST ×${kills}`, '#b0ffb0'); } }); },
+  // Demon Lord — Hell Gate: opens a gate that spits 6 imps; imps explode on contact
+  demon: (u) => { for (let i = 0; i < 6; i++) later(u, 0.5 + i * 0.35, () => { const L = foes(u.p, u.ox, u.oy, u.R + 2); const e = L[(W.rand() * L.length) | 0]; if (e) { hit(u.p, e, u.m * 2.4, 'fire'); for (const o of foes(u.p, e.x, e.y, 1.6)) if (o !== e) hit(u.p, o, u.m, 'fire'); } }); },
+  // Deity — Divine Decree: enemies are judged by level — weaker than you take double, stronger are stunned
+  deity: (u) => { later(u, 1, () => ring(u, u.R, (e) => { if ((e.lv || 1) < u.p.lv) hit(u.p, e, u.M * 2, 'holy'); else { hit(u.p, e, u.M * 0.8, 'holy'); C.applyTag(e, 'stun', 1, 2, u.p); } })); },
+  // Jester — Grand Finale: spins a wheel — triple damage, mass confuse, heal the party or fireworks everywhere
+  jester: (u) => { const r = (W.rand() * 4) | 0; later(u, 1, () => { if (r === 0) { ring(u, u.R, (e) => hit(u.p, e, u.M * 3)); say(u.p, 'JACKPOT ×3', '#ffd84a'); } else if (r === 1) { ring(u, u.R, (e) => C.applyTag(e, 'fear', 1, 3, u.p)); say(u.p, 'CONFUSION!', '#ff7ad8'); } else if (r === 2) { for (const a of C.partyNear(u.p, 9)) healPct(a, 0.4, u.p); say(u.p, 'ENCORE!', '#7dff8a'); } else { for (let i = 0; i < 8; i++) later(u, i * 0.15, () => ring(u, u.R, (e) => hit(u.p, e, u.m))); say(u.p, 'FIREWORKS!', '#7ad8ff'); } }); },
+  // Loki — Grand Illusion: you vanish, a decoy taunts everyone for 3s, then the decoy explodes and you reappear behind the strongest enemy
+  loki: (u) => { u.p.stealthUntil = now() + 3; ring(u, u.R, (e) => { e.target = null; C.applyTag(e, 'fear', 1, 3, u.p); }); later(u, 3, () => { ring(u, u.R, (e) => hit(u.p, e, u.M)); const e = foes(u.p, u.ox, u.oy, u.R + 3).sort((a, b) => b.hp - a.hp)[0]; if (e) { u.p.x = e.x - 0.8; u.p.y = e.y; hit(u.p, e, u.M); } }); }
+};
+
 // ================================================================== class mechanics (◆)
 const PAY = {
   blademaster: (p, n, t, k) => { for (const e of foes(p, t.x, t.y, 2.8)) hit(p, e, 0.2 * n * k); fx(p, t.x, t.y, 'wave'); },
@@ -111,6 +179,8 @@ AF.onHurt = function (p, dmg, src) {
 AF.dodge = (p) => !!(p.cpx && p.cpx.dodge && W.rand() * 100 < p.cpx.dodge);
 AF.lastStand = (p, dmg) => { const t = now(); if (p.afLastStand > t && dmg >= p.hp) { p.afLastStand = 0; say(p, 'UNDYING!', '#ffd34a'); return Math.max(0, p.hp - 1); } return dmg; };
 AF.onKill = function (p, e) {
+  // Necromancer's Mass Grave: the fallen rise as your skeletons
+  if (p.ultGrave > now() && e.kind === 'm') W.spawnSummon(p, { name: 'Risen ' + e.name, dur: 12, shape: 'undead', color: '#c8c0a0', mult: 0.6, element: 'dark', mag: true });
   const m = mech(p);
   if (m && m.g.kill) add(p, m.g.kill);
   if (p.cpx && p.cpx.killHeal) healPct(p, p.cpx.killHeal / 100);
@@ -307,13 +377,12 @@ AF.postCast = function (p, sk, lv, tgt, ax, ay, targets, el, ctx) {
       case 'trail': { const f = p._dashFrom || { x: p.x, y: p.y }; for (let i = 0; i < 4; i++) { const u = (i + 0.5) / 4; W.spawnZone(inst, { zk: 'zone', owner: p, x: f.x + (p.x - f.x) * u, y: f.y + (p.y - f.y) * u, r: 1.1, until: t + 3, tick: 0.5, mult: v / 100 * 0.5 / 6, sk, lv, el, color, trail: 1 }); } break; }
     }
   }
-  // set ultimate: lingering field of random strikes, then a final blast
+  // class ultimate: every class has its own mechanic (see CLASS_ULT below)
   if (sk.setUlt) {
-    const su = sk.setUlt, ox = sk.self ? p.x : cx, oy = sk.self ? p.y : cy;
+    const su = sk.setUlt, ox = sk.self ? p.x : cx, oy = sk.self ? p.y : cy, k = ctx.nb;
     inst.emit({ k: 'afx', s: p.id, x: ox, y: oy, fk: 'setult', el: sk.fxEl, r: su.r, sk: sk.id, d: su.dur });
-    const n = Math.floor(su.dur / su.tick);
-    for (let i = 1; i <= n; i++) inst.after(i * su.tick, () => { if (p.dead || p.inst !== inst) return; const L = foes(p, ox, oy, su.r); if (!L.length) return; const e = L[(W.rand() * L.length) | 0]; hit(p, e, su.mult * ctx.nb, el); inst.emit({ k: 'afx', s: p.id, x: e.x, y: e.y, fk: 'strike', el: sk.fxEl, r: 1, sk: sk.id }); });
-    inst.after(su.dur, () => { if (p.dead || p.inst !== inst) return; for (const e of foes(p, ox, oy, su.r + 0.5)) hit(p, e, su.end * ctx.nb, el); inst.emit({ k: 'afx', s: p.id, x: ox, y: oy, fk: 'collapse', el: sk.fxEl, r: su.r, sk: sk.id }); });
+    const f = CLASS_ULT[p.cls];
+    if (f) { try { f({ p, inst, ox, oy, R: su.r, M: su.end * k, m: su.mult * k, el, t, lv, tgt: tgt && !tgt.dead ? tgt : null }); } catch (e) { console.error('class ult', p.cls, e); } }
   }
   // class mechanic role of this skill
   const m = mech(p); if (!m) return;

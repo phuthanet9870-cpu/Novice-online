@@ -417,5 +417,16 @@
   D.classTier = (cls) => Math.max(0, D.CASE_TIERS.findIndex((t) => t.cls.includes(cls)));
   // item categories for UI filters
   D.itemCategory = (d) => ({ potion: 'support', buffitem: 'support', cure: 'support', wing: 'support', scroll: 'support', loot: 'material', mat: 'refine', anvil: 'refine', rune: 'socket', jewel: 'socket', card: 'socket', junk: 'junk', treasure: 'sell', box: 'box', currency: 'other', pet: 'other', mount: 'other', petfood: 'support', zeny: 'other', key: 'box' }[d.type] || 'other');
+  // world-map layout (cells): one block per region, town in the middle of the top row, its fields around it.
+  // The world map draws from this and the server faces every warp gate toward its destination on it.
+  D.WORLD_REGION_AT = { aurelia: [0, 1], frostholm: [3, 0], sandhaven: [3, 2], emberforge: [6, 1], skyreach: [9, 0] };
+  D.WORLD_PLACE = {};
+  for (const t of D.TOWNS) {
+    const [rx, ry] = D.WORLD_REGION_AT[t.id] || [0, 0];
+    D.WORLD_PLACE[t.id] = { cx: rx + 1, cy: ry, town: 1 };
+    D.FARM_MAPS.filter((f) => f.town === t.id).forEach((f, k) => { const s = [[0, 0], [2, 0], [0, 1], [1, 1], [2, 1]][k % 5]; D.WORLD_PLACE[f.id] = { cx: rx + s[0], cy: ry + s[1] }; });
+  }
+  // unit direction on the world map from map a to map b
+  D.worldDir = (a, b) => { const A = D.WORLD_PLACE[a], B = D.WORLD_PLACE[b]; if (!A || !B) return null; const dx = B.cx - A.cx, dy = B.cy - A.cy, l = Math.hypot(dx, dy) || 1; return [dx / l, dy / l]; };
   D.ITEM_COUNT = Object.keys(D.ITEMS).length + Object.keys(D.GEAR).length;
 });

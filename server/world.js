@@ -582,14 +582,15 @@ function addGates(inst) {
   const map = inst.map, links = W.gateLinks(inst.def); if (!links.length) return;
   const roads = [];
   for (let y = 2; y < map.h - 2; y++) for (let x = 2; x < map.w - 2; x++) if (map.tiles[y * map.w + x] === M.T.PATH && M.walkable(map, x + 0.5, y + 0.5)) roads.push([x + 0.5, y + 0.5]);
-  const sx = map.spawn.x, sy = map.spawn.y, n = links.length, maxR = Math.min(map.w, map.h) * (inst.def.kind === 'town' ? 0.42 : 0.3), placed = [];
+  const sx = map.spawn.x, sy = map.spawn.y, n = links.length, maxR = Math.min(map.w, map.h) * (inst.def.kind === 'town' ? 0.44 : 0.4), placed = [];
+  // each gate sits on the side of the map that faces its destination on the world map (east gate → map to the east)
   links.forEach(([dest, name], i) => {
-    const a = (i / n) * Math.PI * 2 - Math.PI / 2 + 0.3, dx = Math.cos(a), dy = Math.sin(a);
+    const wd = D.worldDir(inst.def.id, dest), a0 = (i / n) * Math.PI * 2 - Math.PI / 2 + 0.3, dx = wd ? wd[0] : Math.cos(a0), dy = wd ? wd[1] : Math.sin(a0);
     let best = null, bv = -1e9;
     for (const [x, y] of roads) {
       const rx = x - sx, ry = y - sy, d = Math.hypot(rx, ry); if (d < 8 || d > maxR) continue;
       if (placed.some((q) => Math.hypot(q.x - x, q.y - y) < 10)) continue;
-      const v = (rx * dx + ry * dy) / d * 3 + Math.min(d, maxR) / maxR; // in the right direction, as far out as allowed
+      const v = (rx * dx + ry * dy) / d * 4 + Math.min(d, maxR) / maxR; // in the right direction, as far out as allowed
       if (v > bv) { bv = v; best = { x, y }; }
     }
     const s = best || W.freeSpot(map, sx + dx * maxR * 0.6, sy + dy * maxR * 0.6);

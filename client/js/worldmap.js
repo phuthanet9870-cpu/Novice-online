@@ -6,14 +6,8 @@
   const UI = window.UI, D = NO_DATA, M = NO_MAP;
   const CELL = 120; // px per map on the world sheet
   // region blocks (in cells): town in the middle of the top row, its five fields around it
-  const REGION_AT = { aurelia: [0, 1], frostholm: [3, 0], sandhaven: [3, 2], emberforge: [6, 1], skyreach: [9, 0] };
-  const SLOTS = [[0, 0], [2, 0], [0, 1], [1, 1], [2, 1]];
   const place = {};
-  for (const t of D.TOWNS) {
-    const [rx, ry] = REGION_AT[t.id] || [0, 0];
-    place[t.id] = { cx: rx + 1, cy: ry, def: t, town: 1 };
-    D.FARM_MAPS.filter((f) => f.town === t.id).forEach((f, k) => { const s = SLOTS[k % SLOTS.length]; place[f.id] = { cx: rx + s[0], cy: ry + s[1], def: f }; });
-  }
+  for (const id in D.WORLD_PLACE) place[id] = Object.assign({ def: D.TOWNS.find((t) => t.id === id) || D.FARM_MAPS.find((f) => f.id === id) }, D.WORLD_PLACE[id]);
   let maxX = 0, maxY = 0; for (const id in place) { maxX = Math.max(maxX, place[id].cx + 1); maxY = Math.max(maxY, place[id].cy + 1); }
   const PAD = 70, SW = maxX * CELL + PAD * 2, SH = maxY * CELL + PAD * 2;
   const centre = (id) => { const p = place[id]; return [PAD + (p.cx + 0.5) * CELL, PAD + (p.cy + 0.5) * CELL]; };

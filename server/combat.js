@@ -295,6 +295,7 @@ C.dealDamage = function (src, tgt, o) {
   }
   if (tgt.kind === 'p') dmg = AF.lastStand(tgt, dmg);
   tgt.hp -= dmg;
+  if (tgt.ultSanct > now() && tgt.hp < 1) tgt.hp = 1; // Cleric's Sanctuary: can't fall below 1 HP
   if (src.kind === 'p' && tgt !== src) AF.onDealt(src, tgt, dmg, crit, o);
   if (tgt.kind === 'p' && o.kind !== 'dot') { tgt.lastHurt = t; AF.onHurt(tgt, dmg, src); }
   if (src.kind === 'p' && src.pfx && o.kind !== 'dot' && o.kind !== 'reflect') {

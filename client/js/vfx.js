@@ -244,7 +244,8 @@
       const sd = hash(id), ult = sk.kind === 'ult', area = ['ground', 'nova', 'leap', 'zone', 'trap'].includes(sk.arch) || (sk.arch === 'proj' && sk.radius);
       for (const st of steps) st.d = (st.d || 0) + (ult ? 0.16 : 0.08);
       steps.unshift({ k: 'charge', at: 'caster', d: 0, dur: ult ? 0.34 : 0.18, r: ult ? 1.6 : 0.9 + (sd % 4) * 0.1, n: 6 + (sd % 7), style: sd % 2 ? 'cw' : 'ccw' });
-      if (area && sk.kind !== 'buff') steps.push({ k: 'smoke', at: 'target', d: (ult ? 0.6 : 0.4), dur: 1.3, r: Math.max(0.8, (sk.radius || 2) * 0.55), n: 4 + (sd % 4) }, { k: 'embers', at: 'target', d: 0.35, dur: 1.1, r: Math.max(0.7, (sk.radius || 2) * 0.6), n: 8 + (sd % 6) });
+      if (area && sk.kind !== 'buff' && sk.cls === 'chronomancer') steps.push({ k: 'motes', at: 'target', d: 0.35, dur: 1.1, r: Math.max(0.7, (sk.radius || 2) * 0.5), n: 10, style: 'tick' });
+      else if (area && sk.kind !== 'buff') steps.push({ k: 'smoke', at: 'target', d: (ult ? 0.6 : 0.4), dur: 1.3, r: Math.max(0.8, (sk.radius || 2) * 0.55), n: 4 + (sd % 4) }, { k: 'embers', at: 'target', d: 0.35, dur: 1.1, r: Math.max(0.7, (sk.radius || 2) * 0.6), n: 8 + (sd % 6) });
       else if (sk.kind === 'buff' || sk.arch === 'heal' || sk.arch === 'shield') steps.push({ k: 'embers', at: 'caster', follow: 1, d: 0.2, dur: 1.2, r: 0.7, n: 7 + (sd % 5), style: 'rise' });
       const sig = steps.map((s) => [s.k, s.style || '', s.n || 0, s.at].join(':')).join('>');
       let bump = 0;
@@ -765,35 +766,58 @@
     for (let i = 0; i < 8; i++) { const an = -rot * 1.5 + (i / 8) * TAU; P.ellipse(g, e.x + Math.cos(an) * R * 0.88, e.y + Math.sin(an) * R * 0.88 * FLOOR, 0.05, 0.04, c[7], fade); }
   };
   DRAW.mark = (g, e, k) => { const c = e.pal, R = e.r * (1.6 - k * 0.6); P.ring(g, e.x, e.y, R, R * FLOOR, 0.06, c[5], 0.9); for (let i = 0; i < 4; i++) { const an = (i / 4) * TAU + k * 4; P.line(g, e.x + Math.cos(an) * R * 0.7, e.y + Math.sin(an) * R * 0.7 * FLOOR, e.x + Math.cos(an) * R * 1.15, e.y + Math.sin(an) * R * 1.15 * FLOOR, 0.06, c[6]); } P.ellipse(g, e.x, e.y, 0.08, 0.06, c[7], ((k * 6) | 0) % 2 ? 1 : 0.3); };
-  // ---- realistic clockwork pieces (brass bezel, enamel face, black indices, blued-steel hands, glass glint)
-  const BRASS = ['#5a3c14', '#8a6224', '#c8962e', '#f0c860', '#fff0b0'], FACE = '#f4ecd4', INK = '#2a2018', STEEL = '#1e2a48';
+  // ---- arcane clock circles (no physical clocks): rings of light with roman numerals written in light,
+  //      rotating rune bands and hands made of beams — a magic circle that keeps time
+  const BRASS = ['#3a6a8a', '#5ab0d0', '#8ae8ff', '#c8f8ff', '#ffffff'], FACE = '#bff4ff', INK = '#7ff0ff', STEEL = '#ffe9a8';
+  const ROMAN = ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'];
+  function glow(g, col, blur) { g.shadowColor = col; g.shadowBlur = blur; }
   function dial(g, x, y, R, sy, t, fade, o) {
-    o = o || {}; const a = (fade === 0 ? 1 : 1 - fade), ry = R * sy;
-    if (!o.proj && !o.faint) P.ellipse(g, x, y + R * 0.08, R * 1.08, ry * 1.08, '#000', 0.25 * a);
-    P.ellipse(g, x, y, R * 1.06, ry * 1.06, BRASS[1], a); P.ellipse(g, x, y, R, ry, BRASS[3], a); P.ellipse(g, x, y, R * 0.92, ry * 0.92, BRASS[2], a);
-    P.ellipse(g, x, y, R * 0.84, ry * 0.84, o.eclipse ? '#160e24' : FACE, o.faint ? a * 0.35 : a * 0.92);
-    const ink = o.eclipse ? '#f0c860' : INK;
-    for (let i = 0; i < 60; i += o.proj ? 5 : 1) { const an = i / 60 * TAU, big = i % 5 === 0, r0 = R * (big ? 0.66 : 0.74), r1 = R * 0.8; P.line(g, x + Math.cos(an) * r0, y + Math.sin(an) * r0 * sy, x + Math.cos(an) * r1, y + Math.sin(an) * r1 * sy, (big ? 0.05 : 0.02) * Math.max(0.6, R), ink, a * (o.faint ? 0.5 : 1)); }
-    if (o.roman && R > 1) for (let i = 0; i < 12; i++) { const an = i / 12 * TAU - Math.PI / 2, rr = R * 0.55, cx = x + Math.cos(an) * rr, cy = y + Math.sin(an) * rr * sy, n = (i % 3 === 0) ? 3 : (i % 2) + 1; for (let q = 0; q < n; q++) P.line(g, cx + (q - (n - 1) / 2) * R * 0.035, cy - R * 0.05 * sy, cx + (q - (n - 1) / 2) * R * 0.035, cy + R * 0.05 * sy, 0.025 * R, ink, a); }
-    const mn = -Math.PI / 2 + t, hr = -Math.PI / 2 + t / 12;
-    P.line(g, x, y, x + Math.cos(hr) * R * 0.42, y + Math.sin(hr) * R * 0.42 * sy, 0.075 * R, o.eclipse ? '#f0c860' : STEEL, a);
-    P.line(g, x, y, x + Math.cos(mn) * R * 0.68, y + Math.sin(mn) * R * 0.68 * sy, 0.05 * R, o.eclipse ? '#ffe090' : STEEL, a);
-    if (!o.proj) { const sc = -Math.PI / 2 + t * 6; P.line(g, x - Math.cos(sc) * R * 0.15, y - Math.sin(sc) * R * 0.15 * sy, x + Math.cos(sc) * R * 0.74, y + Math.sin(sc) * R * 0.74 * sy, 0.02 * R, '#c8202a', a); }
-    P.ellipse(g, x, y, R * 0.07, R * 0.07 * sy, BRASS[3], a);
-    P.crescent(g, x - R * 0.12, y - R * 0.12 * sy, R * 0.7, -2.6, -1.4, R * 0.12, 'rgba(255,255,255,0.55)', a * (o.faint ? 0.3 : 0.8)); // glass glint
+    o = o || {}; const a = (fade === 0 ? 1 : 1 - fade) * (o.faint ? 0.55 : 1), gold = o.eclipse ? '#ffcf6a' : '#ffe9a8', cyan = o.eclipse ? '#c49aff' : '#7ff0ff';
+    g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = a; g.lineCap = 'round';
+    const el = (r, w, col, a0 = 0, a1 = Math.PI * 2, dash) => { g.strokeStyle = col; g.lineWidth = w; g.setLineDash(dash || []); g.beginPath(); g.ellipse(x, y, r, r * sy, 0, a0, a1); g.stroke(); g.setLineDash([]); };
+    glow(g, cyan, 8);
+    // soft inner light
+    const gr = g.createRadialGradient(x, y, 0, x, y, R); gr.addColorStop(0, o.eclipse ? 'rgba(90,40,140,0.35)' : 'rgba(120,230,255,0.22)'); gr.addColorStop(0.7, 'rgba(80,180,255,0.08)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.beginPath(); g.ellipse(x, y, R, R * sy, 0, 0, 7); g.fill();
+    // outer double ring + rotating rune band between them
+    el(R, R * 0.035, cyan); el(R * 0.9, R * 0.018, gold);
+    g.save(); g.translate(x, y); g.scale(1, sy); g.rotate(t * 0.15);
+    // text is laid out at 40× and scaled down: the circle lives in world units (1 = one tile)
+    g.fillStyle = cyan; g.font = `${(R * 0.1 * 40).toFixed(1)}px serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const runes = 'ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟ';
+    if (!o.proj && R > 0.5) for (let i = 0; i < 24; i++) { const an = i / 24 * Math.PI * 2; g.save(); g.rotate(an); g.translate(0, -R * 0.95); g.scale(1 / 40, 1 / 40); g.fillText(runes[i], 0, 0); g.restore(); }
+    g.restore();
+    // numerals written in light
+    if (!o.proj) { g.save(); g.translate(x, y); g.scale(1, sy); g.fillStyle = gold; g.font = `700 ${(R * 0.13 * 40).toFixed(1)}px Cinzel, serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      for (let i = 0; i < 12; i++) { const an = i / 12 * Math.PI * 2 - Math.PI / 2; g.save(); g.translate(Math.cos(an) * R * 0.75, Math.sin(an) * R * 0.75); if (sy < 1) g.rotate(an + Math.PI / 2); g.scale(1 / 40, 1 / 40); g.fillText(o.roman || R > 0.9 ? ROMAN[i] : '·', 0, 0); g.restore(); } g.restore(); }
+    // tick ring (60) counter-rotating
+    for (let i = 0; i < 60; i += o.proj ? 5 : 1) { const an = i / 60 * Math.PI * 2 - t * 0.08, big = i % 5 === 0, r0 = R * (big ? 0.58 : 0.62), r1 = R * 0.66; g.strokeStyle = big ? gold : cyan; g.lineWidth = R * (big ? 0.022 : 0.01); g.beginPath(); g.moveTo(x + Math.cos(an) * r0, y + Math.sin(an) * r0 * sy); g.lineTo(x + Math.cos(an) * r1, y + Math.sin(an) * r1 * sy); g.stroke(); }
+    el(R * 0.5, R * 0.012, cyan, 0, Math.PI * 2, [R * 0.05, R * 0.04]);
+    // inner geometry: two counter-rotating triangles (hexagram)
+    if (!o.proj) for (let k2 = 0; k2 < 2; k2++) { g.strokeStyle = k2 ? gold : cyan; g.lineWidth = R * 0.01; g.beginPath(); for (let i = 0; i <= 3; i++) { const an = (k2 ? -t * 0.3 : t * 0.3) + i / 3 * Math.PI * 2 + k2 * Math.PI; g.lineTo(x + Math.cos(an) * R * 0.46, y + Math.sin(an) * R * 0.46 * sy); } g.stroke(); }
+    // hands of light
+    glow(g, gold, 6);
+    const hand = (an, L, w, col) => { g.strokeStyle = col; g.lineWidth = w; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(an) * L, y + Math.sin(an) * L * sy); g.stroke(); };
+    hand(-Math.PI / 2 + t / 12, R * 0.4, R * 0.05, gold); hand(-Math.PI / 2 + t, R * 0.62, R * 0.03, '#ffffff'); if (!o.proj) hand(-Math.PI / 2 + t * 6, R * 0.7, R * 0.012, cyan);
+    g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(x, y, R * 0.05, R * 0.05 * sy, 0, 0, 7); g.fill();
+    g.restore(); g.shadowBlur = 0;
   }
   function gear(g, x, y, R, teeth, rot, a) {
-    P.ellipse(g, x, y, R * 0.82, R * 0.82, BRASS[2], a);
-    for (let i = 0; i < teeth; i++) { const an = rot + i / teeth * TAU; P.line(g, x + Math.cos(an) * R * 0.75, y + Math.sin(an) * R * 0.75, x + Math.cos(an) * R * 1.05, y + Math.sin(an) * R * 1.05, R * 0.28, BRASS[3], a); }
-    P.ellipse(g, x, y, R * 0.55, R * 0.55, BRASS[1], a); P.ellipse(g, x, y, R * 0.42, R * 0.42, BRASS[3], a); P.ellipse(g, x, y, R * 0.16, R * 0.16, BRASS[0], a);
-    for (let i = 0; i < 4; i++) { const an = rot + i / 4 * TAU; P.line(g, x, y, x + Math.cos(an) * R * 0.5, y + Math.sin(an) * R * 0.5, R * 0.08, BRASS[1], a); }
+    // a small spinning rune-ring (instead of a metal gear)
+    g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = a; glow(g, '#7ff0ff', 6); g.strokeStyle = '#7ff0ff'; g.lineWidth = R * 0.12;
+    g.beginPath(); g.arc(x, y, R, 0, 7); g.stroke(); g.strokeStyle = '#ffe9a8'; g.lineWidth = R * 0.06;
+    for (let i = 0; i < teeth; i++) { const an = rot + i / teeth * Math.PI * 2; g.beginPath(); g.moveTo(x + Math.cos(an) * R * 0.55, y + Math.sin(an) * R * 0.55); g.lineTo(x + Math.cos(an) * R * 0.85, y + Math.sin(an) * R * 0.85); g.stroke(); }
+    g.fillStyle = '#ffffff'; g.beginPath(); g.arc(x, y, R * 0.18, 0, 7); g.fill(); g.restore(); g.shadowBlur = 0;
   }
   function timeRing(g, x, y, R, sy, rot, w, col, a, ticks) {
     P.ring(g, x, y, R, R * sy, w, col, a); P.ring(g, x, y, R - w * 1.6, (R - w * 1.6) * sy, w * 0.35, col, a * 0.6);
     for (let i = 0; i < ticks; i++) { const an = rot + i / ticks * TAU; P.line(g, x + Math.cos(an) * (R - w * 0.5), y + Math.sin(an) * (R - w * 0.5) * sy, x + Math.cos(an) * (R + w * 1.2), y + Math.sin(an) * (R + w * 1.2) * sy, w * 0.5, i % 3 ? col : '#ffffff', a); }
   }
   DRAW.chrono = (g, e, k) => {
-    const c = e.pal, T = e.t, fade = clamp((k - 0.78) / 0.22), a = 1 - fade, grow = e.grow ? ease.out3(clamp(k * 2.2)) : 1;
+    g.save(); g.shadowColor = '#7ff0ff'; g.shadowBlur = 4;
+    try { chronoPiece(g, e, k); } finally { g.restore(); g.shadowBlur = 0; }
+  };
+  function chronoPiece(g, e, k) {
+    const c = ['#0a2a3a', '#1a5a7a', '#2a8ab0', '#4ac8e8', '#7ff0ff', '#a8f6ff', '#d8fbff', '#ffffff'], T = e.t, fade = clamp((k - 0.78) / 0.22), a = 1 - fade, grow = e.grow ? ease.out3(clamp(k * 2.2)) : 1;
     const sy = e.flat ? FLOOR : 1, up = e.up ? 1.25 + e.r * 0.35 : 0, x = e.x, y = e.y - up;
     switch (e.style) {
       case 'dial': {
@@ -821,10 +845,10 @@
         const H = e.r * 1.4 * (e.big ? 1.4 : 1), yy = (e.up ? e.y - 1.5 : e.y - 0.2) - H / 2, W2 = H * 0.45, sand = clamp(k * 1.15);
         P.line(g, x - W2, yy - H / 2, x + W2, yy - H / 2, 0.1, BRASS[2], a); P.line(g, x - W2, yy + H / 2, x + W2, yy + H / 2, 0.1, BRASS[2], a);
         P.line(g, x - W2 * 0.92, yy - H / 2, x - W2 * 0.92, yy + H / 2, 0.05, BRASS[1], a); P.line(g, x + W2 * 0.92, yy - H / 2, x + W2 * 0.92, yy + H / 2, 0.05, BRASS[1], a);
-        g.globalAlpha = a * 0.35; g.fillStyle = '#d8f0ff'; g.beginPath(); g.moveTo(x - W2 * 0.8, yy - H * 0.47); g.lineTo(x + W2 * 0.8, yy - H * 0.47); g.lineTo(x + 0.04, yy); g.lineTo(x + W2 * 0.8, yy + H * 0.47); g.lineTo(x - W2 * 0.8, yy + H * 0.47); g.lineTo(x - 0.04, yy); g.closePath(); g.fill();
-        g.globalAlpha = a; g.fillStyle = '#f0c870'; const top = (1 - sand) * H * 0.4; g.beginPath(); g.moveTo(x - W2 * 0.8 * (top / (H * 0.47)), yy - top); g.lineTo(x + W2 * 0.8 * (top / (H * 0.47)), yy - top); g.lineTo(x, yy); g.closePath(); g.fill();
+        g.globalAlpha = a * 0.25; g.fillStyle = '#7ff0ff'; g.beginPath(); g.moveTo(x - W2 * 0.8, yy - H * 0.47); g.lineTo(x + W2 * 0.8, yy - H * 0.47); g.lineTo(x + 0.04, yy); g.lineTo(x + W2 * 0.8, yy + H * 0.47); g.lineTo(x - W2 * 0.8, yy + H * 0.47); g.lineTo(x - 0.04, yy); g.closePath(); g.fill();
+        g.globalAlpha = a; g.fillStyle = '#ffe9a8'; const top = (1 - sand) * H * 0.4; g.beginPath(); g.moveTo(x - W2 * 0.8 * (top / (H * 0.47)), yy - top); g.lineTo(x + W2 * 0.8 * (top / (H * 0.47)), yy - top); g.lineTo(x, yy); g.closePath(); g.fill();
         const bot = sand * H * 0.4; g.beginPath(); g.moveTo(x - W2 * 0.8, yy + H * 0.47); g.lineTo(x + W2 * 0.8, yy + H * 0.47); g.lineTo(x, yy + H * 0.47 - bot); g.closePath(); g.fill();
-        if (sand < 1) P.line(g, x, yy, x, yy + H * 0.47 - bot, 0.03, '#f0c870', a);
+        if (sand < 1) P.line(g, x, yy, x, yy + H * 0.47 - bot, 0.03, '#ffe9a8', a);
         g.globalAlpha = 1; break;
       }
       case 'ticks': for (let i = 0; i < 12; i++) { const an = i / 12 * TAU, lit = ((T * 4) | 0) % 12 === i, R = e.r; P.line(g, x + Math.cos(an) * R * 0.82, e.y + Math.sin(an) * R * 0.82 * FLOOR, x + Math.cos(an) * R, e.y + Math.sin(an) * R * FLOOR, lit ? 0.16 : 0.08, lit ? '#ffffff' : BRASS[3], a); if (e.hammer && lit) P.ellipse(g, x + Math.cos(an) * R * 0.9, e.y + Math.sin(an) * R * 0.9 * FLOOR, 0.35, 0.16, c[6], a * 0.6); } P.ring(g, x, e.y, e.r, e.r * FLOOR, 0.05, BRASS[2], a); break;
@@ -837,7 +861,7 @@
       case 'afterimage': for (let i = 0; i < 5; i++) { const q = i / 4, px = e.x + (e.tx - e.x) * q, py = e.y + (e.ty - e.y) * q; dial(g, px, py - 1, 0.35, 1, T * 6 + i, Math.min(1, fade + (1 - q) * 0.5), { proj: 1 }); } break;
       case 'rain': { const rr = rngOf(e.seed); for (let i = 0; i < (e.n || 8); i++) { const st = rr() * 0.6, q = clamp((k - st) / 0.35); if (q <= 0) continue; const px = x + (rr() - 0.5) * e.r * 2, py = e.y + (rr() - 0.5) * e.r * FLOOR * 2; if (q < 1) dial(g, px, py - (1 - q) * 5 - 0.4, 0.38, 1, T * 10 + i, 0, { proj: 1 }); else P.ellipse(g, px, py, 0.5, 0.22, c[5], (1 - clamp((k - st - 0.35) / 0.3)) * 0.8); } break; }
     }
-  };
+  }
   DRAW.clock = (g, e, k) => {
     const c = e.pal, R = e.r * 1.2, fade = 1 - clamp((k - 0.8) / 0.2), y = e.y - 1.2;
     P.ring(g, e.x, y, R, R, 0.08, c[6], fade); P.ring(g, e.x, y, R * 0.85, R * 0.85, 0.03, c[5], fade * 0.8);
