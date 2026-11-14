@@ -71,7 +71,7 @@
   }
 
   PIX.draw = function (g, ox, oy, scale, zoom) {
-    const T = (window.G && G.t) || 0, z = Math.max(0.7, zoom || 1);
+    const T = (window.G && G.t) || 0, z = Math.max(0.7, zoom || 1) * 0.5; // numbers about as tall as a name plate
     g.save(); g.imageSmoothingEnabled = false;
     for (let i = PIX.list.length - 1; i >= 0; i--) {
       const d = PIX.list[i], t = T - d.t0, dur = d.crit ? 1.5 : 1.05;
@@ -85,7 +85,7 @@
         if (t < t1) y = (-175 * t + 450 * t * t) * z; else { const tt = t - t1, v = 175 * 0.36; y = Math.min(0, (-v * tt + 450 * tt * tt)) * z; }
         let alpha = 1; if (t > 0.84) { const k = (t - 0.84) / 0.17; alpha = Math.max(0, 1 - k); y -= 6 * k * k * z; }
         const landK = t >= t1 && t < t1 + 0.09 ? 1 - (t - t1) / 0.09 : 0;
-        const sc = (2 + 1.4 * Math.exp(-22 * t) * Math.cos(30 * t)) * z;
+        const sc = (2 + 1.4 * Math.exp(-22 * t) * Math.cos(30 * t)) * z * 1.1;
         const pal = PAL[d.kind] || PAL.dmg, img = word(d.txt, pal, t < 0.035);
         // hit star + ring at the impact
         if (t < 0.035) { star(g, bx, by + 10 * z, 16 * z, 9, d.seed, pal[6]); star(g, bx, by + 10 * z, 8 * z, 9, d.seed, '#ffffff'); }
@@ -110,14 +110,14 @@
         if (t < 0.26) { g.globalAlpha = 1 - t / 0.26; g.strokeStyle = '#ffffff'; g.lineWidth = Math.max(1, 3 * z * (1 - t / 0.26)); g.beginPath(); g.ellipse(Math.round(cx), Math.round(cy), (10 + t * 260) * z, (10 + t * 260) * 0.7 * z, 0, 0, 7); g.stroke(); g.globalAlpha = 1; }
         if (t < 1.06) {
           const slam = t < 0.08 ? 1 + (0.08 - t) / 0.08 * 1.6 : 1 + 0.08 * Math.exp(-12 * (t - 0.08)) * Math.cos(28 * (t - 0.08));
-          const sc = 3.2 * z * slam, img = word(d.txt, P, t < 0.05);
+          const sc = 2.4 * z * slam, img = word(d.txt, P, t < 0.05);
           const w = img.width * sc, h = img.height * sc;
           g.drawImage(img, Math.round(cx - w / 2), Math.round(cy - h / 2), Math.round(w), Math.round(h));
           if (t > 0.36 && t < 0.6) { // shine sweep
             const k = (t - 0.36) / 0.24, x0 = cx - w / 2 + k * w; g.globalAlpha = 0.7; g.fillStyle = '#ffffff'; g.fillRect(Math.round(x0), Math.round(cy - h / 2 + 2), Math.max(2, Math.round(3 * z)), Math.round(h - 4)); g.globalAlpha = 1;
           }
           if (t > 0.09) { // CRIT label stamps in
-            const lk = t < 0.14 ? 1 + (0.14 - t) * 10 : 1, lab = word('CRIT', P, t < 0.12), ls = 1.9 * z * lk;
+            const lk = t < 0.14 ? 1 + (0.14 - t) * 10 : 1, lab = word('CRIT', P, t < 0.12), ls = 1.5 * z * lk;
             const lsx = (Math.random() - 0.5) * shake * 0.5;
             if (t < 0.98) g.drawImage(lab, Math.round(cx - lab.width * ls / 2 + lsx), Math.round(cy - h / 2 - lab.height * ls - 2 * z), Math.round(lab.width * ls), Math.round(lab.height * ls));
           }
