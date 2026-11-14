@@ -350,7 +350,8 @@
         else if (f.dot) { col = '#d08aff'; size = 12; }
         else if (f.c) { col = '#ffd34a'; size = 22; txt += '!'; G.shake = Math.max(G.shake, 3); }
         if (f.sh) { col = '#8ad0ff'; txt = 'ABSORB ' + txt; }
-        G.texts.push({ x: f.x + (Math.random() - 0.5) * 0.8, y: f.y - 1, txt, col, size, t0: t, d: 1.0 + (f.c ? 0.3 : 0), vy: -1.6 });
+        if (window.PIX && !f.sh) PIX.dmg(f.x + (Math.random() - 0.5) * 0.5, f.y - 1, f.d, { crit: !!f.c, kind: f.h ? 'heal' : f.t === G.me ? 'taken' : f.dot ? 'dot' : 'dmg' });
+        else G.texts.push({ x: f.x + (Math.random() - 0.5) * 0.8, y: f.y - 1, txt, col, size, t0: t, d: 1.0 + (f.c ? 0.3 : 0), vy: -1.6 });
         if (f.r) { const R = D.REACTIONS[f.r]; G.texts.push({ x: f.x, y: f.y - 2, txt: R ? R.n : String(f.r).toUpperCase(), col: R ? R.color : '#fff', size: 20, t0: t, d: 1.4, vy: -0.8, stroke: 1 }); }
         if (ent) { ent.hitAt = t; }
         if (!f.h && !f.dot && !(window.VFX && VFX.ok && VFX.hit(f, G.ents.get(f.s)))) G.elemBurst(f.x, f.y - 0.6, f.el || 'neutral', f.c ? 12 : 6, 5);
@@ -528,6 +529,7 @@
       g.fillStyle = tx.col; g.fillText(tx.txt, x, y);
     }
     g.globalAlpha = 1;
+    if (window.PIX) PIX.draw(g, ox, oy, scale, z); // pixel damage / crit numbers
     g.restore();
     // dungeon light
     if (G.map.def.kind === 'dungeon' || G.map.def.biome === 'abyss') {
@@ -566,7 +568,9 @@
     const rc = e.rar >= 0 ? D.RARITY[e.rar].color : e.it.id === 'zeny' ? '#ffd34a' : '#e8e8f0';
     const bob = Math.sin(G.t * 3 + e.id) * 2;
     g.save(); g.translate(x, y); g.scale(z, z); g.globalAlpha = e.mine ? 1 : 0.55;
-    if (e.rar >= 2) { const gr = g.createLinearGradient(0, 0, 0, -70 - e.rar * 12); gr.addColorStop(0, rc); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.globalAlpha *= 0.35 + Math.sin(G.t * 4) * 0.1; g.fillStyle = gr; g.fillRect(-4 - e.rar, -70 - e.rar * 12, 8 + e.rar * 2, 70 + e.rar * 12); g.globalAlpha = e.mine ? 1 : 0.55; }
+    // loot beam: equipment of grade Uncommon and up, and chest keys, shoot a pixel light pillar in their grade colour
+    const keyTier = e.it && e.it.id && /^key_(\d)$/.exec(e.it.id);
+    if (window.PIX && (e.rar >= 1 || keyTier)) { const col = keyTier ? (D.CHESTS[+keyTier[1]] || {}).color || '#ffffff' : rc; PIX.beam(g, col, G.t, e.id, keyTier ? +keyTier[1] : e.rar); g.globalAlpha = e.mine ? 1 : 0.55; }
     g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(0, 3, 10, 4, 0, 0, 7); g.fill();
     if (e.it.id === 'zeny') { for (let i = 0; i < 5; i++) { g.fillStyle = i % 2 ? '#ffd34a' : '#e0a820'; g.beginPath(); g.ellipse(-6 + (i * 5) % 13, -2 - Math.floor(i / 2) * 3 + bob * 0.3, 5, 2.5, 0, 0, 7); g.fill(); } }
     else { const im = G.iconImg(ART.itemIcon(e.it)); if (im.complete) g.drawImage(im, -12, -24 + bob, 24, 24); }
