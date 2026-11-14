@@ -565,12 +565,15 @@
   G.iconImg = (url) => { let im = iconImgs.get(url); if (!im) { im = new Image(); im.src = url; iconImgs.set(url, im); } return im; };
   G.nearestLoot = function (r) { let best = null, bd = r * r; for (const e of G.ents.values()) if (e.k === 'i' && e.mine) { const d = (e.x - G.self.x) ** 2 + (e.y - G.self.y) ** 2; if (d < bd) { bd = d; best = e; } } return best; };
   function drawGroundItem(g, e, x, y, z) {
-    const rc = e.rar >= 0 ? D.RARITY[e.rar].color : e.it.id === 'zeny' ? '#ffd34a' : '#e8e8f0';
+    // grade of a dropped item: equipment = its rarity, materials / runes / jewels = their tier, keys = chest tier
+    const it0 = e.it || {}, def0 = it0.id ? D.ITEMS[it0.id] : null, keyTier = it0.id && /^key_(\d)$/.exec(it0.id);
+    if (e.grade === undefined) e.grade = it0.type === 'equip' ? Math.max(0, it0.rarity | 0) : def0 ? (def0.mat ? Math.min(4, def0.mat) : def0.tier !== undefined ? Math.min(4, Math.floor(def0.tier / (def0.type === 'jewel' ? 3 : 2))) : 0) : 0;
+    const rc = keyTier ? (D.CHESTS[+keyTier[1]] || {}).color || '#fff' : it0.id === 'zeny' ? '#ffd34a' : e.grade >= 1 ? D.RARITY[e.grade].color : '#dfe6f0';
     const bob = Math.sin(G.t * 3 + e.id) * 2;
     g.save(); g.translate(x, y); g.scale(z, z); g.globalAlpha = e.mine ? 1 : 0.55;
     // loot beam: equipment of grade Uncommon and up, and chest keys, shoot a pixel light pillar in their grade colour
-    const keyTier = e.it && e.it.id && /^key_(\d)$/.exec(e.it.id);
-    if (window.PIX && (e.rar >= 1 || keyTier)) { const col = keyTier ? (D.CHESTS[+keyTier[1]] || {}).color || '#ffffff' : rc; PIX.beam(g, col, G.t, e.id, keyTier ? +keyTier[1] : e.rar); g.globalAlpha = e.mine ? 1 : 0.55; }
+    // every drop shoots a pixel light beam in its grade colour (taller for better grades)
+    if (window.PIX) { PIX.beam(g, rc, G.t, e.id, keyTier ? +keyTier[1] + 1 : it0.id === 'zeny' ? 0 : e.grade); g.globalAlpha = e.mine ? 1 : 0.55; }
     g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(0, 3, 10, 4, 0, 0, 7); g.fill();
     if (e.it.id === 'zeny') { for (let i = 0; i < 5; i++) { g.fillStyle = i % 2 ? '#ffd34a' : '#e0a820'; g.beginPath(); g.ellipse(-6 + (i * 5) % 13, -2 - Math.floor(i / 2) * 3 + bob * 0.3, 5, 2.5, 0, 0, 7); g.fill(); } }
     else { const im = G.iconImg(ART.itemIcon(e.it)); if (im.complete) g.drawImage(im, -12, -24 + bob, 24, 24); }
