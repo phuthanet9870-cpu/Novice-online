@@ -6,11 +6,11 @@
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmt = (n) => Math.round(n).toLocaleString();
   const UI = window.UI = { wins: {}, open: [], chatTab: 'all', chatCh: 'map', selItem: null, skillTab: null, invTab: 'all', log: [] };
-  // 31 slots: 25 skill slots (every class skill) always on screen in 3 rows — row 1 (attacks 1-10) = 1..0,
-  // row 2 (attacks 11-15 + buffs) = Shift+1..0, row 3 (ultimates) = Alt+1..5 — plus a 2×3 quick panel (slots 25-30) on Z X C / V B N
-  const HB_SKILL = 25, HB_N = 31, HB_ROW = 10, QUICK = ['Z', 'X', 'C', 'V', 'B', 'N'];
+  // 30 slots in 3 rows of 10, all on screen: row 1 = attacks 1-10 (1..0), row 2 = attacks 11-15 + buffs (Shift+1..0),
+  // row 3 = ultimates (Alt+1..5) + 5 item slots for potions etc. (Alt+6..0)
+  const HB_SKILL = 25, HB_N = 30, HB_ROW = 10;
   const DIG = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
-  const HOTKEYS = Array.from({ length: HB_N }, (_, i) => (i < HB_SKILL ? ['', '⇧', 'Alt'][(i / HB_ROW) | 0] + DIG[i % HB_ROW] : QUICK[i - HB_SKILL]));
+  const HOTKEYS = Array.from({ length: HB_N }, (_, i) => ['', '⇧', 'Alt'][(i / HB_ROW) | 0] + DIG[i % HB_ROW]);
   const WINKEYS = { i: 'inv', k: 'skills', u: 'char', o: 'auto', m: 'map', j: 'dungeon', g: 'guild', p: 'party', r: 'rank', h: 'help', f10: 'gm', l: 'quests', y: 'achieve', f: 'friends', ',': 'pets', '.': 'settings', '[': 'passive', ']': 'book' };
 
   // ================================================================ screens
@@ -132,11 +132,9 @@
     $('#zoomOut').onclick = () => { G.zoom = Math.max(0.55, G.zoom / 1.15); };
   }
   function buildHotbar() {
-    $('#hotbar1').innerHTML = [0, 1, 2].map((r) => { const b = r * HB_ROW, n = Math.min(HB_ROW, HB_SKILL - b); return `<div class="hotbar hbrow r${r}">${Array.from({ length: n }, (_, c) => slotHtml(b + c, HOTKEYS[b + c])).join('')}</div>`; }).join('');
-    // quick panel: 2 rows × 3 (slots 25-30)
-    let q = $('#quickbar'); if (!q) { q = document.createElement('div'); q.id = 'quickbar'; q.className = 'quickbar'; $('#hud').appendChild(q); }
-    q.innerHTML = `<div class="qbTitle">ช่องด่วน</div>` + [0, 1].map((r) => `<div class="hotbar qbrow">${[0, 1, 2].map((c) => { const i = HB_SKILL + r * 3 + c; return slotHtml(i, HOTKEYS[i]); }).join('')}</div>`).join('');
-    for (const el of document.querySelectorAll('#hotbar1 .slot[data-i], #quickbar .slot[data-i]')) {
+    $('#hotbar1').innerHTML = [0, 1, 2].map((r) => { const b = r * HB_ROW, n = HB_ROW; return `<div class="hotbar hbrow r${r}">${Array.from({ length: n }, (_, c) => slotHtml(b + c, HOTKEYS[b + c])).join('')}</div>`; }).join('');
+    const oldQ = $('#quickbar'); if (oldQ) oldQ.remove();
+    for (const el of document.querySelectorAll('#hotbar1 .slot[data-i]')) {
       el.onclick = () => G.useHotbar(+el.dataset.i);
       el.oncontextmenu = (e) => { e.preventDefault(); G.char.hotbar[+el.dataset.i] = null; saveHotbar(); };
       el.ondragover = (e) => e.preventDefault();
@@ -150,11 +148,10 @@
   UI.hotkeyIndex = function (ev) {
     if (ev.ctrlKey || ev.metaKey) return -1;
     const m = /^Digit(\d)$/.exec(ev.code || '');
-    if (m) { const d = (+m[1] + 9) % 10; const i = (ev.altKey ? 2 : ev.shiftKey ? 1 : 0) * HB_ROW + d; if (ev.altKey && ev.preventDefault) ev.preventDefault(); return i < HB_SKILL ? i : -1; }
-    const qk = QUICK.indexOf((ev.key || '').toUpperCase()); if (qk >= 0 && !ev.shiftKey && !ev.altKey) return HB_SKILL + qk;
+    if (m) { const d = (+m[1] + 9) % 10; const i = (ev.altKey ? 2 : ev.shiftKey ? 1 : 0) * HB_ROW + d; if (ev.altKey && ev.preventDefault) ev.preventDefault(); return i < HB_N ? i : -1; }
     return -1;
   };
-  UI.hotkeyLabel = (i) => i < HB_SKILL ? `แถว${(i / HB_ROW | 0) + 1}·${HOTKEYS[i]}` : i < HB_N ? `ช่องด่วน ${HOTKEYS[i]}` : `#${i + 1}`;
+  UI.hotkeyLabel = (i) => i < HB_N ? `แถว${(i / HB_ROW | 0) + 1}·${HOTKEYS[i]}` : `#${i + 1}`;
   UI.typing = () => { const a = document.activeElement; return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT'); };
   UI.focusChat = () => $('#chatIn').focus();
   UI.blurChat = () => { if (UI.typing()) document.activeElement.blur(); };
@@ -1061,7 +1058,7 @@
       const CREDITS = '<h4>เครดิตงานภาพ</h4><p class="credits">Terrain: Pixel Fantasy Terrain Pack 4 by Laphkal · Ashen props &amp; ground: Brimspire by PixLog · Tundra / forest / moon props: roboden tileset (CC0) · Dungeon tileset · Monsters: Topdown Monsters Part 1 · UI: CinderUI kit</p>';
       return CREDITS + `<div class="help scrollKeep"><h4>ปุ่มควบคุม</h4><div class="keys">
         <span><kbd>WASD</kbd>/<kbd>คลิกพื้น</kbd> เดิน</span><span><kbd>คลิกมอน</kbd> โจมตีปกติ</span><span><kbd>Tab</kbd> สลับเป้า</span><span><kbd>Space</kbd> ตีเป้าใกล้สุด</span>
-        <span><kbd>1</kbd>–<kbd>0</kbd> Hotbar แถว 1</span><span><kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>0</kbd> แถว 2</span><span><kbd>Alt</kbd>+<kbd>1</kbd>–<kbd>5</kbd> แถว 3</span><span><kbd>Z X C V B N</kbd> ช่องด่วน</span><span><kbd>Q</kbd> Break Free</span><span><kbd>F1</kbd>/<kbd>F2</kbd> ยา HP/SP</span>
+        <span><kbd>1</kbd>–<kbd>0</kbd> Hotbar แถว 1</span><span><kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>0</kbd> แถว 2</span><span><kbd>Alt</kbd>+<kbd>1</kbd>–<kbd>0</kbd> แถว 3 (อัลติเมต + ไอเทม)</span><span><kbd>Q</kbd> Break Free</span><span><kbd>F1</kbd>/<kbd>F2</kbd> ยา HP/SP</span>
         <span><kbd>U</kbd> ตัวละคร</span><span><kbd>I</kbd> กระเป๋า</span><span><kbd>K</kbd> สกิล</span><span><kbd>O</kbd> ออโต้</span><span><kbd>\`</kbd> เปิด/ปิดออโต้</span><span><kbd>M</kbd> แผนที่</span><span><kbd>J</kbd> ดันเจี้ยน</span><span><kbd>G</kbd> กิลด์</span><span><kbd>P</kbd> ปาร์ตี้</span><span><kbd>R</kbd> อันดับ</span><span><kbd>Enter</kbd> แชท</span><span><kbd>ล้อเมาส์</kbd> ซูม</span><span><kbd>คลิกขวาผู้เล่น</kbd> เมนู</span><span><kbd>F10</kbd> GM</span></div>
         <h4>ระบบคอมโบ</h4><p>สกิลแบ่งเป็น <b class="rS">STARTER</b> (เปิด/ใส่แท็ก) → <b class="rL">LINKER</b> (โบนัสเมื่อเป้ามีแท็ก) → <b class="rF">FINISHER</b> (ใช้แท็กทิ้ง แลกดาเมจมหาศาล — ถ้าไม่มีแท็กดาเมจเหลือครึ่งเดียว) · ใช้สกิลต่างกันติดกันภายใน 2.5 วินาที = Combo +1 · ดาเมจ +3% ต่อ Combo (สูงสุด +60%) · Combo 5/10/15/20 เติมเกจ Ultimate</p>
         <div class="chips">${D.TAG_IDS.map((t) => `${ART.tagChip(t)}<small>${D.TAGS[t].th}</small>`).join(' ')}</div>

@@ -119,6 +119,7 @@ function handle(sess, m) {
       const ch = db.data.chars[m.id]; if (!ch || !acc.chars.includes(m.id)) return;
       for (const q of W.players.values()) if (q.char.acc === ch.acc && q.sess && q.char.id !== ch.id) q.sess.kick('ล็อกอินตัวละครอื่นจากบัญชีเดียวกัน');
       // classes were replaced by the Ashfall roster: old characters move to the closest new class and get every skill point back
+      if (ch.kitVer === 4 && ch.hotbar && ch.hotbar[30]) { const v = ch.hotbar[30]; ch.hotbar[30] = null; const j = ch.hotbar.findIndex((x, k) => k >= 25 && k < 30 && !x); if (j >= 0) ch.hotbar[j] = v; } // 6th quick slot folded into the 30-slot bar
       if ((ch.kitVer === 2 || ch.kitVer === 3) && D.CLASSES[ch.cls]) { ch.hotbar = new Array(50).fill(null); I.defaultHotbar(ch); ch.kitVer = 4; } // 31-slot bar: every class skill placed
       if (!D.CLASSES[ch.cls] || ch.kitVer !== 4) {
         const old = ch.cls; if (!D.CLASSES[ch.cls]) ch.cls = OLD_CLASS[ch.cls] || 'blademaster';

@@ -37,9 +37,9 @@ I.newChar = function (acc, name, cls) {
   return ch;
 };
 
-// hotbar = 31 slots: 0-24 hold all 25 class skills in order (attacks 1-15, buffs, ultimates, set ultimate),
-// 25-30 are the 2×3 quick-slot panel (Z X C / V B N) for potions and other items
-I.HB_SKILLS = 25; I.HB_TOTAL = 31;
+// hotbar = 30 slots in 3 rows of 10: 0-24 hold all 25 class skills in order (attacks 1-15, buffs, ultimates, set ultimate),
+// 25-29 (the end of row 3) are item slots for potions and other consumables
+I.HB_SKILLS = 25; I.HB_TOTAL = 30;
 I.defaultHotbar = function (ch) { const L = CLASS_SKILLS[ch.cls] || []; for (let i = 0; i < I.HB_SKILLS; i++) ch.hotbar[i] = L[i] || null; ch.hotbar[25] = 'item:pot_hp_1'; ch.hotbar[26] = 'item:pot_sp_1'; };
 // older 50-slot bars: pull anything parked in slots 20+ into free slots of the two pages
 I.compactHotbar = function (ch) { const h = ch.hotbar || []; for (let i = 20; i < h.length; i++) { if (!h[i]) continue; const j = h.findIndex((x, k) => k < 20 && !x); if (j >= 0 && !h.slice(0, 20).includes(h[i])) h[j] = h[i]; h[i] = null; } };
