@@ -34,7 +34,35 @@ const SLOT = (i) => (i < 15 ? 'atk' : i < 20 ? 'buff' : i < 24 ? 'ult' : 'set');
 const ROLE_TH = { b1: 'สะสม +1', b2: 'สะสม +2', s2: 'ใช้ 2 แต้ม', s3: 'ใช้ 3 แต้ม', emp: 'ถ้ามีแต้มครึ่งหนึ่งขึ้นไป ได้ผลกลไกฟรี 50% (ไม่ใช้แต้ม)', fin: 'ใช้แต้มทั้งหมด', fin2: 'ใช้แต้มทั้งหมด แรง ×2', over: 'เติมแต้มเต็มแล้วใช้ทันที แรง ×1.5', g3: 'สะสม +3', g2: 'สะสม +2 และ +1 ทุก 2 วิ 8 วิ', g4: 'สะสม +4', gfull: 'เติมแต้มเต็ม', shieldfill: 'สะสม +2 และได้โล่ 1% HP ต่อแต้มที่มี' };
 
 // rewrite "N% ATK" amounts in a description to the damage the game really deals
-const scaleDesc = (s) => s.replace(/(\d+(?:\.\d+)?)% ATK/g, (m, n) => `${Math.round(+n * K)}% ATK`).replace(/(\d+(?:\.\d+)?) ช่อง/g, (m, n) => `${r1(+n * DS)} ช่อง`).replace(/\(ระยะ (\d+(?:\.\d+)?)\)/g, (m, n) => `(ระยะ ${r1(+n * DS)})`).replace(/\(ระยะ (\d+(?:\.\d+)?) ช่อง\)/g, (m, n) => `(ระยะ ${r1(+n * DS)} ช่อง)`);
+const scaleDesc = (s, f = 1) => s.replace(/(\d+(?:\.\d+)?)% ATK/g, (m, n) => `${Math.round(+n * K * f)}% ATK`).replace(/(\d+(?:\.\d+)?) ช่อง/g, (m, n) => `${r1(+n * DS)} ช่อง`).replace(/\(ระยะ (\d+(?:\.\d+)?)\)/g, (m, n) => `(ระยะ ${r1(+n * DS)})`).replace(/\(ระยะ (\d+(?:\.\d+)?) ช่อง\)/g, (m, n) => `(ระยะ ${r1(+n * DS)} ช่อง)`);
+
+// ---------------------------------------------------------------- realistic cooldowns
+// Cooldown follows what the skill does: quick fillers ~1 s, single-target strikes 3–5 s, area / beam / mobility 7–11 s,
+// zones, traps and summons 14–28 s, buffs scale with their duration (20–60 s), ultimates 60–90 s, the class ultimate 150 s.
+// Harder crowd control adds time. Attack damage is raised with √(new / old cooldown) so a longer wait hits harder.
+const ARCH_CD = { slash: 4, thrust: 5, proj: 3, beam: 9, spin: 8, nova: 10, ground: 9, zone: 15, chain: 7, dash: 8, leap: 11, barrage: 7, summon: 28, turret: 25, trap: 14 };
+const HARD = ['stun', 'freeze', 'sleep', 'knockdown', 'airborne', 'petrify', 'fear', 'root'];
+const archMed = {};
+function realCd(s, sk, slot) {
+  const half = (v) => Math.max(0.5, Math.round(v * 2) / 2);
+  if (slot === 'set') return 150;
+  if (slot === 'ult') return [60, 70, 80, 90][Math.max(0, Math.min(3, s.idx - 20))];
+  if (sk.kind === 'buff' || s.arch === 'buff' || s.arch === 'shield' || s.arch === 'heal' || s.arch === 'blink' || s.arch === 'stealth') {
+    if (s.arch === 'shield') return half(Math.max(20, Math.min(32, (s.c || 15) * 1.6)));
+    if (s.arch === 'heal') return s.r ? 25 : 18;
+    if (s.arch === 'blink') return 10;
+    if (s.arch === 'stealth') return 25;
+    return half(Math.max(20, Math.min(60, (s.d || 8) * 3)));
+  }
+  if (s.idx === 0) return 1;
+  let b = ARCH_CD[s.arch] || 5;
+  if (s.arch === 'proj' && (s.pi || s.r)) b = 6;
+  const med = archMed[s.arch] || s.c || 2;
+  b *= Math.max(0.7, Math.min(1.5, Math.sqrt((s.c || med) / med)));
+  if (s.idx <= 2) b *= 0.6;
+  for (const k in s.cc || {}) b += HARD.includes(CC[k]) ? 2.5 : 1;
+  return half(b);
+}
 
 // ---------------------------------------------------------------- unique abilities (✦)
 // Every skill gets one signature ability = an effect (rider) + the condition that fires it. The pair is unique across
@@ -92,6 +120,9 @@ const abilityText = (r) => (WHEN_TH[r.w] ? WHEN_TH[r.w] + ' → ' : '') + riderT
 const CLASSES = {};
 const SKILLS = {};
 const CLASS_SKILLS = {};
+{ const all = {}; for (const c of A.classes || A.CLASSES || []) for (const s0 of c.skills || []) if (s0.idx > 0 && s0.idx < 15) (all[s0.arch] = all[s0.arch] || []).push(s0.c || 0);
+  for (const k in all) { const v = all[k].sort((x, y) => x - y); archMed[k] = v[v.length >> 1] || 2; } }
+
 for (const c of A.classes) {
   const R = ROLE[c.role], RM = A.ROLES[c.role], mech = A.CLASS_MECH[c.id];
   const mag = !!(MAG[c.role] || MAG_EXTRA[c.id]);
@@ -165,11 +196,14 @@ for (const c of A.classes) {
     const ab = ability[s.idx];
     const riders = ab ? [ab] : [];
     if (riders.length) sk.riders = riders;
-    const head = slot === 'set' ? String(s.suTh || '').replace(/(\d+)%/g, (m, n) => `${Math.round(+n * K)}% ATK`) : scaleDesc(String(s.desc || '').split(' · ✦')[0].split(' · ◆')[0]);
+    // realistic cooldown + matching damage
+    const oldCd = sk.cd, newCd = realCd(s, sk, slot); let f = 1;
+    if (kind === 'attack' && oldCd > 0) { f = Math.max(0.7, Math.min(2.1, 0.82 * Math.sqrt(newCd / oldCd))); if (sk.dmg) sk.dmg = r2(sk.dmg * f); if (sk.zone) sk.zone.mult = r2(sk.zone.mult * f); }
+    sk.cd = newCd;
+    const head = slot === 'set' ? String(s.suTh || '').replace(/(\d+)%/g, (m, n) => `${Math.round(+n * K)}% ATK`) : scaleDesc(String(s.desc || '').split(' · ✦')[0].split(' · ◆')[0], f);
     if (slot === 'set') sk.setUlt = { dur: 5, tick: 0.45, mult: r2(dmg * 0.25), end: r2(dmg * 1.25), r: Math.max(sk.radius || 3, 3.5) };
     sk.ability = ab ? abilityText(ab) : '';
     sk.desc = head + (ab ? ' · ✦ ' + sk.ability : '') + ` · ◆ ${mech.n}: ${ROLE_TH[s.cmRole] || ROLE_TH.fin2}`;
-    if (kind === 'buff') { sk.cd = r2(Math.max(4, s.c)); }
     SKILLS[id] = sk;
     CLASS_SKILLS[c.id].push(id);
   }
