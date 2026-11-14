@@ -289,7 +289,7 @@
       add({ k: 'proj', x: f.x, y: f.y, tx: f.tx, ty: f.ty, dur, pal, el, style, ang, small: 1 });
       return dur;
     }
-    const style = { sword: 'crescent', spear: 'thrust', axe: 'cleave', dagger: 'twin', knuckle: 'palm', scythe: 'reap', mace: 'hammer', claw: 'claw', katana: 'iai' }[weapon] || 'claw';
+    const style = { sword: 'crescent', spear: 'cleave', axe: 'cleave', dagger: 'twin', knuckle: 'twin', scythe: 'reap', mace: 'crescent', claw: 'claw', katana: 'crescent' }[weapon] || 'crescent'; // close range = a sword-like slash
     add({ k: 'slash', x: f.x, y: f.y, tx: f.tx, ty: f.ty, dur: 0.2, r: Math.max(1.2, Math.min(2, d)), style, pal: mixRamp(pal, EL_PAL.neutral, 0.4), ang, small: 1, noLight: 1 });
     return 0;
   };

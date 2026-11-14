@@ -18,6 +18,22 @@ const err = (p, m) => { send(p, { t: 'err', m }); return false; };
 const note = (p, m, k = 'system') => send(p, { t: 'notice', k, m });
 
 // ------------------------------------------------------------------ character creation
+// ---- shared wallet: Zeny belongs to the account, so every character (class) of an account spends and earns
+// the same money. Each character's `zeny` becomes a live view of acc.zeny (not saved per character).
+// Money credited to a character before it was bound (old saves, offline mail / market payouts) is folded in.
+I.bindWallet = function (acc) {
+  if (!acc) return;
+  if (typeof acc.zeny !== 'number') acc.zeny = 0;
+  for (const id of acc.chars || []) {
+    const ch = db.data.chars[id]; if (!ch) continue;
+    const d = Object.getOwnPropertyDescriptor(ch, 'zeny');
+    if (d && d.get) continue;
+    if (d && typeof d.value === 'number') acc.zeny += d.value;
+    delete ch.zeny;
+    Object.defineProperty(ch, 'zeny', { configurable: true, enumerable: false, get() { return acc.zeny; }, set(v) { acc.zeny = Math.max(0, Math.round(v) || 0); } });
+  }
+  db.dirty = true;
+};
 I.newChar = function (acc, name, cls) {
   const c = D.CLASSES[cls];
   const id = 'c' + db.nextId();

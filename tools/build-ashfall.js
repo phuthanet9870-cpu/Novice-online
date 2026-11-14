@@ -126,13 +126,19 @@ const CLASS_SKILLS = {};
 for (const c of A.classes) {
   const R = ROLE[c.role], RM = A.ROLES[c.role], mech = A.CLASS_MECH[c.id];
   const mag = !!(MAG[c.role] || MAG_EXTRA[c.id]);
-  const range = r1(Math.max(1.9, c.rng * DS * (c.rng > 3 ? 1 : 1.25)));
+  // basic attack type + reach: close fighters hit at arm's length with a slash, shooters / casters from afar
+  const MELEE_CLS = ['blademaster', 'guardian', 'berserker', 'paladin', 'assassin', 'shadowdancer', 'monk', 'spellblade', 'beastmaster', 'darkknight', 'reaper', 'demon', 'seraph'];
+  const SHOOT_CLS = ['ranger', 'marksman', 'engineer', 'starhunter', 'jester'];
+  const basic = MELEE_CLS.includes(c.id) ? 'melee' : SHOOT_CLS.includes(c.id) ? 'ranged' : 'magic';
+  const W0 = WPN[c.id];
+  const range = basic === 'melee' ? ({ dagger: 1.3, knuckle: 1.3, claw: 1.4, sword: 1.6, katana: 1.7, axe: 1.6, scythe: 1.9, spear: 2.1, mace: 1.6 }[W0] || 1.6)
+    : basic === 'ranged' ? ({ bow: 9, gun: c.id === 'engineer' ? 7 : 8.5, chakram: 6 }[W0] || 8) : (['deity', 'lightbringer'].includes(c.id) ? 8 : 7.5);
   const scale = mag ? 'magic' : c.rng > 3 ? 'ranged' : 'melee';
   const el = A.ELEM[c.elem] || {};
   CLASSES[c.id] = {
     name: c.name, th: c.th, weapon: WPN[c.id], wname: (A.WEAPON_TH || {})[c.weapon] || c.weapon, color: c.hair || el.pal[2], color2: c.col[0], col: c.col,
     role: RM.th, roleId: c.role, desc: `${c.th} · ${RM.th} · ธาตุ${el.th || ''} · ${(A.WEAPON_TH || {})[c.weapon] || ''} — ${mech ? mech.d : ''}`,
-    hp0: Math.round(R.hp0 * RM.hp), hpLv: r1(R.hpLv * RM.hp), vitHp: R.vitHp, sp0: R.sp0, spLv: R.spLv, intSp: R.intSp, aspd: R.aspd, move: R.move, range,
+    hp0: Math.round(R.hp0 * RM.hp), hpLv: r1(R.hpLv * RM.hp), vitHp: R.vitHp, sp0: R.sp0, spLv: R.spLv, intSp: R.intSp, aspd: R.aspd, move: R.move, range, basic,
     dmg: mag ? 'mag' : 'phys', scale, res: { name: mech.n, max: mech.max, gain: 1 }, element: EL[c.elem] || 'neutral', fxEl: c.elem, pal: el.pal, elTh: el.th,
     start: R.start, rating: R.rating,
     mech: { n: mech.n, max: mech.max, c: mech.c, g: mech.g, d: mech.d, over: !!mech.over, decay: mech.decay || 0, aspd: mech.aspd || 0, crit: mech.crit || 0, critDmg: mech.critDmg || 0, boostSpend: mech.boostSpend || 0 },

@@ -110,7 +110,7 @@ function handle(sess, m) {
     if (m.t === 'register') { acc = db.createAccount(user, pass); if (!acc) return sess.send({ t: 'auth', ok: false, m: 'ชื่อผู้ใช้นี้ถูกใช้แล้ว' }); db.save(); }
     else { acc = db.checkLogin(user, pass); if (!acc) return sess.send({ t: 'auth', ok: false, m: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' }); }
     if (acc.banned && acc.banned > Date.now()) return sess.send({ t: 'auth', ok: false, m: `บัญชีถูกแบนถึง ${new Date(acc.banned).toLocaleString('th-TH')} ${acc.banReason || ''}` });
-    sess.acc = acc;
+    sess.acc = acc; I.bindWallet(acc); // Zeny is shared by all characters of the account
     sess.send({ t: 'auth', ok: true, user: acc.user, gm: acc.gm, chars: charList(acc) });
     return sess.send(lobbyOf(acc));
   }
@@ -127,19 +127,21 @@ function handle(sess, m) {
       if (db.charByName(name)) return sess.send({ t: 'err', m: 'ชื่อนี้ถูกใช้แล้ว' });
       if (!D.STARTER_CLASSES.includes(m.cls)) return sess.send({ t: 'err', m: 'เลือกได้เฉพาะ นักดาบ / นักธนู / นักเวท' });
       const ch = I.newChar(acc, name, m.cls);
-      db.data.chars[ch.id] = ch; acc.chars.push(ch.id); acc.nick = name; acc.sel = ch.id; db.save();
+      if (typeof acc.zeny !== 'number' || !acc.chars.length) acc.zeny = (acc.zeny || 0) + (ch.zeny || 0);
+      db.data.chars[ch.id] = ch; acc.chars.push(ch.id); delete ch.zeny; I.bindWallet(acc); acc.nick = name; acc.sel = ch.id; db.save();
       return sess.send(lobbyOf(acc));
     }
     if (m.t === 'rollClass') {
       const cur = db.data.chars[acc.sel]; if (!cur || !acc.chars.includes(cur.id)) return sess.send({ t: 'err', m: 'เลือกตัวละครก่อน' });
       const free = acc.gm >= 2 && m.free;
-      if (!free && (cur.zeny || 0) < D.CLASS_ROLL_COST) return sess.send({ t: 'err', m: `ต้องมี ${D.CLASS_ROLL_COST.toLocaleString()} Zeny ในคลาส ${D.CLASSES[shownClass(cur.cls)].name} (มี ${(cur.zeny || 0).toLocaleString()})` });
+      if (!free && (cur.zeny || 0) < D.CLASS_ROLL_COST) return sess.send({ t: 'err', m: `ต้องมี ${D.CLASS_ROLL_COST.toLocaleString()} Zeny ในบัญชี (มี ${(cur.zeny || 0).toLocaleString()})` });
       const got = rollClass(acc, Math.random);
       if (!got) return sess.send({ t: 'err', m: 'คุณมีครบทุกคลาสแล้ว!' });
       if (!free) cur.zeny -= D.CLASS_ROLL_COST;
       // the new class starts fresh: its own character at level 1 (same nickname), farmed separately
       const ch = I.newChar(acc, acc.nick || cur.name, got);
-      db.data.chars[ch.id] = ch; acc.chars.push(ch.id); db.save();
+      delete ch.zeny; // a new class uses the account wallet (no extra starting money)
+      db.data.chars[ch.id] = ch; acc.chars.push(ch.id); I.bindWallet(acc); db.save();
       const tier = D.classTier(got);
       if (tier >= 3) S.broadcast({ t: 'notice', k: 'loot', m: `🎰 ${acc.nick || cur.name} เปิดกล่องคลาสได้ [${D.CASE_TIERS[tier].n}] ${D.CLASSES[got].name}!` });
       sess.send({ t: 'roll', cls: got, tier, id: ch.id });
@@ -153,7 +155,7 @@ function handle(sess, m) {
       if (db.charByName(name)) return sess.send({ t: 'err', m: 'ชื่อนี้ถูกใช้แล้ว' });
       if (acc.chars.length >= 6) return sess.send({ t: 'err', m: 'สร้างได้สูงสุด 6 ตัวละคร' });
       const ch = I.newChar(acc, name, m.cls);
-      db.data.chars[ch.id] = ch; acc.chars.push(ch.id); db.save();
+      db.data.chars[ch.id] = ch; acc.chars.push(ch.id); I.bindWallet(acc); db.save();
       return sess.send({ t: 'chars', chars: charList(acc), created: ch.id });
     }
     if (m.t === 'deleteChar') {

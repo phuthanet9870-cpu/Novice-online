@@ -450,7 +450,7 @@ C.updatePlayer = function (p, dt, t, sec) {
         p.atkReady = t + 1 / p.st.aspd;
         p.atkOnce = false; // the click is used up — the next hit needs another click (unless AUTO is on)
         p.dir = Math.atan2(tgt.y - p.y, tgt.x - p.x);
-        const ranged = cls.scale !== 'melee';
+        const ranged = cls.basic ? cls.basic !== 'melee' : cls.scale !== 'melee';
         inst.emit({ k: ranged ? 'proj' : 'swing', s: p.id, x: p.x, y: p.y, tx: tgt.x, ty: tgt.y, el: p.weaponEl || cls.element, b: 1 });
         const blind = p.tags.has('blind') && W.rand() < 0.5;
         if (!blind) {
