@@ -15,7 +15,7 @@
   //   low  : render scale 1×, no bloom pass, 25 live effects, 1/3 particles, no screen shake
   //   med  : render scale up to 1.5×, no bloom pass, 55 live effects, 60% particles
   //   high : render scale up to 3× (sharpest), bloom glow, 120 live effects, full particles
-  G.FXQ = { low: { dpr: 1, bloom: 0, cap: 25, part: 0.34, shake: 0 }, med: { dpr: 1.5, bloom: 0, cap: 55, part: 0.6, shake: 1 }, high: { dpr: 3, bloom: 1, cap: 120, part: 1, shake: 1 } };
+  G.FXQ = { low: { dpr: 1, bloom: 0, glow: 0, cap: 25, part: 0.34, shake: 0 }, med: { dpr: 1.5, bloom: 1, glow: 0.45, cap: 55, part: 0.6, shake: 1 }, high: { dpr: 3, bloom: 1, glow: 0.7, cap: 120, part: 1, shake: 1 } };
   G.fx = () => G.FXQ[G.settings.fxq] || G.FXQ.high;
   G.applyGfx = () => { G.settings.particles = G.settings.fxq === 'low' ? 0 : 1; if (G.resize) G.resize(); };
   setTimeout(() => G.applyGfx && G.applyGfx(), 0);
@@ -30,7 +30,7 @@
         <label class="ck"><input type="checkbox" data-s="shake" ${s.shake ? 'checked' : ''}> สั่นหน้าจอ</label>
         <h4>กราฟิก & เอฟเฟกต์</h4>
         <div class="segRow"><span>คุณภาพเอฟเฟกต์</span>${[['low', 'ต่ำ'], ['med', 'กลาง'], ['high', 'สูง']].map(([k, n]) => `<button class="seg ${s.fxq === k ? 'on' : ''}" data-act="fxq" data-k="${k}">${n}</button>`).join('')}</div>
-        <small class="hint">${{ low: 'ต่ำ: ความละเอียด 1× · ไม่มีแสงเรือง · อนุภาค 1/3 · ไม่สั่นจอ — ลื่นที่สุด', med: 'กลาง: ความละเอียด 1.5× · ไม่มีแสงเรือง · อนุภาค 60%', high: 'สูง: ความละเอียดเต็มจอ (สูงสุด 3×) · แสงเรือง (bloom) · อนุภาคเต็ม' }[s.fxq] || ''}</small>
+        <small class="hint">${{ low: 'ต่ำ: ความละเอียด 1× · ไม่มีแสงเรือง · อนุภาค 1/3 · ไม่สั่นจอ — ลื่นที่สุด', med: 'กลาง: ความละเอียด 1.5× · แสงเรืองฟุ้ง + แสงพิกเซล · อนุภาค 60%', high: 'สูง: ความละเอียดเต็มจอ (สูงสุด 3×) · แสงเรืองฟุ้งเต็มที่ + แสงพิกเซล · อนุภาคเต็ม' }[s.fxq] || ''}</small>
         <div class="segRow"><span>แสดงผู้เล่นอื่น</span>${[[5, '5'], [10, '10'], [30, '30'], [0, 'ทั้งหมด']].map(([k, n]) => `<button class="seg ${(+s.maxPlayers || 0) === k ? 'on' : ''}" data-act="maxp" data-k="${k}">${n}</button>`).join('')}</div>
         <small class="hint">แสดงเฉพาะผู้เล่นที่ใกล้ที่สุดตามจำนวนที่เลือก (สมาชิกปาร์ตี้แสดงเสมอ) · ตอนนี้มีผู้เล่นอื่นในแผนที่ ${[...G.ents.values()].filter((e) => e.k === 'p' && e.id !== G.me).length} คน</small>
         <div class="segRow"><span>เอฟเฟกต์ผู้เล่นอื่น</span><button class="seg ${s.othersFx !== false ? 'on' : ''}" data-act="ofx" data-k="1">เปิด — เห็นทั้งหมด</button><button class="seg ${s.othersFx === false ? 'on' : ''}" data-act="ofx" data-k="0">ปิด — เห็นแค่ของตัวเอง</button></div>

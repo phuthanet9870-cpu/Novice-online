@@ -482,7 +482,7 @@
       }
     }
     lg.putImageData(im, 0, 0);
-    if (quality === 'high') pixelLight(d);
+    if (quality !== 'low') pixelLight(d);
   }
   // pixel light: every bright pixel throws a stepped halo (2 rings) onto the empty pixels around it — the glow stays
   // made of pixels instead of a soft blur
@@ -926,13 +926,15 @@
       if (!bloom) { bloom = document.createElement('canvas'); bgc = bloom.getContext('2d'); }
       const bw = Math.max(1, Math.ceil(w / 4)), bh = Math.max(1, Math.ceil(h / 4));
       if (bloom.width !== bw || bloom.height !== bh) { bloom.width = bw; bloom.height = bh; }
-      const doBloom = false; // replaced by the stepped pixel light
-      if (doBloom) { bgc.clearRect(0, 0, bw, bh); bgc.imageSmoothingEnabled = true; bgc.drawImage(layer, 0, 0, bw, bh); }
+      // soft glow (medium + high): the effect layer shrunk to 1/4 and blurred, then added back on top — a haze of light
+      const glowK = root.G && G.fx ? G.fx().glow || 0 : 0.5;
+      if (glowK) { bgc.clearRect(0, 0, bw, bh); bgc.filter = 'blur(2px)'; bgc.imageSmoothingEnabled = true; bgc.drawImage(layer, 0, 0, bw, bh); bgc.filter = 'none'; }
       g.save(); g.setTransform(view.dpr, 0, 0, view.dpr, view.sx || 0, view.sy || 0);
       const sm = g.imageSmoothingEnabled; g.imageSmoothingEnabled = false;
       g.drawImage(layer, 0, 0, w * px, h * px);
-      if (lightOn && lightCv && (!root.G || !G.fx || G.fx().bloom)) { g.imageSmoothingEnabled = false; g.globalCompositeOperation = 'lighter'; g.globalAlpha = 1;
+      if (lightOn && lightCv && (!root.G || !G.fx || G.fx().glow)) { g.imageSmoothingEnabled = false; g.globalCompositeOperation = 'lighter'; g.globalAlpha = 1;
       g.drawImage(lightCv, 0, 0, w * px, h * px); lightOn = false; }
+      if (glowK) { g.imageSmoothingEnabled = true; g.globalCompositeOperation = 'lighter'; g.globalAlpha = glowK; g.drawImage(bloom, 0, 0, bw * 4 * px, bh * 4 * px); g.globalAlpha = glowK * 0.55; g.drawImage(bloom, -bw * px, -bh * px, bw * 6 * px, bh * 6 * px); }
       g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
       // crisp pixel sprites (arrows) on top, in world position, nearest-neighbour scaled
       g.imageSmoothingEnabled = false;
