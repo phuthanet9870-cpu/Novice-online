@@ -407,6 +407,17 @@ S.secondTick = function (t) {
 S.onLogout = function (p) { if (p.party) S.party(p, { a: 'leave' }); E.onLogout(p); const i = P.queue.findIndex((q) => q.p === p); if (i >= 0) P.queue.splice(i, 1); };
 
 S.info = function (p, what) {
+  if (what === 'mobs') {
+    // every monster type alive on this map right now (for the auto window's target checklist)
+    const by = new Map();
+    for (const e of p.inst.entities.values()) {
+      if (e.kind !== 'm' || e.dead || e.owner || e.sh === 'pillar' || e.sealOf) continue;
+      const n = e.name.replace(/^(Elite |Feral |Grim |Elder |Pristine )/, '');
+      const o = by.get(n) || { n, c: 0, lo: e.lv, hi: e.lv, rk: 0 };
+      o.c++; o.lo = Math.min(o.lo, e.lv); o.hi = Math.max(o.hi, e.lv); o.rk = Math.max(o.rk, e.rank || 0); by.set(n, o);
+    }
+    return send(p, { t: 'info', what, map: p.inst.def.name, list: [...by.values()].sort((a, b) => a.rk - b.rk || a.lo - b.lo || a.n.localeCompare(b.n)) });
+  }
   if (what === 'gvg') {
     send(p, { t: 'info', what, active: gvg.active, endsIn: gvg.active ? Math.round(gvg.endsAt - now()) : 0, schedule: D.GVG_SCHEDULE,
       castles: D.CASTLES.map((c) => { const o = S.castleOwner(c.id); const inst = W.instances.get(c.id); return { id: c.id, name: c.name, th: c.th, owner: o && G()[o] ? G()[o].name : null, core: inst && inst.core ? Math.round(inst.core.hp / inst.core.maxHp * 100) : 100 }; }) });

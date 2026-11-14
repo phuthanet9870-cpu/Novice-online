@@ -802,3 +802,11 @@ body.touch #chat { display: none; }
 #hotbar1 .hbrow.r1 .slot { box-shadow: inset 0 0 0 1px rgba(110, 170, 255, 0.35); }
 #hotbar1 .hbrow.r2 .slot { box-shadow: inset 0 0 0 1px rgba(255, 200, 90, 0.45); }
 @media (max-width: 900px) { #hotbar1 .hbrow .slot { width: 32px; height: 32px; } }
+
+/* auto window: monster checklist */
+.mobPick { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0; max-height: 170px; overflow-y: auto; }
+.mobPick .mob { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 6px; border: 1px solid rgba(255, 200, 120, .2); background: rgba(0, 0, 0, .35); color: #d9c7a3; font: 500 12px Kanit, sans-serif; cursor: pointer; }
+.mobPick .mob small { color: #8f7f66; font-size: 10px; }
+.mobPick .mob.on { border-color: #5ee06a; background: rgba(40, 120, 50, .35); color: #eaffea; }
+.mobPick .mob.off { border-color: #ff5a5a; background: rgba(120, 30, 30, .35); color: #ffd0d0; text-decoration: line-through; }
+.mobPick .mob.boss { box-shadow: inset 0 0 0 1px #ffb84a; }

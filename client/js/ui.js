@@ -725,7 +725,7 @@
   let autoDraft = null;
   WIN.auto = {
     title: '🤖 ระบบออโต้', w: 960,
-    onOpen() { autoDraft = JSON.parse(JSON.stringify(G.char.auto)); },
+    onOpen() { autoDraft = JSON.parse(JSON.stringify(G.char.auto)); G.send({ t: 'info', what: 'mobs' }); },
     render() {
       const a = autoDraft || (autoDraft = JSON.parse(JSON.stringify(G.char.auto)));
       const learned = CSK()[G.char.cls].filter((id) => G.skillLv(id) && SKS()[id].kind === 'attack');
@@ -736,10 +736,15 @@
       <div class="autoGrid scrollKeep">
         <section><h4>🎯 การเลือกเป้าหมาย</h4>
           <label>โหมด <select data-k="mode">${[['nearest', 'ใกล้สุด'], ['lowest', 'HP น้อยสุด'], ['priority', 'ตามลำดับ Whitelist'], ['defensive', 'ตีเฉพาะที่ตีเรา']].map(([v, n]) => `<option value="${v}" ${a.mode === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
-          <label>รัศมีค้นหา <input type="range" min="4" max="40" value="${a.radius}" data-k="radius"><b>${a.radius} ช่อง</b></label>
+          <div class="segRow"><span>พื้นที่ล่า</span><button class="seg ${a.wholeMap ? '' : 'on'}" data-act="area" data-k="0">รอบตัว</button><button class="seg ${a.wholeMap ? 'on' : ''}" data-act="area" data-k="1">ทั้งแมพ</button></div>
+          ${a.wholeMap ? '<small class="hint">ล่ามอนรอบตัวก่อน ถ้าไม่มีจะเดินไปหามอนที่เลือกไว้ที่ไหนก็ได้ในแมพ (หาทางเดินเอง)</small>' : `<label>รัศมีค้นหา <input type="range" min="4" max="40" value="${a.radius}" data-k="radius"><b>${a.radius} ช่อง</b></label>`}
           <label class="ck"><input type="checkbox" data-k="anchor" ${a.anchor ? 'checked' : ''}> ยึดจุดเริ่มต้น (ไม่เดินออกนอกวง)</label>
           <label class="ck"><input type="checkbox" data-k="avoidBoss" ${a.avoidBoss ? 'checked' : ''}> หลีกเลี่ยงบอส</label>
           <label class="ck"><input type="checkbox" data-k="ksProtect" ${a.ksProtect ? 'checked' : ''}> ไม่แย่งมอนคนอื่น (KS Protect)</label>
+          <div class="sub">เลือกมอนที่จะตีในแมพนี้ ${(() => { const I0 = UI.lastInfo && UI.lastInfo.mobs; return I0 ? `<small>(${esc(I0.map)} · ${I0.list.length} ชนิด)</small>` : '<small>(กำลังโหลด…)</small>'; })()}
+            <button class="btn tiny" data-act="mobAll">ตีทุกตัว</button><button class="btn tiny" data-act="mobNone">ล้างที่เลือก</button><button class="btn tiny" data-act="mobRefresh">⟳</button></div>
+          <div class="mobPick">${((UI.lastInfo && UI.lastInfo.mobs && UI.lastInfo.mobs.list) || []).map((m) => { const on = a.whitelist.includes(m.n), off = a.blacklist.includes(m.n); return `<button class="mob ${on ? 'on' : ''} ${off ? 'off' : ''} ${m.rk >= 2 ? 'boss' : ''}" data-act="mobTog" data-n="${esc(m.n)}" data-tip="คลิก = ตีตัวนี้ · คลิกอีกครั้ง = ไม่ตี · คลิกอีกครั้ง = ปกติ"><b>${on ? '✔' : off ? '✖' : '○'}</b> ${esc(m.n)}<small>Lv${m.lo}${m.hi > m.lo ? '–' + m.hi : ''} ×${m.c}</small></button>`; }).join('')}</div>
+          <small class="hint">${a.whitelist.length ? `ตีเฉพาะ ${a.whitelist.length} ชนิดที่ติ๊ก ✔` : 'ไม่ได้ติ๊กไว้ = ตีทุกชนิด'}${a.blacklist.length ? ` · ไม่ตี ${a.blacklist.length} ชนิด (✖)` : ''}</small>
           <div class="sub">มอนที่ต้องการตี (Whitelist)</div>${chipList('whitelist')}
           <div class="sub">มอนที่ไม่ตี (Blacklist)</div>${chipList('blacklist')}
           <div class="sub">มอนใกล้ตัว: ${near.map((n) => `<button class="chip add" data-act="addw" data-n="${esc(n)}">+${esc(n)}</button>`).join('') || '-'}</div>
@@ -784,6 +789,11 @@
       if (a === 'save') { stash(); G.send({ t: 'auto', cfg: A }); UI.toast('บันทึกการตั้งค่าออโต้แล้ว', 'gold'); }
       if (a === 'rmchip') A[d.k].splice(+d.i, 1);
       if (a === 'addw' && !A.whitelist.includes(d.n)) A.whitelist.push(d.n);
+      if (a === 'area') { A.wholeMap = d.k === '1'; if (A.wholeMap) A.anchor = false; } // whole-map hunting can't be tied to the start point
+      if (a === 'mobAll') { A.whitelist = []; A.blacklist = []; }
+      if (a === 'mobNone') A.whitelist = [];
+      if (a === 'mobRefresh') G.send({ t: 'info', what: 'mobs' });
+      if (a === 'mobTog') { const n = d.n, wi = A.whitelist.indexOf(n), bi = A.blacklist.indexOf(n); if (wi >= 0) { A.whitelist.splice(wi, 1); A.blacklist.push(n); } else if (bi >= 0) A.blacklist.splice(bi, 1); else A.whitelist.push(n); }
       const learned = CSK()[G.char.cls].filter((id) => G.skillLv(id) && SKS()[id].kind === 'attack');
       if (a === 'addRot' && learned.length) A.rotation.push({ id: learned.find((id) => !A.rotation.some((r) => r.id === id)) || learned[0], cond: 'always', v: 0 });
       if (a === 'rm') A.rotation.splice(+d.i, 1);

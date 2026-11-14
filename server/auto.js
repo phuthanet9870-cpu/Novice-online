@@ -17,7 +17,7 @@ A.sanitize = function (cfg) {
   const num = (v, lo, hi, d) => (typeof v === 'number' && isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d);
   a.mode = ['nearest', 'lowest', 'priority', 'defensive'].includes(cfg.mode) ? cfg.mode : 'nearest';
   a.radius = num(cfg.radius, 4, 40, 14);
-  a.anchor = !!cfg.anchor;
+  a.anchor = !!cfg.anchor; a.wholeMap = !!cfg.wholeMap;
   a.whitelist = Array.isArray(cfg.whitelist) ? cfg.whitelist.slice(0, 20).map((s) => String(s).slice(0, 40)) : [];
   a.blacklist = Array.isArray(cfg.blacklist) ? cfg.blacklist.slice(0, 20).map((s) => String(s).slice(0, 40)) : [];
   a.avoidBoss = cfg.avoidBoss !== false; a.ksProtect = cfg.ksProtect !== false;
@@ -129,6 +129,18 @@ function pickTarget(p, a, t) {
     else v = W.dist(p, o);
     if (v < bv) { bv = v; best = o; }
   });
+  if (best || !a.wholeMap || a.anchor) return best;
+  // whole-map hunting: nothing near → the nearest wanted monster anywhere on the map (walked to with path-finding)
+  for (const o of p.inst.entities.values()) {
+    if (o.kind !== 'm' || o.dead || o.owner || o.sealOf || o.sh === 'pillar') continue;
+    if (a.ignore && a.ignore[o.id] > t) continue;
+    if (a.avoidBoss && o.rank >= 2) continue;
+    if (a.whitelist.length && !nameMatch(a.whitelist, o.name)) continue;
+    if (a.blacklist.length && nameMatch(a.blacklist, o.name)) continue;
+    if (a.ksProtect && o.lastHitBy && o.lastHitBy !== p.id && t - o.lastHitAt < 6) continue;
+    const v = a.mode === 'priority' ? ((a.whitelist.findIndex((s) => o.name.toLowerCase().includes(s.toLowerCase())) + 1 || 99) * 1e5 + W.dist(p, o)) : W.dist(p, o);
+    if (v < bv) { bv = v; best = o; }
+  }
   return best;
 }
 
@@ -193,10 +205,10 @@ A.update = function (p, dt, t) {
   // stuck detection: if we have not moved for 2.5s while chasing, skip that target for a while
   a.ignore = a.ignore || {};
   if (a.lastX === undefined || Math.hypot(p.x - a.lastX, p.y - a.lastY) > 0.3) { a.lastX = p.x; a.lastY = p.y; a.stillAt = t; }
-  else if (a.target && t - a.stillAt > 2.5 && W.dist(p, a.target) > p.st.range + 1.5) { a.ignore[a.target.id] = t + 25; a.target = null; a.moveTo = null; a.stillAt = t; }
+  else if (a.target && t - a.stillAt > (a.wholeMap ? 4 : 2.5) && W.dist(p, a.target) > p.st.range + 1.5) { a.ignore[a.target.id] = t + 25; a.target = null; a.moveTo = null; a.stillAt = t; }
   // target
   let tgt = a.target;
-  if (!tgt || tgt.dead || tgt.inst !== p.inst || W.dist(p, tgt) > a.radius + 12) { tgt = a.target = pickTarget(p, a, t); }
+  if (!tgt || tgt.dead || tgt.inst !== p.inst || (!a.wholeMap && W.dist(p, tgt) > a.radius + 12)) { tgt = a.target = pickTarget(p, a, t); }
   if (!tgt) {
     p.atkTarget = null;
     const cx = a.anchor ? a.ax : p.x, cy = a.anchor ? a.ay : p.y;

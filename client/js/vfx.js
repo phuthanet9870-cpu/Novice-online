@@ -7,7 +7,7 @@
 // screen shake sit on top for weight.
 (function (root) {
   'use strict';
-  const VFX = { ok: true, recipes: {}, live: [], PPT: 16 };
+  const VFX = { ok: true, recipes: {}, live: [], PPT: 11 }; // 11 effect pixels per tile: chunky, hand-drawn-sprite sized pixels
   root.VFX = VFX;
   const PPT = VFX.PPT;
   const TAU = Math.PI * 2;
@@ -415,9 +415,47 @@
     LW = w; LH = h;
   }
   // threshold alpha with an ordered dither: crisp pixel edges, dithered translucency
+  // pixel-sprite finish (pixelfx-style look, own implementation):
+  //  1. alpha → on/off with an ordered dither (no soft edges)
+  //  2. every pixel snapped to the nearest colour of the palettes on screen (no anti-aliasing blends, limited ramps)
+  //  3. a 1-pixel dark outline around every shape, tinted from the colour it borders
+  let snapCols = [], snapCache = new Map();
+  function setPalettes(list) {
+    const seen = new Set(), cols = [];
+    for (const pal of list) for (const c of pal || []) if (c && c[0] === '#' && !seen.has(c)) { seen.add(c); cols.push(hexToRgb(c)); }
+    const key = [...seen].join(''); if (key !== setPalettes.key) { setPalettes.key = key; snapCols = cols; snapCache = new Map(); }
+  }
+  function snap(r, g, b) {
+    const k = (r << 16) | (g << 8) | b; let v = snapCache.get(k); if (v !== undefined) return v;
+    let best = 0, bd = 1e9;
+    for (let i = 0; i < snapCols.length; i++) { const c = snapCols[i], dr = c[0] - r, dg = c[1] - g, db = c[2] - b, d = dr * dr * 0.3 + dg * dg * 0.59 + db * db * 0.11; if (d < bd) { bd = d; best = i; } }
+    v = snapCols.length ? (snapCols[best][0] << 16) | (snapCols[best][1] << 8) | snapCols[best][2] : k;
+    if (snapCache.size < 50000) snapCache.set(k, v); return v;
+  }
   function crisp() {
     const im = lg.getImageData(0, 0, LW, LH), d = im.data;
-    for (let y = 0, i = 3; y < LH; y++) { const row = (y & 3) << 2; for (let x = 0; x < LW; x++, i += 4) { const a = d[i]; if (!a) continue; d[i] = a / 255 > BAYER[row | (x & 3)] ? 255 : 0; } }
+    // solid sprite pixels: faint pixels drop out, the rest become opaque and fade by stepping down the colour ramp
+    // (a dimmer pixel takes a darker colour) instead of turning see-through — only the very edge keeps a light dither
+    for (let y = 0, i = 0; y < LH; y++) { const row = (y & 3) << 2; for (let x = 0; x < LW; x++, i += 4) {
+      const a = d[i + 3]; if (!a) continue; const k = a / 255;
+      if (k < 0.16 || (k < 0.3 && k / 0.3 < BAYER[row | (x & 3)])) { d[i + 3] = 0; continue; }
+      if (k < 0.97) { const m = 0.42 + 0.58 * k; d[i] *= m; d[i + 1] *= m; d[i + 2] *= m; }
+      d[i + 3] = 255;
+    } }
+    const quality = root.G && G.fx ? G.settings.fxq : 'high';
+    if (snapCols.length && quality !== 'low') {
+      for (let i = 0; i < d.length; i += 4) if (d[i + 3]) { const v = snap(d[i], d[i + 1], d[i + 2]); d[i] = v >> 16; d[i + 1] = (v >> 8) & 255; d[i + 2] = v & 255; }
+    }
+    if (quality !== 'low') {
+      // outline: transparent pixels touching a lit pixel become a dark rim of that colour
+      const W4 = LW * 4, src = new Uint8ClampedArray(d);
+      for (let y = 1; y < LH - 1; y++) for (let x = 1, i = (y * LW + 1) * 4; x < LW - 1; x++, i += 4) {
+        if (src[i + 3]) continue;
+        const n = src[i - 4 + 3] ? i - 4 : src[i + 4 + 3] ? i + 4 : src[i - W4 + 3] ? i - W4 : src[i + W4 + 3] ? i + W4 : -1;
+        if (n < 0) continue;
+        d[i] = src[n] * 0.28; d[i + 1] = src[n + 1] * 0.22; d[i + 2] = src[n + 2] * 0.3 + 12; d[i + 3] = 200;
+      }
+    }
     lg.putImageData(im, 0, 0);
   }
   const FLOOR = 0.55;
@@ -744,7 +782,7 @@
     g.globalCompositeOperation = 'lighter';
     for (const e of live) {
       if (e.t < 0 || e.noLight) continue;
-      const lk = (LIGHT_K[e.k] || 0) * (e.big ? 1.3 : 1); if (!lk || e.el === 'dark') continue;
+      const lk = (LIGHT_K[e.k] || 0) * (e.big ? 1.3 : 1) * 0.55; if (!lk || e.el === 'dark') continue;
       const k = e.t / e.dur, env = k < 0.1 ? k / 0.1 : 1 - k, a = Math.min(0.4, lk * env * 0.45); if (a < 0.02) continue;
       let x = e.x, y = e.y; if (e.k === 'proj') { x += (e.tx - e.x) * k; y += (e.ty - e.y) * k; }
       const R = Math.min(5, 1 + (e.r || 1) * 0.9) * (e.big ? 1.3 : 1), c = lightCol(e), gr = g.createRadialGradient(x, y - 0.4, 0, x, y - 0.4, R);
@@ -761,13 +799,14 @@
       // pixel-art timing: poses step at 14 fps (projectiles/zones at 30) like hand-drawn sprite effects
       for (const e of live) {
         if (e.t < 0) continue; const f = DRAW[e.k]; if (!f) continue;
-        const fps = e.k === 'proj' || e.k === 'status' || e.k.endsWith('fx') ? 30 : 14, tr = e.t, tq = Math.floor(tr * fps) / fps;
+        const fps = e.k === 'proj' || e.k === 'status' || e.k.endsWith('fx') ? 24 : 12, tr = e.t, tq = Math.floor(tr * fps) / fps;
         e.t = tq; try { f(lg, e, clamp(tq / e.dur)); } catch (err) { e.dur = 0; } e.t = tr;
       }
       // pixel particles share the layer so they get the same crisp look
       const ps = 2 / 24;
       for (const p of debris) { const t = p.t, a = t.fade || t.glow ? Math.max(0, 1 - p.age / p.life) : p.age > p.life - 0.25 ? (p.life - p.age) / 0.25 : 1, sz = ps * t.s; if (p.z > 0.05 && !t.glow) { lg.globalAlpha = 0.25 * a; lg.fillStyle = '#000'; lg.fillRect(p.x - sz / 2, p.y - sz / 4, sz, sz / 2); } lg.globalAlpha = clamp(a); lg.fillStyle = p.c; if (t.streak) lg.fillRect(p.x - sz / 2, p.y - p.z - sz, sz, sz * 3); else lg.fillRect(p.x - sz / 2, p.y - p.z - sz / 2, sz, sz); }
       lg.globalAlpha = 1;
+      setPalettes(live.filter((e) => e.t >= 0).map((e) => e.pal).concat(debris.length ? [debris.slice(0, 40).map((p) => p.c)] : []));
       crisp();
       // bloom: a soft quarter-size copy added on top makes the bright pixels glow
       if (!bloom) { bloom = document.createElement('canvas'); bgc = bloom.getContext('2d'); }
@@ -778,7 +817,7 @@
       g.save(); g.setTransform(view.dpr, 0, 0, view.dpr, view.sx || 0, view.sy || 0);
       const sm = g.imageSmoothingEnabled; g.imageSmoothingEnabled = false;
       g.drawImage(layer, 0, 0, w * px, h * px);
-      if (!root.G || !G.fx || G.fx().bloom) { g.imageSmoothingEnabled = true; g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.45;
+      if (!root.G || !G.fx || G.fx().bloom) { g.imageSmoothingEnabled = true; g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.16;
       g.drawImage(bloom, 0, 0, bw * 4 * px, bh * 4 * px); }
       g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
       g.imageSmoothingEnabled = sm; g.restore();

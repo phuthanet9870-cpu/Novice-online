@@ -266,7 +266,8 @@ W.stepToward = function (e, tx, ty, dt, stopDist = 0.2) {
   const t = now();
   if (!M.clearLine(inst.map, e.x, e.y, tx, ty)) {
     if (!e.path || e.pathGoal !== ((tx | 0) + ',' + (ty | 0)) || t > e.pathAt + 1.5) {
-      e.path = M.findPath(inst.map, e.x, e.y, tx, ty, e.kind === 'p' ? 8000 : 1600) || [];
+      e.path = M.findPath(inst.map, e.x, e.y, tx, ty, e.kind === 'p' ? (Math.hypot(tx - e.x, ty - e.y) > 40 ? 40000 : 8000) : 1600) || [];
+      if (e.kind === 'p' && e.path.length) e.pathAt += Math.min(4, Math.hypot(tx - e.x, ty - e.y) / 20); // long routes are re-planned less often
       e.pathGoal = (tx | 0) + ',' + (ty | 0); e.pathAt = t;
     }
     while (e.path.length && Math.hypot(e.path[0][0] - e.x, e.path[0][1] - e.y) < 0.35) e.path.shift();
