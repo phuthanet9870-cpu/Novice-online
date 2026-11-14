@@ -13,6 +13,24 @@
   const hash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
   const P = IP.pools;
   const LOOT = { fang: 'mat_fang', talon: 'mat_fang', stinger: 'mat_fang', pincer: 'mat_fang', feather: 'mat_feather', gel: 'mat_slime', ecto: 'mat_slime', bone: 'mat_bone', dust: 'mat_bone', scale: 'mat_scale', chitin: 'mat_scale', shell: 'mat_scale', plate: 'mat_scale', fur: 'mat_hide', cloth: 'mat_hide', horn: 'mat_horn', heart: 'gem', core: 'gem', orb: 'gem', pearl: 'gem', lens: 'gem', shard: 'gem', ember: 'gem', seal: 'relic', leaf: 'elixir', root: 'mat_hide', seed: 'bag', spore: 'bag', cap: 'mat_bowl', stone: 'rune', gland: 'mat_slime', coin: 'relic', relic: 'relic', box: 'bag', anvil: 'tool', food: 'elixir', oil: 'elixir', flask: 'elixir', scroll: 'scroll' };
+  // upgrade materials each get their own look (they used to borrow the rune stones):
+  // 'wa:' = a piece of the world atlas (roboden ore rocks / crystals), otherwise an icon pool name
+  const MAT_ICON = {
+    ore_rough: 'wa:r:iron_2', ore_refine: 'wa:r:iron_1', ore_enriched: 'wa:r:gold_1',
+    crystal_shard: 'wa:r:gcry1', crystal_pure: 'wa:r:gcry0', divine_shard: 'wa:r:rcry1', crystal_divine: 'wa:r:rcry0',
+    scroll_protect: 'scroll', scroll_bless: 'scroll', rune_drill: 'cell:953', reroll_stone: 'wa:r:magma_0',
+    memory_crystal: 'gem', stat_reset: 'elixir', guild_emblem: 'banner', smith_charm: 'relic'
+  };
+  const world = new Image(); if (window.WORLD_ART) { world.onload = () => { cache.clear(); if (window.UI && UI.refreshIcons) UI.refreshIcons(); }; world.src = WORLD_ART.src; }
+  function drawPiece(name, rar) {
+    const e = window.WORLD_ART && WORLD_ART.r[name]; if (!e || !world.naturalWidth) return null;
+    const S = 72, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d');
+    const fr = frames[rar === undefined ? 'empty' : RAR[rar]];
+    if (fr && fr.naturalWidth) g.drawImage(fr, 0, 0, S, S);
+    const k = Math.min(52 / e[2], 52 / e[3]), w = e[2] * k, h = e[3] * k;
+    g.imageSmoothingEnabled = false; g.drawImage(world, e[0], e[1], e[2], e[3], Math.round((S - w) / 2), Math.round((S - h) / 2), Math.round(w), Math.round(h));
+    return c.toDataURL();
+  }
   function poolOf(it, def) {
     if (it.type === 'equip') {
       if (it.slot === 'weapon') return P['w_' + it.wtype] || P.w_sword;
@@ -27,7 +45,7 @@
       case 'buffitem': return P[LOOT[def.ic] || 'elixir'];
       case 'rune': return P.rune;
       case 'jewel': return P.gem;
-      case 'mat': return def.ic === 'shard' || def.ic === 'seal' ? P.gem : P.rune;
+      case 'mat': { const m = MAT_ICON[it.id]; return m && m.startsWith('cell:') ? [+m.slice(5)] : m && !m.startsWith('wa:') ? P[m] : P.tool; }
       case 'treasure': return P[def.ic === 'gem' ? 'gem' : 'relic'];
       case 'box': return P.bag;
       case 'currency': return P.relic;
@@ -59,6 +77,8 @@
     if (!atlas.naturalWidth) return base(it);
     const def = it.id ? D.ITEMS[it.id] : null;
     if (def && def.img) return def.img;
+    const mi = it.id && MAT_ICON[it.id];
+    if (mi && mi.startsWith('wa:')) { const rr = def && def.tier !== undefined ? Math.min(4, Math.floor(def.tier / 3)) : undefined; const key = mi + '|' + rr; let u = cache.get(key); if (!u) { u = drawPiece(mi.slice(3), rr); if (u) cache.set(key, u); } if (u) return u; }
     if (def && (def.type === 'card' || def.type === 'pet' || def.type === 'petfood' || def.type === 'zeny')) return base(it);
     const pool = poolOf(it, def); if (!pool || !pool.length) return base(it);
     // stable pick: the same base item always looks the same; different bases spread over the pool
