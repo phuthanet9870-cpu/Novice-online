@@ -788,3 +788,10 @@ body.touch #chat { display: none; }
 .segRow > span { min-width: 120px; color: #d9c7a3; font-size: 13px; }
 .seg { padding: 4px 12px; border: 1px solid rgba(255, 200, 120, .25); background: rgba(0, 0, 0, .35); color: #cdbf9f; font: 500 12px Kanit, sans-serif; border-radius: 6px; cursor: pointer; }
 .seg.on { background: linear-gradient(180deg, #c8621e, #7a3510); color: #fff3d6; border-color: #ffb060; box-shadow: 0 0 8px rgba(255, 140, 50, .45); }
+
+/* quick-slot panel: 2 rows × 3 (Z X C / V B N), above the chat box */
+.quickbar { position: absolute; left: 330px; bottom: 300px; z-index: 6; pointer-events: auto; padding: 6px 8px 8px; border-style: solid; border-width: 12px; border-image: url(assets/ui/cinder/panel_inset.png) 24 fill / 12px stretch; display: flex; flex-direction: column; gap: 5px; }
+.quickbar .qbTitle { font: 600 10px Cinzel, Kanit, serif; letter-spacing: .2em; color: #c9a56a; text-align: center; margin: -4px 0 0; }
+.quickbar .qbrow { display: flex; gap: 5px; }
+.quickbar .qbrow .slot { width: 44px; height: 44px; }
+@media (max-width: 900px) { .quickbar { left: auto; right: 8px; bottom: 210px; } .quickbar .qbrow .slot { width: 36px; height: 36px; } }

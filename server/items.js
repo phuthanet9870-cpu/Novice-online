@@ -24,7 +24,7 @@ I.newChar = function (acc, name, cls) {
   const ch = {
     id, acc: acc.user.toLowerCase(), name, cls, lv: 1, exp: 0, statPts: 5, stats: Object.assign({}, c.start), skillPts: 3, skills: {},
     hotbar: new Array(50).fill(null), inv: [], equip: {}, zeny: 2500, map: 'aurelia', lastTown: 'aurelia', x: undefined, y: undefined,
-    dungeonBest: {}, created: Date.now(), ult: 0, pity: 0, kills: 0, pvpKills: 0, kitVer: 3
+    dungeonBest: {}, created: Date.now(), ult: 0, pity: 0, kills: 0, pvpKills: 0, kitVer: 4
   };
   const first = CLASS_SKILLS[cls][0];
   ch.skills[first] = 1; ch.hotbar[0] = first;
@@ -37,9 +37,10 @@ I.newChar = function (acc, name, cls) {
   return ch;
 };
 
-// hotbar = 2 pages of 10 (slots 0-19). Page 1: attacks 1-10. Page 2: attacks 11-12, buffs 1-3, ultimates 1-3, HP / SP potions.
-// The remaining skills sit in the skill window (K) and can be dragged onto any slot.
-I.defaultHotbar = function (ch) { const L = CLASS_SKILLS[ch.cls] || []; const pick = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 15, 16, 17, 20, 21, 22]; pick.forEach((k, i) => { if (L[k]) ch.hotbar[i] = L[k]; }); ch.hotbar[18] = 'item:pot_hp_1'; ch.hotbar[19] = 'item:pot_sp_1'; };
+// hotbar = 31 slots: 0-24 hold all 25 class skills in order (attacks 1-15, buffs, ultimates, set ultimate),
+// 25-30 are the 2×3 quick-slot panel (Z X C / V B N) for potions and other items
+I.HB_SKILLS = 25; I.HB_TOTAL = 31;
+I.defaultHotbar = function (ch) { const L = CLASS_SKILLS[ch.cls] || []; for (let i = 0; i < I.HB_SKILLS; i++) ch.hotbar[i] = L[i] || null; ch.hotbar[25] = 'item:pot_hp_1'; ch.hotbar[26] = 'item:pot_sp_1'; };
 // older 50-slot bars: pull anything parked in slots 20+ into free slots of the two pages
 I.compactHotbar = function (ch) { const h = ch.hotbar || []; for (let i = 20; i < h.length; i++) { if (!h[i]) continue; const j = h.findIndex((x, k) => k < 20 && !x); if (j >= 0 && !h.slice(0, 20).includes(h[i])) h[j] = h[i]; h[i] = null; } };
 // ------------------------------------------------------------------ inventory primitives
@@ -121,7 +122,7 @@ I.learn = function (p, id) {
   const cost = sk.kind === 'ult' ? 2 : 1;
   if (ch.skillPts < cost) return err(p, 'แต้มสกิลไม่พอ');
   ch.skillPts -= cost; ch.skills[id] = cur + 1;
-  if (!cur) { const i = ch.hotbar.indexOf(null); if (i >= 0 && i < 12) ch.hotbar[i] = id; }
+  if (!cur) { const i = ch.hotbar.indexOf(null); if (i >= 0 && i < 25) ch.hotbar[i] = id; }
   C.sendChar(p, ['skills', 'skillPts', 'hotbar']);
 };
 I.resetSkills = function (p) {

@@ -6,13 +6,14 @@
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmt = (n) => Math.round(n).toLocaleString();
   const UI = window.UI = { wins: {}, open: [], chatTab: 'all', chatCh: 'map', selItem: null, skillTab: null, invTab: 'all', log: [] };
-  // one bar of 10 slots with 2 pages (20 slots): 1..0 fire the page on screen, Shift+1..0 fire the other page, the ⇄ button swaps pages
-  const HB_N = 20, HB_ROW = 10;
+  // 31 slots: 25 skill slots (every class skill) shown 10 at a time on 3 pages (10 · 10 · 5), ⇄ cycles the page,
+  // 1..0 fire the page on screen, Shift+1..0 the next page; plus a 2×3 quick panel (slots 25-30) on Z X C / V B N
+  const HB_SKILL = 25, HB_N = 31, HB_ROW = 10, HB_PAGES = 3, QUICK = ['Z', 'X', 'C', 'V', 'B', 'N'];
   const DIG = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
-  const HOTKEYS = Array.from({ length: HB_N }, (_, i) => DIG[i % HB_ROW]);
-  UI.hbPage = (() => { try { return +localStorage.getItem('no_hb_page') === 1 ? 1 : 0; } catch (e) { return 0; } })();
-  UI.swapHotbar = (pg) => { UI.hbPage = pg === undefined ? 1 - UI.hbPage : pg; try { localStorage.setItem('no_hb_page', UI.hbPage); } catch (e) {} buildHotbar(); renderHotbar(); const b = $('#hbToggle'); if (b) b.innerHTML = hbBtn(); };
-  const hbBtn = () => `<b>⇄</b><span>${UI.hbPage + 1}/2</span>`;
+  const HOTKEYS = Array.from({ length: HB_N }, (_, i) => (i < HB_SKILL ? DIG[i % HB_ROW] : QUICK[i - HB_SKILL]));
+  UI.hbPage = (() => { try { const v = +localStorage.getItem('no_hb_page'); return v >= 0 && v < HB_PAGES ? v : 0; } catch (e) { return 0; } })();
+  UI.swapHotbar = (pg) => { UI.hbPage = pg === undefined ? (UI.hbPage + 1) % HB_PAGES : pg; try { localStorage.setItem('no_hb_page', UI.hbPage); } catch (e) {} buildHotbar(); renderHotbar(); const b = $('#hbToggle'); if (b) b.innerHTML = hbBtn(); };
+  const hbBtn = () => `<b>⇄</b><span>${UI.hbPage + 1}/${HB_PAGES}</span>`;
   const WINKEYS = { i: 'inv', k: 'skills', u: 'char', o: 'auto', m: 'map', j: 'dungeon', g: 'guild', p: 'party', r: 'rank', h: 'help', f10: 'gm', l: 'quests', y: 'achieve', f: 'friends', ',': 'pets', '.': 'settings', '[': 'passive', ']': 'book' };
 
   // ================================================================ screens
@@ -117,7 +118,7 @@
   // ================================================================ HUD
   function setupHud() {
     buildHotbar();
-    $('#hotbar2').innerHTML = `<button class="hbToggle" id="hbToggle" data-tip="สลับชุด Hotbar (ชุด 1 ↔ ชุด 2) · Shift+1..0 ใช้ช่องของอีกชุดได้เลย">${hbBtn()}</button>` + `<div class="slot bf" id="bfBtn" data-tip="Break Free (Q): หลุดสถานะควบคุม · CD 25s · ใช้ SP 15%"><span class="glyph">⛓</span><kbd>Q</kbd><div class="cd"></div></div>`;
+    $('#hotbar2').innerHTML = `<button class="hbToggle" id="hbToggle" data-tip="สลับหน้า Hotbar (1 → 2 → 3) · หน้า 1 = โจมตี 1-10 · หน้า 2 = โจมตี 11-15 + บัฟ · หน้า 3 = อัลติเมต · Shift+1..0 ใช้ช่องของหน้าถัดไป">${hbBtn()}</button>` + `<div class="slot bf" id="bfBtn" data-tip="Break Free (Q): หลุดสถานะควบคุม · CD 25s · ใช้ SP 15%"><span class="glyph">⛓</span><kbd>Q</kbd><div class="cd"></div></div>`;
     $('#bfBtn').onclick = () => G.send({ t: 'breakfree' });
     $('#hbToggle').onclick = () => UI.swapHotbar();
     if (UI.buildMenu) UI.buildMenu();
@@ -135,9 +136,12 @@
     $('#zoomOut').onclick = () => { G.zoom = Math.max(0.55, G.zoom / 1.15); };
   }
   function buildHotbar() {
-    const b = UI.hbPage * HB_ROW;
-    $('#hotbar1').innerHTML = `<div class="hotbar hbrow pg${UI.hbPage}">${Array.from({ length: HB_ROW }, (_, c) => slotHtml(b + c, HOTKEYS[b + c])).join('')}</div>`;
-    for (const el of document.querySelectorAll('#hotbar1 .slot[data-i]')) {
+    const b = UI.hbPage * HB_ROW, n = Math.min(HB_ROW, HB_SKILL - b);
+    $('#hotbar1').innerHTML = `<div class="hotbar hbrow pg${UI.hbPage}">${Array.from({ length: n }, (_, c) => slotHtml(b + c, HOTKEYS[b + c])).join('')}</div>`;
+    // quick panel: 2 rows × 3 (slots 25-30)
+    let q = $('#quickbar'); if (!q) { q = document.createElement('div'); q.id = 'quickbar'; q.className = 'quickbar'; $('#hud').appendChild(q); }
+    q.innerHTML = `<div class="qbTitle">ช่องด่วน</div>` + [0, 1].map((r) => `<div class="hotbar qbrow">${[0, 1, 2].map((c) => { const i = HB_SKILL + r * 3 + c; return slotHtml(i, HOTKEYS[i]); }).join('')}</div>`).join('');
+    for (const el of document.querySelectorAll('#hotbar1 .slot[data-i], #quickbar .slot[data-i]')) {
       el.onclick = () => G.useHotbar(+el.dataset.i);
       el.oncontextmenu = (e) => { e.preventDefault(); G.char.hotbar[+el.dataset.i] = null; saveHotbar(); };
       el.ondragover = (e) => e.preventDefault();
@@ -151,10 +155,11 @@
   UI.hotkeyIndex = function (ev) {
     if (ev.ctrlKey || ev.metaKey) return -1;
     const m = /^Digit(\d)$/.exec(ev.code || '');
-    if (m && !ev.altKey) { const d = (+m[1] + 9) % 10; return (ev.shiftKey ? 1 - UI.hbPage : UI.hbPage) * HB_ROW + d; }
+    if (m && !ev.altKey) { const d = (+m[1] + 9) % 10; const i = (ev.shiftKey ? (UI.hbPage + 1) % HB_PAGES : UI.hbPage) * HB_ROW + d; return i < HB_SKILL ? i : -1; }
+    const qk = QUICK.indexOf((ev.key || '').toUpperCase()); if (qk >= 0 && !ev.shiftKey && !ev.altKey) return HB_SKILL + qk;
     return -1;
   };
-  UI.hotkeyLabel = (i) => i < HB_N ? `ชุด${(i / HB_ROW | 0) + 1}·${HOTKEYS[i]}` : `#${i + 1}`;
+  UI.hotkeyLabel = (i) => i < HB_SKILL ? `หน้า${(i / HB_ROW | 0) + 1}·${HOTKEYS[i]}` : i < HB_N ? `ช่องด่วน ${HOTKEYS[i]}` : `#${i + 1}`;
   UI.typing = () => { const a = document.activeElement; return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT'); };
   UI.focusChat = () => $('#chatIn').focus();
   UI.blurChat = () => { if (UI.typing()) document.activeElement.blur(); };
@@ -646,7 +651,7 @@
       else if (a === 'sell') { const it = findItem(sel); if (it) (it.type !== 'equip' || it.rarity < 3 ? Promise.resolve(true) : UI.ask('ขายของหายากชิ้นนี้?')).then((y) => y && G.send({ t: 'sell', uid: sel, qty: it.qty })); UI.selItem = null; }
       else if (a === 'drop' && sel) { UI.ask('ทิ้งไอเทมนี้?', { danger: true, ok: 'ทิ้ง' }).then((y) => y && G.send({ t: 'drop', uid: sel })); UI.selItem = null; }
       else if (a === 'combine') { const it = findItem(sel); if (it) G.send({ t: 'combine', id: it.id }); }
-      else if (a === 'hot') { const it = findItem(sel); const i = G.char.hotbar.findIndex((x, k) => !x && k >= 10 && k < HB_N); const j = i >= 0 ? i : G.char.hotbar.findIndex((x, k) => !x && k < HB_N); if (it && j >= 0) { G.char.hotbar[j] = 'item:' + it.id; saveHotbar(); } }
+      else if (a === 'hot') { const it = findItem(sel); const i = G.char.hotbar.findIndex((x, k) => !x && k >= HB_SKILL && k < HB_N); const j = i >= 0 ? i : G.char.hotbar.findIndex((x, k) => !x && k < HB_N); if (it && j >= 0) { G.char.hotbar[j] = 'item:' + it.id; saveHotbar(); } }
       renderWin('inv');
     }
   };
@@ -719,7 +724,7 @@
       if (a === 'learn') G.send({ t: 'learn', id: d.id });
       if (a === 'vfx' && window.VFX && VFX.ok) { const sk = SKS()[d.id], me = G.self, dir = Math.cos(G.ents.get(G.me) && G.ents.get(G.me).dir || 0) >= 0 ? 1 : -1; const reach = sk.shape === 'circle' && sk.self ? 0 : Math.min(6, sk.range || 4); VFX.cast({ s: G.me, sk: d.id, x: me.x, y: me.y, tx: me.x + dir * Math.max(1.5, reach), ty: me.y, sh: sk.shape, r: sk.radius || 0, self: sk.self ? 1 : 0, u: sk.kind === 'ult' ? 1 : 0 }); }
       if (a === 'reset') UI.ask('รีเซ็ตสกิลทั้งหมด? (ฟรีถึง Lv100)').then((y) => y && G.send({ t: 'resetSkills' }));
-      if (a === 'slot') { if (G.char.hotbar.includes(d.id)) return UI.toast('อยู่ใน Hotbar แล้ว'); const i = G.char.hotbar.findIndex((x, k) => !x && k < HB_N); if (i < 0) return UI.toast('Hotbar เต็ม (20 ช่อง)', 'err'); G.char.hotbar[i] = d.id; saveHotbar(); UI.toast(`ใส่ ${SKS()[d.id].name} ที่ช่อง ${UI.hotkeyLabel(i)}`); }
+      if (a === 'slot') { if (G.char.hotbar.includes(d.id)) return UI.toast('อยู่ใน Hotbar แล้ว'); const i = G.char.hotbar.findIndex((x, k) => !x && k < HB_SKILL); if (i < 0) return UI.toast('ช่องสกิลเต็ม (25 ช่อง)', 'err'); G.char.hotbar[i] = d.id; saveHotbar(); UI.toast(`ใส่ ${SKS()[d.id].name} ที่ช่อง ${UI.hotkeyLabel(i)}`); }
     },
     input(t) { if (t.id === 'skQ') { const w = UI.wins.skills; w.opts.q = t.value; const pos = t.selectionStart; renderWin('skills'); const n = document.getElementById('skQ'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } } }
   };
@@ -1061,7 +1066,7 @@
       const CREDITS = '<h4>เครดิตงานภาพ</h4><p class="credits">Terrain: Pixel Fantasy Terrain Pack 4 by Laphkal · Ashen props &amp; ground: Brimspire by PixLog · Tundra / forest / moon props: roboden tileset (CC0) · Dungeon tileset · Monsters: Topdown Monsters Part 1 · UI: CinderUI kit</p>';
       return CREDITS + `<div class="help scrollKeep"><h4>ปุ่มควบคุม</h4><div class="keys">
         <span><kbd>WASD</kbd>/<kbd>คลิกพื้น</kbd> เดิน</span><span><kbd>คลิกมอน</kbd> โจมตีปกติ</span><span><kbd>Tab</kbd> สลับเป้า</span><span><kbd>Space</kbd> ตีเป้าใกล้สุด</span>
-        <span><kbd>1</kbd>–<kbd>0</kbd> Hotbar ชุดที่แสดง</span><span><kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>0</kbd> Hotbar อีกชุด</span><span><kbd>⇄</kbd> สลับชุด Hotbar 1/2</span><span><kbd>Q</kbd> Break Free</span><span><kbd>F1</kbd>/<kbd>F2</kbd> ยา HP/SP</span>
+        <span><kbd>1</kbd>–<kbd>0</kbd> Hotbar หน้าที่แสดง</span><span><kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>0</kbd> หน้าถัดไป</span><span><kbd>⇄</kbd> สลับหน้า 1/2/3</span><span><kbd>Z X C V B N</kbd> ช่องด่วน</span><span><kbd>Q</kbd> Break Free</span><span><kbd>F1</kbd>/<kbd>F2</kbd> ยา HP/SP</span>
         <span><kbd>U</kbd> ตัวละคร</span><span><kbd>I</kbd> กระเป๋า</span><span><kbd>K</kbd> สกิล</span><span><kbd>O</kbd> ออโต้</span><span><kbd>\`</kbd> เปิด/ปิดออโต้</span><span><kbd>M</kbd> แผนที่</span><span><kbd>J</kbd> ดันเจี้ยน</span><span><kbd>G</kbd> กิลด์</span><span><kbd>P</kbd> ปาร์ตี้</span><span><kbd>R</kbd> อันดับ</span><span><kbd>Enter</kbd> แชท</span><span><kbd>ล้อเมาส์</kbd> ซูม</span><span><kbd>คลิกขวาผู้เล่น</kbd> เมนู</span><span><kbd>F10</kbd> GM</span></div>
         <h4>ระบบคอมโบ</h4><p>สกิลแบ่งเป็น <b class="rS">STARTER</b> (เปิด/ใส่แท็ก) → <b class="rL">LINKER</b> (โบนัสเมื่อเป้ามีแท็ก) → <b class="rF">FINISHER</b> (ใช้แท็กทิ้ง แลกดาเมจมหาศาล — ถ้าไม่มีแท็กดาเมจเหลือครึ่งเดียว) · ใช้สกิลต่างกันติดกันภายใน 2.5 วินาที = Combo +1 · ดาเมจ +3% ต่อ Combo (สูงสุด +60%) · Combo 5/10/15/20 เติมเกจ Ultimate</p>
         <div class="chips">${D.TAG_IDS.map((t) => `${ART.tagChip(t)}<small>${D.TAGS[t].th}</small>`).join(' ')}</div>
