@@ -63,7 +63,7 @@
   };
   let pickCls = 'blademaster', clsPage = 0;
   const CLS_PER = 5;
-  UI.classArt = (c) => 'client/assets/classes/' + c + '.webp';
+  UI.classArt = (c) => 'client/assets/classes/char/' + c + '.webp';
   function buildClassPicker() {
     const grid = $('#classGrid');
     const pages = Math.ceil(D.CLASS_IDS.length / CLS_PER);

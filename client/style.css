@@ -897,3 +897,10 @@ body.touch #chat { display: none; }
 .stName input { flex: 1; padding: 12px; font: 600 18px Kanit, sans-serif; border-radius: 8px; border: 2px solid #555; background: #0e0c14; color: #fff; }
 .stName .lbPlay { width: 220px; font-size: 22px; padding: 10px; }
 @media (max-width: 900px) { .ped.side { display: none; } .lbMode { left: 2%; width: 46%; bottom: 16%; padding: 12px; } .lbPlay { font-size: 24px; padding: 10px; } .lbLv { width: 70px; height: 70px; } .stCards { flex-direction: column; } .stCards .st img { height: 140px; } .stName { width: 92vw; } .lbNav > button { padding: 6px 8px; font-size: 12px; } .lbLogo { display: none; } }
+
+/* class art = the character only: soft edges so it blends into the scene instead of a framed card */
+.ped img { -webkit-mask-image: radial-gradient(ellipse 70% 72% at 50% 42%, #000 58%, transparent 100%); mask-image: radial-gradient(ellipse 70% 72% at 50% 42%, #000 58%, transparent 100%); }
+.ped.main img { width: auto; max-width: 46vw; }
+.lbRoster .rc img, .lbGrid .cc img, .reel .card img, .stCards .st img, #lbReveal .rv img, .lbMe img { object-position: 50% 20%; }
+.stCards .st img, #lbReveal .rv img { -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent); mask-image: linear-gradient(180deg, #000 70%, transparent); }
+.ped img { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 22%, #000 78%, transparent 100%), linear-gradient(180deg, transparent 0, #000 12%, #000 70%, transparent 100%); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent 0, #000 22%, #000 78%, transparent 100%), linear-gradient(180deg, transparent 0, #000 12%, #000 70%, transparent 100%); mask-composite: intersect; }

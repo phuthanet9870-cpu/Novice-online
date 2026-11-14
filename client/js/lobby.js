@@ -7,7 +7,7 @@
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const fmt = (n) => Math.round(n || 0).toLocaleString();
-  const art = (c) => 'client/assets/classes/' + c + '.webp';
+  const art = (c) => 'client/assets/classes/char/' + c + '.webp'; // the character itself (card frame, emblem and name plate cut away)
   const STARTER_TH = { blademaster: ['นักดาบ', 'สายประชิด · ฟันแรง ถึกปานกลาง เล่นง่าย'], ranger: ['นักธนู', 'สายระยะไกล · ยิงเร็ว คล่องตัว คุมระยะ'], pyromancer: ['นักเวท', 'สายเวท · ระเบิดวงกว้าง ดาเมจสูง ตัวบาง'] };
   let L = null, view = 'play', starterPick = 'blademaster', spinning = false;
 
