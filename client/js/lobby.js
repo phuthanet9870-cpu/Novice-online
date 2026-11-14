@@ -50,11 +50,11 @@
       <div class="lb2Cards">
         <div class="card hot" data-v="case" style="--t:#ffb03a"><small>กล่องสุ่มคลาส</small><b>ปลดล็อกคลาสใหม่</b><span>${fmt(L.cost)} Zeny · มีแล้ว ${own}/${D.CLASS_IDS.length}</span></div>
         <div class="card" data-v="roster"><small>คลาสของฉัน</small><b>${own} คลาส</b><div class="mini">${L.chars.slice(0, 5).map((c) => `<img src="${art(c.cls)}" data-pick="${c.id}" class="${c.id === s.id ? 'on' : ''}" title="${esc(D.CLASSES[c.cls].name)} Lv${c.lv}">`).join('')}</div></div>
-        <div class="card" data-v="news"><small>ซีซัน 1</small><b>Ashfall Rising</b><span>หีบสมบัติดันเจี้ยน · คลาสใหม่ 30 คลาส</span></div>
+        <div class="card" data-v="news"><small>ซีซัน 1</small><b>Legends Return</b><span>หีบสมบัติดันเจี้ยน · คลาสใหม่ 30 คลาส</span></div>
       </div>`;
   }
   function news() {
-    return `<div class="lbPage news"><h2>ซีซัน 1 · Ashfall Rising</h2>
+    return `<div class="lbPage news"><h2>ซีซัน 1 · Legends Return</h2>
       <div class="nw"><b>🎰 กล่องสุ่มคลาส</b><p>เริ่มด้วย นักดาบ / นักธนู / นักเวท แล้วสุ่มปลดล็อกคลาสอื่นอีก ${D.CLASS_IDS.length - 3} คลาส ครั้งละ ${fmt(L.cost)} Zeny · แต่ละคลาสเลเวลแยกกัน</p></div>
       <div class="nw"><b>🗝 หีบสมบัติดันเจี้ยน</b><p>ทุกชั้นมีหีบ 6 ใบ 6 ระดับสี กุญแจดรอปจากมอนสเตอร์ในดันเจี้ยน · ยิ่งลึกยิ่งได้ของหายาก</p></div>
       <div class="nw"><b>🐉 เวิลด์บอส</b><p>ทำลายเสาผนึก ผ่านเฟสบอส แล้วชิงอันดับดาเมจทั้งเซิร์ฟเวอร์</p></div></div>`;

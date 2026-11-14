@@ -348,7 +348,7 @@ function updateMonster(m, dt, t) {
 
 function updateSummon(s, dt, t) {
   if (s.dead) return;
-  if (t > s.until || !s.owner || s.owner.dead || s.owner.inst !== s.inst) { if (t > s.until && s.sk && s.owner && !s.owner.dead) require('./ashfall').summonEnd(s.owner, s, s.sk); W.killQuiet(s); return; }
+  if (t > s.until || !s.owner || s.owner.dead || s.owner.inst !== s.inst) { W.killQuiet(s); return; }
   if (s.turret) { if (s.target && (s.target.dead || W.dist(s, s.target) > 9)) s.target = null; if (!s.target) s.target = nearestEnemy(s, 8.5); if (s.target && t >= s.atkReady) { s.atkReady = t + 0.8; s.inst.emit({ k: 'proj', s: s.id, x: s.x, y: s.y, tx: s.target.x, ty: s.target.y, el: s.element }); C.dealDamage(s, s.target, { mult: s.mult || 0.5, el: s.element, kind: 'summon', mag: s.mag }); } return; }
   if (C.isHardCC(s)) return;
   const o = s.owner;

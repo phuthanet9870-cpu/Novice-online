@@ -40,7 +40,7 @@ I.newChar = function (acc, name, cls) {
   const ch = {
     id, acc: acc.user.toLowerCase(), name, cls, lv: 1, exp: 0, statPts: 5, stats: Object.assign({}, c.start), skillPts: 3, skills: {},
     hotbar: new Array(50).fill(null), inv: [], equip: {}, zeny: 2500, map: 'aurelia', lastTown: 'aurelia', x: undefined, y: undefined,
-    dungeonBest: {}, created: Date.now(), ult: 0, pity: 0, kills: 0, pvpKills: 0, kitVer: 4
+    dungeonBest: {}, created: Date.now(), ult: 0, pity: 0, kills: 0, pvpKills: 0, kitVer: 5
   };
   const first = CLASS_SKILLS[cls][0];
   ch.skills[first] = 1; ch.hotbar[0] = first;
@@ -53,10 +53,16 @@ I.newChar = function (acc, name, cls) {
   return ch;
 };
 
-// hotbar = 30 slots in 3 rows of 10: 0-24 hold all 25 class skills in order (attacks 1-15, buffs, ultimates, set ultimate),
-// 25-29 (the end of row 3) are item slots for potions and other consumables
+// hotbar = 30 slots in 3 rows of 10: 0-19 the first 20 active skills by level, 20-24 the 5 ultimates,
+// 25-29 (the end of row 3) item slots for potions and other consumables; buffs and later skills go in from the skill book
 I.HB_SKILLS = 25; I.HB_TOTAL = 30;
-I.defaultHotbar = function (ch) { const L = CLASS_SKILLS[ch.cls] || []; for (let i = 0; i < I.HB_SKILLS; i++) ch.hotbar[i] = L[i] || null; ch.hotbar[25] = 'item:pot_hp_1'; ch.hotbar[26] = 'item:pot_sp_1'; };
+I.defaultHotbar = function (ch) {
+  const S = require('../shared/skills.js').SKILLS, L = CLASS_SKILLS[ch.cls] || [];
+  const atk = L.filter((id) => S[id].kind === 'attack').sort((a, b) => S[a].reqLv - S[b].reqLv || S[a].idx - S[b].idx), ult = L.filter((id) => S[id].kind === 'ult');
+  for (let i = 0; i < 20; i++) ch.hotbar[i] = atk[i] || null;
+  for (let i = 0; i < 5; i++) ch.hotbar[20 + i] = ult[i] || null;
+  ch.hotbar[25] = ch.hotbar[25] || 'item:pot_hp_1'; ch.hotbar[26] = ch.hotbar[26] || 'item:pot_sp_1';
+};
 // older 50-slot bars: pull anything parked in slots 20+ into free slots of the two pages
 I.compactHotbar = function (ch) { const h = ch.hotbar || []; for (let i = 20; i < h.length; i++) { if (!h[i]) continue; const j = h.findIndex((x, k) => k < 20 && !x); if (j >= 0 && !h.slice(0, 20).includes(h[i])) h[j] = h[i]; h[i] = null; } };
 // ------------------------------------------------------------------ inventory primitives
@@ -146,7 +152,7 @@ I.resetSkills = function (p) {
   if (ch.lv > 100 && !I.consume(ch, 'memory_crystal', 1)) return err(p, 'ต้องใช้ Memory Crystal (ฟรีถึงเลเวล 100)');
   ch.skills = {}; const first = CLASS_SKILLS[ch.cls][0]; ch.skills[first] = 1;
   ch.skillPts = F.skillPointsAt(ch.lv) - 1;
-  ch.hotbar = ch.hotbar.map((h) => (h && h.startsWith('item:') ? h : null)); ch.hotbar[0] = first;
+  ch.hotbar = ch.hotbar.map((h) => (h && h.startsWith('item:') ? h : null)); I.defaultHotbar(ch);
   C.sendChar(p, ['skills', 'skillPts', 'hotbar', 'inv']); note(p, 'รีเซ็ตสกิลเรียบร้อย');
 };
 I.resetStats = function (p) { return P.passive(p, { a: 'reset' }); };

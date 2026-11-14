@@ -1,7 +1,7 @@
 # Novice Online
 
 MMORPG แนวแอ็กชันคอมโบที่เล่นบนเว็บด้วย HTML5 — PvP, Guild War, Field/World Boss, ฟาร์มรูน/ประดับ, ตีบวก +20, เลเวล 250
-15 คลาส × 50 สกิล (750 สกิล) (40 โจมตี / 5 อัลติเมต / 5 บัฟ), 5 เมือง, 25 แผนที่ฟาร์ม, 5 ดันเจี้ยน × 1000 ชั้น, ระบบออโต้ และคำสั่ง GM
+30 คลาส × 50 สกิล (1500 สกิล) (40 โจมตี / 5 อัลติเมต / 5 บัฟ), 5 เมือง, 25 แผนที่ฟาร์ม, 5 ดันเจี้ยน × 1000 ชั้น, ระบบออโต้ และคำสั่ง GM
 
 ## เริ่มเล่น
 
@@ -104,7 +104,7 @@ client/               HTML5 Canvas + DOM HUD (ไม่ต้อง build)
 
 `client/js/vfx.js` is our own effect engine. No third-party effect library is used.
 
-**Recipes.** Every skill (750) gets its own recipe built from 35 effect painters, for example:
+**Recipes.** Every skill (1500) gets its own recipe built from 35 effect painters, for example:
 
 - projectiles in 13 styles, and 8 slash styles
 - rings, pillars, lightning, beams, waves, cones, rains
@@ -112,7 +112,7 @@ client/               HTML5 Canvas + DOM HUD (ไม่ต้อง build)
 - auras, shields, wings, clocks, portals, chains
 - impacts
 
-Each recipe is chosen from the skill's delivery, element, class motif, weapon and statuses, and uses a palette of its own. All 750 recipes are distinct.
+Each recipe is chosen from the skill's delivery, element, class motif, weapon and statuses, and uses a palette of its own. All 1500 recipes are distinct.
 
 **Rendering.**
 

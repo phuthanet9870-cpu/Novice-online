@@ -84,10 +84,21 @@ module.exports = function assign(SKILLS, CLASS_SKILLS, CLASS_ORDER) {
     pairs.push({ t, tv, e, ev, k: R() });
   }
   pairs.sort((a, b) => a.k - b.k);
+  // extra variants (wider thresholds) appended after the original pool, so the original 15 classes keep their traits and
+  // the 15 newer classes still find unused combinations
+  { const R2 = rng('novice-traits-v2'), more = [], X = { lowhp: [25, 70], combo: [3, 20, 25, 30], nth: [6, 7, 8], multi: [2, 4, 6], finish: [15, 55] }, XE = { chain: [5, 6] };
+    for (const t of TRIGGERS) for (const tv of (X[t[0]] || []).concat(t[2])) for (const e of EFFECTS) for (const ev of (XE[e[0]] || []).concat(e[2])) {
+      if (t[2].includes(tv) && e[2].includes(ev)) continue;
+      if (t[0] === 'tag' && e[0] === 'tag' && tv === ev) continue;
+      if (e[0] === 'reset' && ['cast', 'fresh', 'moving', 'clean', 'fullhp'].includes(t[0])) continue;
+      if (e[0] === 'execute' && ['cast', 'fresh', 'clean'].includes(t[0])) continue;
+      more.push({ t, tv, e, ev, k: R2() });
+    }
+    more.sort((a, b) => a.k - b.k); pairs.push(...more); }
   const usedTriple = new Set(), usedBase = new Set();
   const ids = []; for (const c of CLASS_ORDER) ids.push(...CLASS_SKILLS[c]);
   // interleave classes so each class draws from the whole pool evenly
-  const order = []; for (let i = 0; i < 50; i++) for (const c of CLASS_ORDER) order.push(CLASS_SKILLS[c][i]);
+  const order = []; for (const grp of [CLASS_ORDER.slice(0, 15), CLASS_ORDER.slice(15)]) for (let i = 0; i < 50; i++) for (const c of grp) order.push(CLASS_SKILLS[c][i]);
   for (const id of order) {
     const sk = SKILLS[id];
     const self = isSelfOnly(sk);

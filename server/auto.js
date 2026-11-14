@@ -238,7 +238,7 @@ A.update = function (p, dt, t) {
   const usable = (id) => skillReady(p, id, t) && !(a.fail[id] > t);
   let choice = null;
   if (a.useUlt !== 'never' && (a.useUlt === 'always' || tgt.rank >= 1 || tgt.kind === 'p')) {
-    const ults = Object.keys(ch.skills).filter((id) => SKILLS[id] && SKILLS[id].kind === 'ult' && !SKILLS[id].gauge && usable(id)).sort((x, y) => (a.used[x] || 0) - (a.used[y] || 0));
+    const ults = Object.keys(ch.skills).filter((id) => SKILLS[id] && SKILLS[id].kind === 'ult' && usable(id)).sort((x, y) => (a.used[x] || 0) - (a.used[y] || 0));
     if (ults.length) choice = ults[0];
   }
   if (!choice) {

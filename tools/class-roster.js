@@ -1,0 +1,1940 @@
+// The 30-class roster: the 15 original classes (their own stats, resources and skill branches) under the current
+// class ids, plus 15 classes designed in tools/new-classes.js. tools/build-classes.js writes shared/classes.js from this.
+module.exports = {
+ "blademaster": {
+  "name": "Blade Knight",
+  "th": "อัศวินดาบ",
+  "weapon": "sword",
+  "role": "DPS ประชิด / Bruiser",
+  "desc": "นักดาบที่ปั่นศัตรูขึ้นฟ้า ซ้อนเลือดออก และฟันหนักทำลายเกราะ",
+  "hp0": 160,
+  "hpLv": 38,
+  "vitHp": 14,
+  "sp0": 40,
+  "spLv": 3.2,
+  "intSp": 5,
+  "aspd": 1.15,
+  "move": 5.2,
+  "range": 2.1,
+  "dmg": "phys",
+  "scale": "melee",
+  "res": {
+   "name": "Blade Charge",
+   "max": 5,
+   "gain": 1
+  },
+  "element": "neutral",
+  "start": {
+   "str": 9,
+   "agi": 7,
+   "vit": 7,
+   "int": 2,
+   "dex": 5,
+   "luk": 3
+  },
+  "rating": {
+   "atk": 4,
+   "def": 3,
+   "spd": 3,
+   "mag": 1,
+   "sup": 1,
+   "diff": 2
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Sky": "Sky Blade",
+   "Crimson": "Crimson Edge",
+   "Iron": "Iron Vanguard"
+  },
+  "color": "#e2a03f",
+  "color2": "#8a5a1c",
+  "col": [
+   "#8a5a1c",
+   "#e2a03f"
+  ],
+  "oldId": "blade_knight",
+  "basic": "melee",
+  "wname": "ดาบ",
+  "elTh": "กายภาพ",
+  "fxEl": "neutral",
+  "roleId": "melee",
+  "pal": [
+   "#ffffff",
+   "#e8e8f0",
+   "#a0a8c0",
+   "#5a607a"
+  ],
+  "summonShape": "spirit"
+ },
+ "guardian": {
+  "name": "Guardian",
+  "th": "ผู้พิทักษ์",
+  "weapon": "spear",
+  "role": "Tank / Control",
+  "desc": "กำแพงเหล็กของปาร์ตี้ ล็อกเป้า ดึง ผลัก และสะท้อนแสงศักดิ์สิทธิ์",
+  "hp0": 220,
+  "hpLv": 46,
+  "vitHp": 18,
+  "sp0": 45,
+  "spLv": 3,
+  "intSp": 5,
+  "aspd": 0.95,
+  "move": 4.8,
+  "range": 2.1,
+  "dmg": "phys",
+  "scale": "melee",
+  "res": {
+   "name": "Bulwark",
+   "max": 5,
+   "gain": 1
+  },
+  "element": "neutral",
+  "start": {
+   "str": 7,
+   "agi": 3,
+   "vit": 11,
+   "int": 4,
+   "dex": 5,
+   "luk": 3
+  },
+  "rating": {
+   "atk": 2,
+   "def": 5,
+   "spd": 1,
+   "mag": 2,
+   "sup": 3,
+   "diff": 2
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Bastion": "Bastion",
+   "Lancer": "Lancer",
+   "Aegis": "Holy Aegis"
+  },
+  "color": "#5fa8e8",
+  "color2": "#2c4f7a",
+  "col": [
+   "#2c4f7a",
+   "#5fa8e8"
+  ],
+  "oldId": "guardian",
+  "basic": "melee",
+  "wname": "หอก",
+  "elTh": "กายภาพ",
+  "fxEl": "neutral",
+  "roleId": "melee",
+  "pal": [
+   "#ffffff",
+   "#e8e8f0",
+   "#a0a8c0",
+   "#5a607a"
+  ],
+  "summonShape": "spirit"
+ },
+ "berserker": {
+  "name": "Berserker",
+  "th": "นักรบคลั่ง",
+  "weapon": "axe",
+  "role": "Burst / Lifesteal",
+  "desc": "แลกเลือดเป็นพลัง ยิ่งใกล้ตายยิ่งแรง ทุบพื้นถล่มทั้งฝูง",
+  "hp0": 200,
+  "hpLv": 44,
+  "vitHp": 15,
+  "sp0": 30,
+  "spLv": 2.4,
+  "intSp": 4,
+  "aspd": 1.05,
+  "move": 5,
+  "range": 2.1,
+  "dmg": "phys",
+  "scale": "melee",
+  "res": {
+   "name": "Fury",
+   "max": 100,
+   "gain": 8
+  },
+  "element": "neutral",
+  "start": {
+   "str": 11,
+   "agi": 5,
+   "vit": 9,
+   "int": 1,
+   "dex": 3,
+   "luk": 4
+  },
+  "rating": {
+   "atk": 5,
+   "def": 3,
+   "spd": 2,
+   "mag": 0,
+   "sup": 1,
+   "diff": 1
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Bloodrage": "Bloodrage",
+   "Earth": "Earthshaker",
+   "Wild Hunt": "Wild Hunt"
+  },
+  "color": "#d9483b",
+  "color2": "#6e1d16",
+  "col": [
+   "#6e1d16",
+   "#d9483b"
+  ],
+  "oldId": "berserker",
+  "basic": "melee",
+  "wname": "ขวาน",
+  "elTh": "กายภาพ",
+  "fxEl": "neutral",
+  "roleId": "melee",
+  "pal": [
+   "#ffd0d0",
+   "#ff4d4d",
+   "#b0101e",
+   "#5a0010"
+  ],
+  "summonShape": "spirit"
+ },
+ "paladin": {
+  "name": "Paladin",
+  "th": "อัศวินศักดิ์สิทธิ์",
+  "weapon": "sword",
+  "hp0": 230,
+  "hpLv": 50.6,
+  "vitHp": 15,
+  "sp0": 50,
+  "spLv": 3.6,
+  "intSp": 5,
+  "aspd": 1.05,
+  "move": 5,
+  "range": 1.6,
+  "dmg": "phys",
+  "scale": "melee",
+  "element": "holy",
+  "start": {
+   "str": 8,
+   "agi": 4,
+   "vit": 9,
+   "int": 6,
+   "dex": 5,
+   "luk": 4
+  },
+  "rating": {
+   "atk": 3,
+   "def": 4,
+   "spd": 2,
+   "mag": 3,
+   "sup": 3,
+   "diff": 3
+  },
+  "color": "#e8d08a",
+  "color2": "#e8e0c8",
+  "col": [
+   "#e8e0c8",
+   "#e8b04a"
+  ],
+  "role": "Holy Bruiser / ปกป้อง",
+  "desc": "อัศวินศักดิ์สิทธิ์ ฟาดค้อนแสงตีตราศัตรู ปกป้องเพื่อนด้วยคำสาบาน",
+  "res": {
+   "name": "Zeal",
+   "max": 5,
+   "gain": 1
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Crusade": "Crusade",
+   "Oath": "Oath",
+   "Sanctum": "Sanctum"
+  },
+  "basic": "melee",
+  "wname": "ดาบ",
+  "elTh": "ศักดิ์สิทธิ์",
+  "fxEl": "holy",
+  "roleId": "melee",
+  "pal": [
+   "#ffffff",
+   "#fff6c2",
+   "#ffd84a",
+   "#e09a1a"
+  ],
+  "summonShape": "spirit"
+ },
+ "pyromancer": {
+  "name": "Elementalist",
+  "th": "จอมเวทธาตุ",
+  "weapon": "staff",
+  "role": "AoE Magic / Reaction",
+  "desc": "ผสมไฟ น้ำแข็ง สายฟ้า สร้างปฏิกิริยาธาตุทำลายล้างทั้งจอ",
+  "hp0": 100,
+  "hpLv": 24,
+  "vitHp": 9,
+  "sp0": 90,
+  "spLv": 6.4,
+  "intSp": 8,
+  "aspd": 0.85,
+  "move": 4.9,
+  "range": 8,
+  "dmg": "mag",
+  "scale": "magic",
+  "res": {
+   "name": "Element Orb",
+   "max": 3,
+   "gain": 1
+  },
+  "element": "fire",
+  "start": {
+   "str": 1,
+   "agi": 3,
+   "vit": 4,
+   "int": 13,
+   "dex": 9,
+   "luk": 2
+  },
+  "rating": {
+   "atk": 5,
+   "def": 1,
+   "spd": 2,
+   "mag": 5,
+   "sup": 2,
+   "diff": 4
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Pyro": "Pyro",
+   "Cryo": "Cryo",
+   "Storm": "Storm",
+   "Fusion": "Fusion"
+  },
+  "color": "#4ad0e0",
+  "color2": "#1d5662",
+  "col": [
+   "#1d5662",
+   "#4ad0e0"
+  ],
+  "oldId": "elementalist",
+  "basic": "magic",
+  "wname": "คทา",
+  "elTh": "ไฟ",
+  "fxEl": "fire",
+  "roleId": "caster",
+  "pal": [
+   "#fff3b0",
+   "#ffb347",
+   "#ff5a1f",
+   "#a8200d"
+  ],
+  "summonShape": "spirit"
+ },
+ "cryomancer": {
+  "name": "Cryomancer",
+  "th": "จอมเวทน้ำแข็ง",
+  "weapon": "orb",
+  "hp0": 104,
+  "hpLv": 24,
+  "vitHp": 11,
+  "sp0": 65,
+  "spLv": 4.6,
+  "intSp": 6,
+  "aspd": 0.9,
+  "move": 4.9,
+  "range": 7.5,
+  "dmg": "mag",
+  "scale": "magic",
+  "element": "ice",
+  "start": {
+   "str": 1,
+   "agi": 4,
+   "vit": 5,
+   "int": 13,
+   "dex": 9,
+   "luk": 3
+  },
+  "rating": {
+   "atk": 1,
+   "def": 1,
+   "spd": 2,
+   "mag": 5,
+   "sup": 1,
+   "diff": 3
+  },
+  "color": "#d8f0ff",
+  "color2": "#2a5a9a",
+  "col": [
+   "#2a5a9a",
+   "#bfe8ff"
+  ],
+  "role": "Control Mage / แช่แข็ง",
+  "desc": "จอมเวทน้ำแข็ง ชะลอ แช่แข็ง แล้วทุบให้แตกกระจาย",
+  "res": {
+   "name": "Frost Core",
+   "max": 5,
+   "gain": 1
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Glacier": "Glacier",
+   "Blizzard": "Blizzard",
+   "Shatter": "Shatter"
+  },
+  "basic": "magic",
+  "wname": "ลูกแก้ว",
+  "elTh": "น้ำแข็ง",
+  "fxEl": "ice",
+  "roleId": "caster",
+  "pal": [
+   "#ffffff",
+   "#bff4ff",
+   "#5cc8ff",
+   "#2a6fdb"
+  ],
+  "summonShape": "spirit"
+ },
+ "stormcaller": {
+  "name": "Stormcaller",
+  "th": "ผู้เรียกพายุ",
+  "weapon": "staff",
+  "hp0": 104,
+  "hpLv": 24,
+  "vitHp": 11,
+  "sp0": 65,
+  "spLv": 4.6,
+  "intSp": 6,
+  "aspd": 0.9,
+  "move": 4.9,
+  "range": 7.5,
+  "dmg": "mag",
+  "scale": "magic",
+  "element": "lightning",
+  "start": {
+   "str": 1,
+   "agi": 4,
+   "vit": 5,
+   "int": 13,
+   "dex": 9,
+   "luk": 3
+  },
+  "rating": {
+   "atk": 1,
+   "def": 1,
+   "spd": 2,
+   "mag": 5,
+   "sup": 1,
+   "diff": 3
+  },
+  "color": "#f0f0ff",
+  "color2": "#3a3a7a",
+  "col": [
+   "#3a3a7a",
+   "#ffe04a"
+  ],
+  "role": "Burst Mage / สายฟ้า",
+  "desc": "ผู้เรียกพายุ สะสมไฟฟ้าสถิตแล้วปลดปล่อยสายฟ้ากระโดดทั้งฝูง",
+  "res": {
+   "name": "Static",
+   "max": 100,
+   "gain": 8
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Thunder": "Thunder",
+   "Tempest": "Tempest",
+   "Surge": "Surge"
+  },
+  "basic": "magic",
+  "wname": "คทา",
+  "elTh": "สายฟ้า",
+  "fxEl": "lightning",
+  "roleId": "caster",
+  "pal": [
+   "#ffffff",
+   "#fffb8a",
+   "#9ad7ff",
+   "#5b6cff"
+  ],
+  "summonShape": "spirit"
+ },
+ "necromancer": {
+  "name": "Necromancer",
+  "th": "จอมเวทมรณะ",
+  "weapon": "scythe",
+  "hp0": 138,
+  "hpLv": 31.4,
+  "vitHp": 12,
+  "sp0": 62,
+  "spLv": 4.4,
+  "intSp": 6,
+  "aspd": 0.95,
+  "move": 5,
+  "range": 7.5,
+  "dmg": "mag",
+  "scale": "magic",
+  "element": "dark",
+  "start": {
+   "str": 2,
+   "agi": 4,
+   "vit": 6,
+   "int": 12,
+   "dex": 8,
+   "luk": 4
+  },
+  "rating": {
+   "atk": 3,
+   "def": 2,
+   "spd": 2,
+   "mag": 4,
+   "sup": 2,
+   "diff": 3
+  },
+  "color": "#e0e0e0",
+  "color2": "#2a1a3a",
+  "col": [
+   "#2a1a3a",
+   "#7a4aaa"
+  ],
+  "role": "Summoner / ศพ",
+  "desc": "จอมเวทมรณะ ปลุกศพเป็นกองทัพ ระเบิดศพ และดูดชีวิตจากความตาย",
+  "res": {
+   "name": "Corpse",
+   "max": 6,
+   "gain": 1
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Bone": "Bone",
+   "Plague": "Plague",
+   "Grave": "Grave"
+  },
+  "basic": "magic",
+  "wname": "เคียว",
+  "elTh": "มืด",
+  "fxEl": "dark",
+  "roleId": "caster",
+  "pal": [
+   "#e9c8ff",
+   "#9b4dff",
+   "#4b1d7a",
+   "#1a0a2e"
+  ],
+  "summonShape": "undead"
+ },
+ "cleric": {
+  "name": "Cleric",
+  "th": "นักบวช",
+  "weapon": "mace",
+  "role": "Healer / Holy DPS",
+  "desc": "ผู้รักษาที่ตีไปฮีลไป ทุบคนนอกรีต และชุบชีวิตทั้งกองทัพ",
+  "hp0": 140,
+  "hpLv": 31,
+  "vitHp": 12,
+  "sp0": 85,
+  "spLv": 5.8,
+  "intSp": 8,
+  "aspd": 0.9,
+  "move": 5,
+  "range": 7.5,
+  "dmg": "mag",
+  "scale": "magic",
+  "res": {
+   "name": "Faith",
+   "max": 100,
+   "gain": 6
+  },
+  "element": "holy",
+  "start": {
+   "str": 4,
+   "agi": 3,
+   "vit": 7,
+   "int": 11,
+   "dex": 7,
+   "luk": 2
+  },
+  "rating": {
+   "atk": 2,
+   "def": 3,
+   "spd": 2,
+   "mag": 4,
+   "sup": 5,
+   "diff": 3
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Divine": "Divine",
+   "Sanct": "Sanctuary",
+   "Inquis": "Inquisitor"
+  },
+  "color": "#f2e27a",
+  "color2": "#7f6b1a",
+  "col": [
+   "#7f6b1a",
+   "#f2e27a"
+  ],
+  "oldId": "cleric",
+  "basic": "magic",
+  "wname": "กระบอง",
+  "elTh": "ศักดิ์สิทธิ์",
+  "fxEl": "holy",
+  "roleId": "caster",
+  "pal": [
+   "#ffffff",
+   "#fff6c2",
+   "#ffd84a",
+   "#e09a1a"
+  ],
+  "summonShape": "spirit"
+ },
+ "druid": {
+  "name": "Druid",
+  "th": "ดรูอิด",
+  "weapon": "staff",
+  "hp0": 143,
+  "hpLv": 32.3,
+  "vitHp": 13,
+  "sp0": 70,
+  "spLv": 4.8,
+  "intSp": 6,
+  "aspd": 0.9,
+  "move": 5,
+  "range": 7.5,
+  "dmg": "mag",
+  "scale": "magic",
+  "element": "earth",
+  "start": {
+   "str": 1,
+   "agi": 3,
+   "vit": 7,
+   "int": 12,
+   "dex": 8,
+   "luk": 4
+  },
+  "rating": {
+   "atk": 1,
+   "def": 2,
+   "spd": 2,
+   "mag": 4,
+   "sup": 5,
+   "diff": 2
+  },
+  "color": "#6a8a3a",
+  "color2": "#4a6a2a",
+  "col": [
+   "#4a6a2a",
+   "#a06a3a"
+  ],
+  "role": "Nature Healer / ธรรมชาติ",
+  "desc": "ดรูอิด รากไม้ตรึงศัตรู ดอกไม้ฮีลเพื่อน และเรียกพลังแห่งป่า",
+  "res": {
+   "name": "Bloom",
+   "max": 100,
+   "gain": 6
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Grove": "Grove",
+   "Thorn": "Thorn",
+   "Moon": "Moon"
+  },
+  "basic": "magic",
+  "wname": "คทา",
+  "elTh": "ดิน",
+  "fxEl": "earth",
+  "roleId": "caster",
+  "pal": [
+   "#eaffc2",
+   "#9be34a",
+   "#3fa83a",
+   "#1d5e2a"
+  ],
+  "summonShape": "beast"
+ },
+ "assassin": {
+  "name": "Shadow Assassin",
+  "th": "นักฆ่าเงา",
+  "weapon": "dagger",
+  "role": "Assassinate / พิษ",
+  "desc": "ล่องหน วาร์ปหลังเป้า ใส่พิษ และปิดฉากด้วยคริติคอลเดียว",
+  "hp0": 130,
+  "hpLv": 30,
+  "vitHp": 11,
+  "sp0": 45,
+  "spLv": 3.4,
+  "intSp": 5,
+  "aspd": 1.45,
+  "move": 5.8,
+  "range": 1.9,
+  "dmg": "phys",
+  "scale": "melee",
+  "res": {
+   "name": "Shadow Point",
+   "max": 5,
+   "gain": 1
+  },
+  "element": "poison",
+  "start": {
+   "str": 6,
+   "agi": 11,
+   "vit": 4,
+   "int": 2,
+   "dex": 6,
+   "luk": 6
+  },
+  "rating": {
+   "atk": 5,
+   "def": 1,
+   "spd": 5,
+   "mag": 0,
+   "sup": 0,
+   "diff": 4
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Venom": "Venom",
+   "Phantom": "Phantom",
+   "Storm": "Blade Storm"
+  },
+  "color": "#9b6ce0",
+  "color2": "#3d2466",
+  "col": [
+   "#3d2466",
+   "#9b6ce0"
+  ],
+  "oldId": "shadow_assassin",
+  "basic": "melee",
+  "wname": "มีดสั้น",
+  "elTh": "พิษ",
+  "fxEl": "poison",
+  "roleId": "melee",
+  "pal": [
+   "#f0ffb0",
+   "#b8ff4a",
+   "#5ab82a",
+   "#2a5a10"
+  ],
+  "summonShape": "spirit"
+ },
+ "shadowdancer": {
+  "name": "Shadowdancer",
+  "th": "นักเต้นเงา",
+  "weapon": "claw",
+  "hp0": 115,
+  "hpLv": 26.4,
+  "vitHp": 11,
+  "sp0": 45,
+  "spLv": 3.4,
+  "intSp": 5,
+  "aspd": 1.45,
+  "move": 5.8,
+  "range": 1.4,
+  "dmg": "phys",
+  "scale": "melee",
+  "element": "dark",
+  "start": {
+   "str": 6,
+   "agi": 12,
+   "vit": 4,
+   "int": 2,
+   "dex": 6,
+   "luk": 6
+  },
+  "rating": {
+   "atk": 5,
+   "def": 1,
+   "spd": 5,
+   "mag": 1,
+   "sup": 0,
+   "diff": 4
+  },
+  "color": "#9a6ad0",
+  "color2": "#3a1a4a",
+  "col": [
+   "#3a1a4a",
+   "#c04aff"
+  ],
+  "role": "Combo Assassin / เต้นรำ",
+  "desc": "นักเต้นเงา ต่อจังหวะการเต้นเป็นคอมโบไม่รู้จบ ยิ่งต่อยิ่งเร็ว",
+  "res": {
+   "name": "Rhythm",
+   "max": 8,
+   "gain": 1
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Tango": "Tango",
+   "Veil": "Veil",
+   "Finale": "Finale"
+  },
+  "basic": "melee",
+  "wname": "กรงเล็บ",
+  "elTh": "มืด",
+  "fxEl": "dark",
+  "roleId": "melee",
+  "pal": [
+   "#e9c8ff",
+   "#9b4dff",
+   "#4b1d7a",
+   "#1a0a2e"
+  ],
+  "summonShape": "spirit"
+ },
+ "ranger": {
+  "name": "Ranger",
+  "th": "พรานป่า",
+  "weapon": "bow",
+  "role": "DPS ระยะไกล / กับดัก",
+  "desc": "พลธนูระยะไกล วางกับดักธาตุ และล่าร่วมกับเหยี่ยวและหมาป่า",
+  "hp0": 125,
+  "hpLv": 29,
+  "vitHp": 10,
+  "sp0": 55,
+  "spLv": 3.6,
+  "intSp": 5,
+  "aspd": 1.25,
+  "move": 5.3,
+  "range": 9,
+  "dmg": "phys",
+  "scale": "ranged",
+  "res": {
+   "name": "Focus",
+   "max": 5,
+   "gain": 1
+  },
+  "element": "wind",
+  "start": {
+   "str": 4,
+   "agi": 8,
+   "vit": 4,
+   "int": 3,
+   "dex": 12,
+   "luk": 5
+  },
+  "rating": {
+   "atk": 4,
+   "def": 1,
+   "spd": 4,
+   "mag": 1,
+   "sup": 1,
+   "diff": 3
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Sharp": "Sharpshooter",
+   "Trapper": "Trapper",
+   "Beast": "Beast Master"
+  },
+  "color": "#5cc46b",
+  "color2": "#22572b",
+  "col": [
+   "#22572b",
+   "#5cc46b"
+  ],
+  "oldId": "ranger",
+  "basic": "ranged",
+  "wname": "ธนู",
+  "elTh": "ลม",
+  "fxEl": "wind",
+  "roleId": "ranged",
+  "pal": [
+   "#ffffff",
+   "#d0fff0",
+   "#7ae8c8",
+   "#3aa890"
+  ],
+  "summonShape": "spirit"
+ },
+ "marksman": {
+  "name": "Gunslinger",
+  "th": "มือปืน",
+  "weapon": "gun",
+  "role": "Mobile DPS / Burst",
+  "desc": "Gun-fu ปืนคู่ สไนเปอร์ไรเฟิล และระเบิดลูกซอง ระวัง Overheat",
+  "hp0": 120,
+  "hpLv": 28,
+  "vitHp": 10,
+  "sp0": 50,
+  "spLv": 3.4,
+  "intSp": 5,
+  "aspd": 1.4,
+  "move": 5.4,
+  "range": 8.5,
+  "dmg": "phys",
+  "scale": "ranged",
+  "res": {
+   "name": "Heat",
+   "max": 100,
+   "gain": 7
+  },
+  "element": "neutral",
+  "start": {
+   "str": 4,
+   "agi": 9,
+   "vit": 4,
+   "int": 2,
+   "dex": 11,
+   "luk": 7
+  },
+  "rating": {
+   "atk": 5,
+   "def": 1,
+   "spd": 5,
+   "mag": 0,
+   "sup": 1,
+   "diff": 4
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Dual": "Dual Gun",
+   "Marks": "Marksman",
+   "Demo": "Demolition"
+  },
+  "color": "#c9c9c9",
+  "color2": "#4a4a4a",
+  "col": [
+   "#4a4a4a",
+   "#c9c9c9"
+  ],
+  "oldId": "gunslinger",
+  "basic": "ranged",
+  "wname": "ปืน",
+  "elTh": "กายภาพ",
+  "fxEl": "neutral",
+  "roleId": "ranged",
+  "pal": [
+   "#ffffff",
+   "#e8e8f0",
+   "#a0a8c0",
+   "#5a607a"
+  ],
+  "summonShape": "spirit"
+ },
+ "engineer": {
+  "name": "Engineer",
+  "th": "วิศวกร",
+  "weapon": "gun",
+  "hp0": 119,
+  "hpLv": 27.2,
+  "vitHp": 12,
+  "sp0": 45,
+  "spLv": 3.3,
+  "intSp": 5,
+  "aspd": 1.2,
+  "move": 5.3,
+  "range": 7,
+  "dmg": "phys",
+  "scale": "ranged",
+  "element": "lightning",
+  "start": {
+   "str": 3,
+   "agi": 7,
+   "vit": 5,
+   "int": 2,
+   "dex": 13,
+   "luk": 5
+  },
+  "rating": {
+   "atk": 4,
+   "def": 1,
+   "spd": 4,
+   "mag": 1,
+   "sup": 1,
+   "diff": 3
+  },
+  "color": "#d07a2a",
+  "color2": "#8a5a2a",
+  "col": [
+   "#8a5a2a",
+   "#e8c04a"
+  ],
+  "role": "Turrets / กับดักกล",
+  "desc": "วิศวกร ตั้งป้อมปืน วางทุ่นระเบิด และยิงจรวดจากระยะไกล",
+  "res": {
+   "name": "Scrap",
+   "max": 10,
+   "gain": 1
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Turret": "Turret",
+   "Demolition": "Demolition",
+   "Gadget": "Gadget"
+  },
+  "basic": "ranged",
+  "wname": "ปืน",
+  "elTh": "สายฟ้า",
+  "fxEl": "lightning",
+  "roleId": "ranged",
+  "pal": [
+   "#ffffff",
+   "#ffe08a",
+   "#ff9a2e",
+   "#5a6070"
+  ],
+  "summonShape": "drone"
+ },
+ "monk": {
+  "name": "Monk",
+  "th": "นักพรตหมัด",
+  "weapon": "knuckle",
+  "role": "Combo Chain / Chi",
+  "desc": "ราชาคอมโบ ต่อหมัดและเตะลอยฟ้าไม่รู้จบ ปิดด้วย Asura Strike",
+  "hp0": 150,
+  "hpLv": 34,
+  "vitHp": 13,
+  "sp0": 60,
+  "spLv": 4.2,
+  "intSp": 6,
+  "aspd": 1.35,
+  "move": 5.5,
+  "range": 1.8,
+  "dmg": "phys",
+  "scale": "melee",
+  "res": {
+   "name": "Chi Sphere",
+   "max": 5,
+   "gain": 1
+  },
+  "element": "neutral",
+  "start": {
+   "str": 9,
+   "agi": 9,
+   "vit": 6,
+   "int": 3,
+   "dex": 4,
+   "luk": 2
+  },
+  "rating": {
+   "atk": 4,
+   "def": 2,
+   "spd": 4,
+   "mag": 1,
+   "sup": 1,
+   "diff": 5
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Fist": "Iron Fist",
+   "Kick": "Tempest Kick",
+   "Spirit": "Spirit Palm"
+  },
+  "color": "#f08a3c",
+  "color2": "#7a3c10",
+  "col": [
+   "#7a3c10",
+   "#f08a3c"
+  ],
+  "oldId": "monk",
+  "basic": "melee",
+  "wname": "สนับมือ",
+  "elTh": "กายภาพ",
+  "fxEl": "neutral",
+  "roleId": "melee",
+  "pal": [
+   "#ffffff",
+   "#fff0a0",
+   "#7af0ff",
+   "#2a8ad0"
+  ],
+  "summonShape": "spirit"
+ },
+ "spellblade": {
+  "name": "Spellblade",
+  "th": "นักดาบเวท",
+  "weapon": "sword",
+  "hp0": 230,
+  "hpLv": 50.6,
+  "vitHp": 15,
+  "sp0": 50,
+  "spLv": 3.6,
+  "intSp": 5,
+  "aspd": 1.05,
+  "move": 5,
+  "range": 7.5,
+  "dmg": "mag",
+  "scale": "magic",
+  "element": "water",
+  "start": {
+   "str": 8,
+   "agi": 4,
+   "vit": 9,
+   "int": 6,
+   "dex": 5,
+   "luk": 4
+  },
+  "rating": {
+   "atk": 3,
+   "def": 4,
+   "spd": 2,
+   "mag": 3,
+   "sup": 3,
+   "diff": 3
+  },
+  "color": "#e04ab0",
+  "color2": "#4a2a6a",
+  "col": [
+   "#4a2a6a",
+   "#ff7ae0"
+  ],
+  "role": "Magic Swordsman / ร่ายดาบ",
+  "desc": "นักดาบเวท สลักรูนบนคมดาบ ฟันแล้วระเบิดเวทต่อเนื่อง",
+  "res": {
+   "name": "Rune Edge",
+   "max": 4,
+   "gain": 1
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Runeblade": "Runeblade",
+   "Tide": "Tide",
+   "Arcane": "Arcane"
+  },
+  "basic": "magic",
+  "wname": "ดาบ",
+  "elTh": "น้ำ",
+  "fxEl": "water",
+  "roleId": "caster",
+  "pal": [
+   "#ffe0ff",
+   "#ff7ae0",
+   "#b04cff",
+   "#5a1fa8"
+  ],
+  "summonShape": "spirit"
+ },
+ "beastmaster": {
+  "name": "Beastmaster",
+  "th": "นายพราน",
+  "weapon": "spear",
+  "hp0": 138,
+  "hpLv": 31.4,
+  "vitHp": 12,
+  "sp0": 62,
+  "spLv": 4.4,
+  "intSp": 6,
+  "aspd": 0.95,
+  "move": 5,
+  "range": 7.5,
+  "dmg": "mag",
+  "scale": "magic",
+  "element": "earth",
+  "start": {
+   "str": 2,
+   "agi": 4,
+   "vit": 6,
+   "int": 12,
+   "dex": 8,
+   "luk": 4
+  },
+  "rating": {
+   "atk": 3,
+   "def": 2,
+   "spd": 2,
+   "mag": 4,
+   "sup": 2,
+   "diff": 3
+  },
+  "color": "#5a3a1a",
+  "color2": "#6a4a2a",
+  "col": [
+   "#6a4a2a",
+   "#3a7a3a"
+  ],
+  "role": "Pet Fighter / สัตว์ป่า",
+  "desc": "นายพรานผู้ผูกพันสัตว์ป่า ต่อสู้เคียงข้างหมาป่า เหยี่ยว และหมี",
+  "res": {
+   "name": "Bond",
+   "max": 100,
+   "gain": 7
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Pack": "Pack",
+   "Fang": "Fang",
+   "Primal": "Primal"
+  },
+  "basic": "magic",
+  "wname": "หอก",
+  "elTh": "ดิน",
+  "fxEl": "earth",
+  "roleId": "caster",
+  "pal": [
+   "#eaffc2",
+   "#9be34a",
+   "#3fa83a",
+   "#1d5e2a"
+  ],
+  "summonShape": "beast"
+ },
+ "chronomancer": {
+  "name": "Chrono Stalker",
+  "th": "นักล่าเวลา",
+  "weapon": "chakram",
+  "role": "Tempo DPS / ควบคุมเวลา",
+  "desc": "นักล่าที่บิดกาลเวลา หยุดศัตรูไว้กลางอากาศ ย้อนคูลดาวน์ และฝังระเบิดเวลาที่ระเบิดในอนาคต",
+  "hp0": 128,
+  "hpLv": 29,
+  "vitHp": 11,
+  "sp0": 60,
+  "spLv": 4,
+  "intSp": 6,
+  "aspd": 1.3,
+  "move": 5.6,
+  "range": 6.5,
+  "dmg": "phys",
+  "scale": "ranged",
+  "res": {
+   "name": "Chrono Charge",
+   "max": 5,
+   "gain": 1
+  },
+  "element": "neutral",
+  "start": {
+   "str": 4,
+   "agi": 10,
+   "vit": 4,
+   "int": 6,
+   "dex": 10,
+   "luk": 4
+  },
+  "rating": {
+   "atk": 4,
+   "def": 2,
+   "spd": 5,
+   "mag": 2,
+   "sup": 2,
+   "diff": 5
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Rewind": "Rewind",
+   "Stasis": "Stasis",
+   "Paradox": "Paradox"
+  },
+  "color": "#3ad6c8",
+  "color2": "#124a5a",
+  "col": [
+   "#124a5a",
+   "#3ad6c8"
+  ],
+  "oldId": "chrono_stalker",
+  "basic": "ranged",
+  "wname": "จักร",
+  "elTh": "กายภาพ",
+  "fxEl": "neutral",
+  "roleId": "ranged",
+  "pal": [
+   "#fffbe0",
+   "#d6ff7a",
+   "#5ff0c8",
+   "#1f8a8a"
+  ],
+  "summonShape": "spirit"
+ },
+ "warlock": {
+  "name": "Warlock",
+  "th": "จอมคำสาป",
+  "weapon": "scythe",
+  "role": "DoT / Curse / Summon",
+  "desc": "สาปแช่ง ซ้อน DoT เรียกกองทัพผี และเก็บเกี่ยววิญญาณด้วยเคียว",
+  "hp0": 115,
+  "hpLv": 27,
+  "vitHp": 11,
+  "sp0": 80,
+  "spLv": 5.6,
+  "intSp": 7,
+  "aspd": 0.95,
+  "move": 4.9,
+  "range": 8,
+  "dmg": "mag",
+  "scale": "magic",
+  "res": {
+   "name": "Soul Shard",
+   "max": 5,
+   "gain": 1
+  },
+  "element": "dark",
+  "start": {
+   "str": 3,
+   "agi": 4,
+   "vit": 6,
+   "int": 12,
+   "dex": 6,
+   "luk": 3
+  },
+  "rating": {
+   "atk": 4,
+   "def": 2,
+   "spd": 2,
+   "mag": 5,
+   "sup": 2,
+   "diff": 3
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Hex": "Hex",
+   "Necro": "Necromancy",
+   "Reaper": "Reaper"
+  },
+  "color": "#a94dd6",
+  "color2": "#3a1250",
+  "col": [
+   "#3a1250",
+   "#a94dd6"
+  ],
+  "oldId": "warlock",
+  "basic": "magic",
+  "wname": "เคียว",
+  "elTh": "มืด",
+  "fxEl": "dark",
+  "roleId": "caster",
+  "pal": [
+   "#e0ffd0",
+   "#7aff4a",
+   "#2aa83a",
+   "#103a14"
+  ],
+  "summonShape": "imp"
+ },
+ "starhunter": {
+  "name": "Star Hunter",
+  "th": "นักล่าดวงดาว",
+  "weapon": "bow",
+  "hp0": 119,
+  "hpLv": 27.2,
+  "vitHp": 12,
+  "sp0": 45,
+  "spLv": 3.3,
+  "intSp": 5,
+  "aspd": 1.2,
+  "move": 5.3,
+  "range": 9,
+  "dmg": "phys",
+  "scale": "ranged",
+  "element": "holy",
+  "start": {
+   "str": 3,
+   "agi": 7,
+   "vit": 5,
+   "int": 2,
+   "dex": 13,
+   "luk": 5
+  },
+  "rating": {
+   "atk": 4,
+   "def": 1,
+   "spd": 4,
+   "mag": 1,
+   "sup": 1,
+   "diff": 3
+  },
+  "color": "#e8e0ff",
+  "color2": "#1a1a4a",
+  "col": [
+   "#1a1a4a",
+   "#ffe9a8"
+  ],
+  "role": "Celestial Archer / ดวงดาว",
+  "desc": "นักล่าดวงดาว ยิงศรแสงดาวตก ลากเส้นกลุ่มดาวระหว่างเป้า",
+  "res": {
+   "name": "Starlight",
+   "max": 3,
+   "gain": 1
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Comet": "Comet",
+   "Constellation": "Constellation",
+   "Nebula": "Nebula"
+  },
+  "basic": "ranged",
+  "wname": "ธนู",
+  "elTh": "ศักดิ์สิทธิ์",
+  "fxEl": "holy",
+  "roleId": "ranged",
+  "pal": [
+   "#ffffff",
+   "#fff2a8",
+   "#9a7aff",
+   "#2a1a6a"
+  ],
+  "summonShape": "spirit"
+ },
+ "darkknight": {
+  "name": "Void Walker",
+  "th": "ผู้เดินในความมืด",
+  "weapon": "katana",
+  "role": "Assassin / ช่องว่างมิติ",
+  "desc": "นักดาบแห่งความมืดที่เปิดช่องว่างมิติ ดูดศัตรูเข้ามา ทำให้ตาบอด แล้วลบทิ้งด้วยดาบเดียว",
+  "hp0": 140,
+  "hpLv": 32,
+  "vitHp": 12,
+  "sp0": 50,
+  "spLv": 3.6,
+  "intSp": 5,
+  "aspd": 1.35,
+  "move": 5.7,
+  "range": 2,
+  "dmg": "phys",
+  "scale": "melee",
+  "res": {
+   "name": "Void Essence",
+   "max": 5,
+   "gain": 1
+  },
+  "element": "dark",
+  "start": {
+   "str": 8,
+   "agi": 11,
+   "vit": 5,
+   "int": 3,
+   "dex": 5,
+   "luk": 6
+  },
+  "rating": {
+   "atk": 5,
+   "def": 2,
+   "spd": 5,
+   "mag": 1,
+   "sup": 0,
+   "diff": 4
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Abyss": "Abyss",
+   "Eclipse": "Eclipse",
+   "Oblivion": "Oblivion"
+  },
+  "color": "#7a5aff",
+  "color2": "#120828",
+  "col": [
+   "#120828",
+   "#7a5aff"
+  ],
+  "oldId": "void_walker",
+  "basic": "melee",
+  "wname": "คาตานะ",
+  "elTh": "มืด",
+  "fxEl": "dark",
+  "roleId": "melee",
+  "pal": [
+   "#ffffff",
+   "#ff5af5",
+   "#9a2ac0",
+   "#12061a"
+  ],
+  "summonShape": "spirit"
+ },
+ "lightbringer": {
+  "name": "Lightbringer",
+  "th": "ผู้นำแสง",
+  "weapon": "prism",
+  "role": "Beam Caster / ชำระล้าง",
+  "desc": "ผู้ถือปริซึมที่หักเหแสงเป็นลำแสงเจ็ดสี ชำระล้างความมืด ฮีลเพื่อน และระเบิดดวงอาทิตย์จนศัตรูตาบอด",
+  "hp0": 115,
+  "hpLv": 27,
+  "vitHp": 10,
+  "sp0": 85,
+  "spLv": 5.8,
+  "intSp": 8,
+  "aspd": 1,
+  "move": 5.2,
+  "range": 8,
+  "dmg": "mag",
+  "scale": "magic",
+  "res": {
+   "name": "Radiance",
+   "max": 3,
+   "gain": 1
+  },
+  "element": "holy",
+  "start": {
+   "str": 1,
+   "agi": 6,
+   "vit": 4,
+   "int": 12,
+   "dex": 10,
+   "luk": 3
+  },
+  "rating": {
+   "atk": 5,
+   "def": 1,
+   "spd": 3,
+   "mag": 5,
+   "sup": 3,
+   "diff": 3
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Prism": "Prism",
+   "Dawn": "Dawn",
+   "Solar": "Solar"
+  },
+  "color": "#fff6b0",
+  "color2": "#3a6ab8",
+  "col": [
+   "#3a6ab8",
+   "#fff6b0"
+  ],
+  "oldId": "lightbringer",
+  "basic": "magic",
+  "wname": "ปริซึม",
+  "elTh": "ศักดิ์สิทธิ์",
+  "fxEl": "holy",
+  "roleId": "caster",
+  "pal": [
+   "#ffffff",
+   "#fffbe0",
+   "#ffe680",
+   "#ffb020"
+  ],
+  "summonShape": "spirit"
+ },
+ "shadowmancer": {
+  "name": "Shadowmancer",
+  "th": "จอมเวทเงา",
+  "weapon": "orb",
+  "hp0": 138,
+  "hpLv": 31.4,
+  "vitHp": 12,
+  "sp0": 62,
+  "spLv": 4.4,
+  "intSp": 6,
+  "aspd": 0.95,
+  "move": 5,
+  "range": 7.5,
+  "dmg": "mag",
+  "scale": "magic",
+  "element": "dark",
+  "start": {
+   "str": 2,
+   "agi": 4,
+   "vit": 6,
+   "int": 12,
+   "dex": 8,
+   "luk": 4
+  },
+  "rating": {
+   "atk": 3,
+   "def": 2,
+   "spd": 2,
+   "mag": 4,
+   "sup": 2,
+   "diff": 3
+  },
+  "color": "#2a2a4a",
+  "color2": "#1a1830",
+  "col": [
+   "#1a1830",
+   "#a06aff"
+  ],
+  "role": "Shadow Caster / เงา",
+  "desc": "จอมเวทเงา ดึงเงาของศัตรูมาเป็นอาวุธ กลืนแสงและพลังชีวิต",
+  "res": {
+   "name": "Umbra",
+   "max": 5,
+   "gain": 1
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Gloom": "Gloom",
+   "Devour": "Devour",
+   "Eclipse": "Eclipse"
+  },
+  "basic": "magic",
+  "wname": "ลูกแก้ว",
+  "elTh": "มืด",
+  "fxEl": "dark",
+  "roleId": "caster",
+  "pal": [
+   "#e8d8ff",
+   "#a06aff",
+   "#2a1a48",
+   "#06040c"
+  ],
+  "summonShape": "shadow"
+ },
+ "seraph": {
+  "name": "Seraph",
+  "th": "ทูตสวรรค์",
+  "weapon": "spear",
+  "hp0": 230,
+  "hpLv": 50.6,
+  "vitHp": 15,
+  "sp0": 50,
+  "spLv": 3.6,
+  "intSp": 5,
+  "aspd": 1.05,
+  "move": 5,
+  "range": 7.5,
+  "dmg": "mag",
+  "scale": "magic",
+  "element": "holy",
+  "start": {
+   "str": 8,
+   "agi": 4,
+   "vit": 9,
+   "int": 6,
+   "dex": 5,
+   "luk": 4
+  },
+  "rating": {
+   "atk": 3,
+   "def": 4,
+   "spd": 2,
+   "mag": 3,
+   "sup": 3,
+   "diff": 3
+  },
+  "color": "#fff6d0",
+  "color2": "#f0f0ff",
+  "col": [
+   "#f0f0ff",
+   "#ffd84a"
+  ],
+  "role": "Winged Lancer / ฟ้า",
+  "desc": "ทูตสวรรค์ถือหอก บินโฉบจากฟ้า ฮีลเพื่อนด้วยขนนกศักดิ์สิทธิ์",
+  "res": {
+   "name": "Grace",
+   "max": 100,
+   "gain": 6
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Wing": "Wing",
+   "Choir": "Choir",
+   "Halo": "Halo"
+  },
+  "basic": "magic",
+  "wname": "หอก",
+  "elTh": "ศักดิ์สิทธิ์",
+  "fxEl": "holy",
+  "roleId": "caster",
+  "pal": [
+   "#ffffff",
+   "#fff6d0",
+   "#9ad8ff",
+   "#4a6ad0"
+  ],
+  "summonShape": "spirit"
+ },
+ "reaper": {
+  "name": "Grim Reaper",
+  "th": "ยมทูต",
+  "weapon": "scythe",
+  "hp0": 200,
+  "hpLv": 44.1,
+  "vitHp": 15,
+  "sp0": 38,
+  "spLv": 2.9,
+  "intSp": 4,
+  "aspd": 1.15,
+  "move": 5.2,
+  "range": 1.9,
+  "dmg": "phys",
+  "scale": "melee",
+  "element": "dark",
+  "start": {
+   "str": 10,
+   "agi": 6,
+   "vit": 8,
+   "int": 2,
+   "dex": 5,
+   "luk": 4
+  },
+  "rating": {
+   "atk": 5,
+   "def": 3,
+   "spd": 3,
+   "mag": 1,
+   "sup": 1,
+   "diff": 2
+  },
+  "color": "#e8e8e8",
+  "color2": "#141820",
+  "col": [
+   "#141820",
+   "#6affc8"
+  ],
+  "role": "Scythe Executioner / เก็บวิญญาณ",
+  "desc": "ยมทูตถือเคียว เก็บวิญญาณจากการฆ่า ใช้วิญญาณปิดฉากศัตรู",
+  "res": {
+   "name": "Souls",
+   "max": 10,
+   "gain": 1
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Harvest": "Harvest",
+   "Doom": "Doom",
+   "Specter": "Specter"
+  },
+  "basic": "melee",
+  "wname": "เคียว",
+  "elTh": "มืด",
+  "fxEl": "dark",
+  "roleId": "melee",
+  "pal": [
+   "#e8fff4",
+   "#6affc8",
+   "#1a8a6a",
+   "#061814"
+  ],
+  "summonShape": "spirit"
+ },
+ "demon": {
+  "name": "Hellfiend",
+  "th": "ปีศาจนรก",
+  "weapon": "claw",
+  "role": "Brawler / ไฟนรก / ดูดเลือด",
+  "desc": "ปีศาจจากขุมนรก ฉีกศัตรูด้วยกรงเล็บเพลิง ยิ่งบาดเจ็บยิ่งคลั่ง และปลุกความกลัวด้วยปีกปีศาจ",
+  "hp0": 210,
+  "hpLv": 45,
+  "vitHp": 16,
+  "sp0": 35,
+  "spLv": 2.6,
+  "intSp": 4,
+  "aspd": 1.15,
+  "move": 5.3,
+  "range": 2.1,
+  "dmg": "phys",
+  "scale": "melee",
+  "res": {
+   "name": "Hellfire",
+   "max": 100,
+   "gain": 8
+  },
+  "element": "fire",
+  "start": {
+   "str": 11,
+   "agi": 7,
+   "vit": 9,
+   "int": 2,
+   "dex": 3,
+   "luk": 3
+  },
+  "rating": {
+   "atk": 5,
+   "def": 3,
+   "spd": 3,
+   "mag": 1,
+   "sup": 0,
+   "diff": 2
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Inferno": "Inferno",
+   "Carnage": "Carnage",
+   "Dread": "Dread"
+  },
+  "color": "#ff4a2a",
+  "color2": "#4a0a10",
+  "col": [
+   "#4a0a10",
+   "#ff4a2a"
+  ],
+  "oldId": "hellfiend",
+  "basic": "melee",
+  "wname": "กรงเล็บ",
+  "elTh": "ไฟ",
+  "fxEl": "fire",
+  "roleId": "melee",
+  "pal": [
+   "#fff0c0",
+   "#ff6a1a",
+   "#a01a10",
+   "#1a0606"
+  ],
+  "summonShape": "imp"
+ },
+ "deity": {
+  "name": "Divine Sovereign",
+  "th": "เทพผู้ครองฟ้า",
+  "weapon": "orb",
+  "role": "Judgement Caster / Support",
+  "desc": "เทพผู้ลงทัณฑ์ด้วยสายฟ้าสวรรค์ สร้างโล่และชีวิต และเรียกดวงดาวถล่มทั้งสนามรบ",
+  "hp0": 135,
+  "hpLv": 30,
+  "vitHp": 12,
+  "sp0": 95,
+  "spLv": 6,
+  "intSp": 8,
+  "aspd": 0.85,
+  "move": 5,
+  "range": 8,
+  "dmg": "mag",
+  "scale": "magic",
+  "res": {
+   "name": "Divinity",
+   "max": 100,
+   "gain": 6
+  },
+  "element": "holy",
+  "start": {
+   "str": 2,
+   "agi": 3,
+   "vit": 7,
+   "int": 13,
+   "dex": 6,
+   "luk": 5
+  },
+  "rating": {
+   "atk": 4,
+   "def": 3,
+   "spd": 2,
+   "mag": 5,
+   "sup": 4,
+   "diff": 3
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Judgement": "Judgement",
+   "Creation": "Creation",
+   "Celestial": "Celestial"
+  },
+  "color": "#ffe08a",
+  "color2": "#7a5a12",
+  "col": [
+   "#7a5a12",
+   "#ffe08a"
+  ],
+  "oldId": "divine_sovereign",
+  "basic": "magic",
+  "wname": "ลูกแก้ว",
+  "elTh": "ศักดิ์สิทธิ์",
+  "fxEl": "holy",
+  "roleId": "caster",
+  "pal": [
+   "#ffffff",
+   "#ffe9a0",
+   "#a0d8ff",
+   "#6a4aff"
+  ],
+  "summonShape": "spirit"
+ },
+ "jester": {
+  "name": "Jester",
+  "th": "ตัวตลก",
+  "weapon": "chakram",
+  "hp0": 119,
+  "hpLv": 27.2,
+  "vitHp": 12,
+  "sp0": 45,
+  "spLv": 3.3,
+  "intSp": 5,
+  "aspd": 1.2,
+  "move": 5.3,
+  "range": 6,
+  "dmg": "phys",
+  "scale": "ranged",
+  "element": "wind",
+  "start": {
+   "str": 3,
+   "agi": 7,
+   "vit": 5,
+   "int": 2,
+   "dex": 13,
+   "luk": 5
+  },
+  "rating": {
+   "atk": 4,
+   "def": 1,
+   "spd": 4,
+   "mag": 1,
+   "sup": 1,
+   "diff": 3
+  },
+  "color": "#4ad6ff",
+  "color2": "#ff4ab0",
+  "col": [
+   "#ff4ab0",
+   "#ffd84a"
+  ],
+  "role": "Trickster Thrower / กลลวง",
+  "desc": "ตัวตลก ขว้างไพ่และจักร โยนระเบิดหัวเราะ ทุกการโจมตีมีเรื่องเซอร์ไพรส์",
+  "res": {
+   "name": "Laughter",
+   "max": 100,
+   "gain": 9
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Cards": "Cards",
+   "Circus": "Circus",
+   "Prank": "Prank"
+  },
+  "basic": "ranged",
+  "wname": "จักร",
+  "elTh": "ลม",
+  "fxEl": "wind",
+  "roleId": "ranged",
+  "pal": [
+   "#ffffff",
+   "#ffd84a",
+   "#ff4ab0",
+   "#2a1a4a"
+  ],
+  "summonShape": "spirit"
+ },
+ "loki": {
+  "name": "Loki",
+  "th": "เทพกลลวง",
+  "weapon": "staff",
+  "hp0": 104,
+  "hpLv": 24,
+  "vitHp": 11,
+  "sp0": 65,
+  "spLv": 4.6,
+  "intSp": 6,
+  "aspd": 0.9,
+  "move": 4.9,
+  "range": 7.5,
+  "dmg": "mag",
+  "scale": "magic",
+  "element": "dark",
+  "start": {
+   "str": 1,
+   "agi": 4,
+   "vit": 5,
+   "int": 13,
+   "dex": 9,
+   "luk": 3
+  },
+  "rating": {
+   "atk": 1,
+   "def": 1,
+   "spd": 2,
+   "mag": 5,
+   "sup": 1,
+   "diff": 3
+  },
+  "color": "#14140e",
+  "color2": "#1f6a3a",
+  "col": [
+   "#1f6a3a",
+   "#e8c04a"
+  ],
+  "role": "Illusionist / ภาพลวง",
+  "desc": "เทพกลลวง สร้างภาพลวงตา สลับที่ศัตรู ปั่นหัวทั้งสนามรบ",
+  "res": {
+   "name": "Mischief",
+   "max": 5,
+   "gain": 1
+  },
+  "branches": {
+   "พื้นฐาน": "Basic",
+   "Illusion": "Illusion",
+   "Deceit": "Deceit",
+   "Ragnarok": "Ragnarok"
+  },
+  "basic": "magic",
+  "wname": "คทา",
+  "elTh": "มืด",
+  "fxEl": "dark",
+  "roleId": "caster",
+  "pal": [
+   "#f6ffd8",
+   "#a8ff3a",
+   "#1f8a4a",
+   "#081a10"
+  ],
+  "summonShape": "spirit"
+ }
+};

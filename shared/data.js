@@ -7,7 +7,7 @@
 
   // ---------------------------------------------------------------- Classes
   // Every class has its own base numbers, growth, weapon, range and resource.
-  // 30 classes generated from the Ashfall kit (tools/build-ashfall.js → shared/classes.js)
+  // 30 classes: tools/class-roster.js → tools/build-classes.js → shared/classes.js
   const CLASSES = typeof require === 'function' && typeof module === 'object' ? require('./classes.js') : self.NO_CLASSES;
   const CLASS_IDS = Object.keys(CLASSES);
   const STATS = ['str', 'agi', 'vit', 'int', 'dex', 'luk'];

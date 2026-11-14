@@ -39,6 +39,13 @@ const MECH = {
   hellfiend: ['trail', 'stackSelf', 'overcharge', 'orbit', 'none'], void_walker: ['resetOnKill', 'split', 'echo', 'trail', 'none'],
   lightbringer: ['split', 'boomerang', 'orbit', 'wall', 'none']
 };
+// the 15 classes designed later (tools/new-classes.js) join the same tables
+{
+  const N = require('./new-classes.js');
+  for (const [id, c] of Object.entries(N)) {
+    KITS[id] = Object.assign({ res: c.res.name }, c.kit); MECH[id] = c.mech;
+  }
+}
 function mechFits(m, out) {
   if (m === 'trail') return !!(out.move && out.move.type === 'dash');
   if (m === 'boomerang') return out.shape === 'line' || (out.shape === 'single' && !out.melee);
@@ -123,6 +130,8 @@ const ULTS = {
     ['nuke', { r: 14, dmg: 16, tag: ['blind', 1, 3] }], ['megaline', { len: 24, dmg: 26, tag: ['holybrand', 1, 8], pierce: 1 }], ['zoneheal', { dur: 8, heal: 12, r: 7 }],
     ['transform', { dur: 15, mods: { matkPct: 50, castReduce: 40 } }], ['transform', { dur: 10, mods: { movePct: 60, aspdPct: 50, cdr: 40 } }]]
 };
+const BUFFS_NEW = {}, ULTS_NEW = {};
+for (const [id, c] of Object.entries(require('./new-classes.js'))) { ULTS_NEW[id] = c.ults.map((u) => [u[2], u[3]]); BUFFS_NEW[id] = c.buffs.map((b) => Object.assign({}, b[1])); }
 const BUFFS = {
   blade_knight: [{ atkPct: 12, crit: 10 }, { aspdPct: 18, movePct: 10 }, { lifesteal: 6, critDmg: 15 }, { dmgReduce: 15, ccRes: 30, short: 10 }, { comboDmg: 15, comboWin: 1 }],
   guardian: [{ defPct: 35, mdefPct: 20 }, { guardAlly: 35, party: 1 }, { hpPct: 20, regenPct: 120 }, { blocks: 4, short: 20 }, { ccRes: 30, dmgReduce: 10, party: 1 }],
@@ -140,6 +149,7 @@ const BUFFS = {
   void_walker: [{ flee: 30, movePct: 15 }, { crit: 20, hit: 30 }, { lifesteal: 5, critDmg: 25 }, { dmgPct: 14, defPct: -20 }, { cdr: 8, aspdPct: 12 }],
   lightbringer: [{ matkPct: 15, party: 1 }, { dmgReduce: 15, blocks: 3, short: 20 }, { regenPct: 200, party: 1 }, { resGainPct: 100, matkPct: 8 }, { castReduce: 20, hit: 30, party: 1 }]
 };
+Object.assign(ULTS, ULTS_NEW); Object.assign(BUFFS, BUFFS_NEW);
 const MOD_TH = { atkPct: 'ATK', matkPct: 'MATK', defPct: 'DEF', mdefPct: 'MDEF', aspdPct: 'ความเร็วโจมตี', movePct: 'ความเร็วเดิน', crit: 'Critical', critDmg: 'Crit Damage', flee: 'Flee', hit: 'Hit', hpPct: 'HP สูงสุด', spPct: 'SP สูงสุด', lifesteal: 'Lifesteal', dmgReduce: 'ลดดาเมจ', comboWin: 'เวลาคอมโบ (วิ)', comboDmg: 'ดาเมจคอมโบ', castReduce: 'ร่ายเร็ว', dmgPct: 'ดาเมจ', regenPct: 'ฟื้นฟู HP', ccRes: 'ต้านควบคุม', dropPct: 'อัตราดรอป', cdr: 'ลดคูลดาวน์', range: 'ระยะโจมตี', guardAlly: 'รับดาเมจแทนเพื่อน', str: 'STR', int: 'INT', dex: 'DEX', agi: 'AGI', blocks: 'บล็อกการโจมตี (ครั้ง)', spRegen: 'ฟื้น SP ×', extraStack: 'ชั้นสถานะเพิ่ม', resGainPct: 'พลังพิเศษได้เร็วขึ้น' };
 const pctKeys = new Set(['atkPct', 'matkPct', 'defPct', 'mdefPct', 'aspdPct', 'movePct', 'critDmg', 'hpPct', 'spPct', 'lifesteal', 'dmgReduce', 'comboDmg', 'castReduce', 'dmgPct', 'regenPct', 'ccRes', 'dropPct', 'cdr', 'guardAlly', 'resGainPct']);
 function modsText(m) {
@@ -373,7 +383,7 @@ module.exports = function redesign(SKILLS, CLASS_SKILLS, CLASS_ORDER) {
     actives.forEach((id, i) => {
       const old = SKILLS[id];
       const sk = buildActive(old, kit, cls, used, prev, i);
-      sk.name = makeName(old, sk._naming[0], sk._naming[1], sk._naming[2], cls, usedNames, require('../shared/data2.js').CLASSES[cls].weapon); delete sk._naming;
+      sk.name = makeName(old, sk._naming[0], sk._naming[1], sk._naming[2], cls, usedNames, (require('../shared/data2.js').CLASSES[cls] || require('./class-roster.js')[Object.keys(require('./class-roster.js')).find((k) => require('./class-roster.js')[k].oldId === cls)]).weapon); delete sk._naming;
       // cooldown / cost / cast from the final power so every number reflects the design
       const h = hashStr(id + 'n');
       const total = sk.dmg * sk.hits + (sk.perUnit ? sk.perUnit * 3 : 0) + (sk.zone ? sk.zone.mult * sk.zone.dur / sk.zone.tick * 0.4 : 0);

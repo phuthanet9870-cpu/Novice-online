@@ -60,7 +60,7 @@ const CMDS = {
     ch.cls = cls; q.cls = cls;
     const first = CLASS_SKILLS[cls][0];
     ch.skills = { [first]: 1 }; ch.skillPts = F.skillPointsAt(ch.lv) - 1;
-    ch.hotbar = ch.hotbar.map((h) => (h && h.startsWith('item:') ? h : null)); ch.hotbar[0] = first;
+    ch.hotbar = ch.hotbar.map((h) => (h && h.startsWith('item:') ? h : null)); I.defaultHotbar(ch);
     ch.passives = []; q.res = 0; q.cds = {}; q.combo = 0; q.ult = 0;
     if (ch.auto) { ch.auto.rotation = []; ch.auto.rotPve = []; ch.auto.rotPvp = []; }
     if (q.auto) { q.auto.rotation = []; q.auto.rotPve = []; q.auto.rotPvp = []; q.auto._plan = null; q.auto._planKey = null; }
