@@ -25,27 +25,43 @@
   const baseEnter = UI.onEnter;
   UI.onEnter = function (m) { root.hidden = true; return baseEnter.apply(this, arguments); };
 
-  function nav() {
-    const s = sel();
-    const tabs = [['play', 'เล่น'], ['roster', 'คลาสของฉัน'], ['case', 'กล่องสุ่มคลาส']];
-    return `<div class="lbNav"><div class="lbLogo">NOVICE<b>ONLINE</b></div>${tabs.map(([k, n]) => `<button class="${view === k ? 'on' : ''}" data-v="${k}">${n}${k === 'case' ? '<i class="dot"></i>' : ''}</button>`).join('')}
-      <div class="lbMe">${s ? `<span class="zeny">${fmt(s.zeny)} <small>Zeny</small></span>` : ''}<span class="nick">${esc(L.nick || '')}</span>${s ? `<img src="${art(s.cls)}">` : ''}</div></div>`;
+  // ---- lobby shell (tactical-shooter style): profile top-left, vertical menu left, character centre,
+  //      event cards right, currency top-right, bottom tab bar + chat line, big ENTER bottom-right
+  const MENU = [['play', '◆', 'ตัวละคร'], ['roster', '⚔', 'คลาสของฉัน'], ['case', '🎰', 'กล่องสุ่มคลาส'], ['news', '📰', 'ข่าวสาร']];
+  const TABS = [['news', 'ซีซัน 1'], ['play', 'ล็อบบี้'], ['roster', 'คลาส'], ['case', 'กล่องสุ่ม'], ['map', 'แผนที่']];
+  const mapName = (id) => { try { return NO_MAP.getMapDef(id).name; } catch (e) { return 'Aurelia'; } };
+  function shell(content) {
+    const s = sel(), C = s ? D.CLASSES[s.cls] : null, T = s ? tierOf(s.cls) : D.CASE_TIERS[0];
+    const online = (window.NO_NET && NO_NET.online) || 1;
+    return `<div class="lbBg"></div><div class="lbFog"></div>
+      <div class="lb2Me" style="--t:${T.color}">${s ? `<img src="${art(s.cls)}">` : ''}<div><b>${esc(L.nick)}</b><small>${C ? esc(C.name) + ' · Lv ' + s.lv : ''}</small><i class="bar"><em style="width:${s ? Math.min(100, s.lv / 3) : 0}%"></em></i></div></div>
+      <div class="lb2Top"><span class="cur"><i>Z</i>${s ? fmt(s.zeny) : 0}</span><span class="cur on"><i>●</i>ออนไลน์ ${online}</span><button data-act="logout" title="ออกจากระบบ">⏻</button></div>
+      <nav class="lb2Menu">${MENU.map(([k, ic, n]) => `<button class="${view === k ? 'on' : ''}" data-v="${k}"><i>${ic}</i>${n}${k === 'case' ? '<b class="dot"></b>' : ''}</button>`).join('')}</nav>
+      <div class="lb2Main">${content}</div>
+      <div class="lb2Chat"><b>[ทั่วไป]</b> ยินดีต้อนรับสู่ Novice Online · ดันเจี้ยน 1,000 ชั้น · เวิลด์บอสทุกวัน</div>
+      <div class="lb2Tabs">${TABS.map(([k, n]) => `<button class="${view === k ? 'on' : ''}" data-v="${k}">${n}</button>`).join('')}</div>
+      ${s ? `<button class="lb2Enter" data-play="${s.id}">ENTER<small>เข้าเกม · ${esc(mapName(s.map))}</small></button>` : ''}`;
   }
-
   function stage() {
     const s = sel(); if (!s) return '';
-    const C = D.CLASSES[s.cls], T = tierOf(s.cls);
-    const others = L.chars.filter((c) => c.id !== s.id).slice(0, 3);
-    const side = [0, 1, 2].map((i) => { const o = others[i]; return `<div class="ped side p${i}" ${o ? `data-pick="${o.id}"` : 'data-v="case"'}>${o ? `<img src="${art(o.cls)}"><span>${esc(D.CLASSES[o.cls].name)} · Lv${o.lv}</span>` : '<b class="plus">＋</b><span>สุ่มคลาสใหม่</span>'}<i class="disc"></i></div>`; }).join('');
-    return `<div class="lbStage">
-      <div class="tag"><i style="background:${T.color}"></i><div><b>${esc(L.nick)}</b><small style="color:${T.color}">${esc(C.name)} · ${esc(C.th)}</small></div></div>
-      <div class="ped main"><img src="${art(s.cls)}"><i class="disc"></i></div>${side}
-      <div class="lbMode"><h3>ผจญภัย</h3><div class="sub"><b>${esc(C.name)}</b> · Lv ${s.lv}<small>${esc((() => { try { return NO_MAP.getMapDef(s.map).name; } catch (e) { return 'Aurelia'; } })())}</small></div>
-        <button class="lbPlay" data-play="${s.id}">PLAY</button></div>
-      <div class="lbLv"><small>LVL</small><b>${s.lv}</b></div>
-      <div class="lbRoster">${L.chars.map((c) => `<div class="rc ${c.id === s.id ? 'on' : ''}" data-pick="${c.id}" style="--t:${tierOf(c.cls).color}"><img src="${art(c.cls)}"><span>${esc(D.CLASSES[c.cls].name)}</span><small>Lv ${c.lv}</small></div>`).join('')}
-        <div class="rc add" data-v="case"><b>🎰</b><span>สุ่มคลาส</span><small>${fmt(L.cost)} Z</small></div></div>
-    </div>`;
+    const C = D.CLASSES[s.cls], T = tierOf(s.cls), own = L.chars.length;
+    return `<div class="lb2Hero"><img src="${art(s.cls)}"><div class="nm" style="--t:${T.color}"><small>${T.n} · ${esc(C.role || '')}</small><b>${esc(C.name)}</b><span>${esc(C.th)}</span></div></div>
+      <div class="lb2Cards">
+        <div class="card hot" data-v="case" style="--t:#ffb03a"><small>กล่องสุ่มคลาส</small><b>ปลดล็อกคลาสใหม่</b><span>${fmt(L.cost)} Zeny · มีแล้ว ${own}/${D.CLASS_IDS.length}</span></div>
+        <div class="card" data-v="roster"><small>คลาสของฉัน</small><b>${own} คลาส</b><div class="mini">${L.chars.slice(0, 5).map((c) => `<img src="${art(c.cls)}" data-pick="${c.id}" class="${c.id === s.id ? 'on' : ''}" title="${esc(D.CLASSES[c.cls].name)} Lv${c.lv}">`).join('')}</div></div>
+        <div class="card" data-v="news"><small>ซีซัน 1</small><b>Ashfall Rising</b><span>หีบสมบัติดันเจี้ยน · คลาสใหม่ 30 คลาส</span></div>
+      </div>`;
+  }
+  function news() {
+    return `<div class="lbPage news"><h2>ซีซัน 1 · Ashfall Rising</h2>
+      <div class="nw"><b>🎰 กล่องสุ่มคลาส</b><p>เริ่มด้วย นักดาบ / นักธนู / นักเวท แล้วสุ่มปลดล็อกคลาสอื่นอีก ${D.CLASS_IDS.length - 3} คลาส ครั้งละ ${fmt(L.cost)} Zeny · แต่ละคลาสเลเวลแยกกัน</p></div>
+      <div class="nw"><b>🗝 หีบสมบัติดันเจี้ยน</b><p>ทุกชั้นมีหีบ 6 ใบ 6 ระดับสี กุญแจดรอปจากมอนสเตอร์ในดันเจี้ยน · ยิ่งลึกยิ่งได้ของหายาก</p></div>
+      <div class="nw"><b>🐉 เวิลด์บอส</b><p>ทำลายเสาผนึก ผ่านเฟสบอส แล้วชิงอันดับดาเมจทั้งเซิร์ฟเวอร์</p></div></div>`;
+  }
+  function mapPage() {
+    const s = sel();
+    return `<div class="lbPage news"><h2>แผนที่</h2><p class="hint">ตัวละครจะเข้าเกมที่ <b>${esc(mapName(s && s.map))}</b> — เดินทางต่อได้จาก Waygate และ NPC ในเมือง</p>
+      <div class="nw"><b>เมือง</b><p>Aurelia · Frostheim · Sandhaven · Emberforge · Skyreach</p></div><div class="nw"><b>ดันเจี้ยน</b><p>Abyss Tower · Inferno Depths · Frost Crypt · Shadow Labyrinth · Sky Sanctum — 1,000 ชั้น</p></div></div>`;
   }
 
   function roster() {
@@ -82,16 +98,17 @@
   function render() {
     if (!L) return;
     if (!L.chars.length) { root.innerHTML = `<div class="lbBg"></div>${starter()}`; return; }
-    root.innerHTML = `<div class="lbBg"></div>${nav()}${view === 'play' ? stage() : view === 'roster' ? roster() : casePage()}<div id="lbReveal" hidden></div>`;
+    root.innerHTML = shell(view === 'play' ? stage() : view === 'roster' ? roster() : view === 'case' ? casePage() : view === 'map' ? mapPage() : news()) + '<div id="lbReveal" hidden></div>';
   }
 
   root.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-v],[data-pick],[data-play],[data-act],[data-st]'); if (!t || spinning) return;
+    const t = e.target.closest('[data-pick]') || e.target.closest('[data-v],[data-play],[data-act],[data-st]'); if (!t || spinning) return;
     if (t.dataset.st) { starterPick = t.dataset.st; render(); return; }
     if (t.dataset.v) { view = t.dataset.v; render(); return; }
     if (t.dataset.pick) { G.send({ t: 'selClass', id: t.dataset.pick }); view = 'play'; return; }
     if (t.dataset.play) { try { const s = JSON.parse(sessionStorage.getItem('no_sess') || '{}'); s.char = t.dataset.play; sessionStorage.setItem('no_sess', JSON.stringify(s)); } catch (er) {} G.send({ t: 'play', id: t.dataset.play }); return; }
     const a = t.dataset.act;
+    if (a === 'logout') { try { sessionStorage.removeItem('no_sess'); } catch (er) {} location.reload(); return; }
     if (a === 'start') { const n = ($('#stName') || {}).value || ''; G.send({ t: 'starter', cls: starterPick, name: n.trim() }); }
     if (a === 'roll' || a === 'rollFree') G.send({ t: 'rollClass', free: a === 'rollFree' });
     if (a === 'closeReveal') { $('#lbReveal').hidden = true; spinning = false; render(); }
@@ -101,7 +118,7 @@
   // the case result arrives before the lobby update: spin the reel, then reveal
   UI.onRoll = function (m) {
     spinning = true; view = 'case';
-    root.innerHTML = `<div class="lbBg"></div>${nav()}${casePage()}<div id="lbReveal" hidden></div>`;
+    root.innerHTML = shell(casePage()) + '<div id="lbReveal" hidden></div>';
     const reel = $('#reel'); reel.innerHTML = reelCards(m.cls);
     const card = reel.children[52], wrap = reel.parentElement;
     const jitter = (Math.random() - 0.5) * card.offsetWidth * 0.7;
