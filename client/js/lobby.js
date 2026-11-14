@@ -12,7 +12,8 @@
   let L = null, view = 'play', starterPick = 'blademaster', spinning = false;
 
   const root = document.createElement('div'); root.id = 'lobby'; root.hidden = true; document.body.appendChild(root);
-  const tierOf = (c) => D.CASE_TIERS[D.classTier(c)] || D.CASE_TIERS[0];
+  // no class grades any more: every class is one of 30 equal slots in the case
+  const tierOf = () => ({ color: '#d8b46a', n: '', th: '' });
   const sel = () => (L && L.chars.find((c) => c.id === L.sel)) || (L && L.chars[0]);
 
   UI.onLobby = function (m) {
@@ -31,7 +32,7 @@
   const TABS = [['news', 'ซีซัน 1'], ['play', 'ล็อบบี้'], ['roster', 'คลาส'], ['case', 'กล่องสุ่ม'], ['map', 'แผนที่']];
   const mapName = (id) => { try { return NO_MAP.getMapDef(id).name; } catch (e) { return 'Aurelia'; } };
   function shell(content) {
-    const s = sel(), C = s ? D.CLASSES[s.cls] : null, T = s ? tierOf(s.cls) : D.CASE_TIERS[0];
+    const s = sel(), C = s ? D.CLASSES[s.cls] : null, T = tierOf();
     const online = (window.NO_NET && NO_NET.online) || 1;
     return `<div class="lbBg"></div><div class="lbFog"></div>
       <div class="lb2Me" style="--t:${T.color}">${s ? `<img src="${art(s.cls)}">` : ''}<div><b>${esc(L.nick)}</b><small>${C ? esc(C.name) + ' · Lv ' + s.lv : ''}</small><i class="bar"><em style="width:${s ? Math.min(100, s.lv / 3) : 0}%"></em></i></div></div>
@@ -45,7 +46,7 @@
   function stage() {
     const s = sel(); if (!s) return '';
     const C = D.CLASSES[s.cls], T = tierOf(s.cls), own = L.chars.length;
-    return `<div class="lb2Hero"><img src="${art(s.cls)}"><div class="nm" style="--t:${T.color}"><small>${T.n} · ${esc(C.role || '')}</small><b>${esc(C.name)}</b><span>${esc(C.th)}</span></div></div>
+    return `<div class="lb2Hero"><img src="${art(s.cls)}"><div class="nm" style="--t:${T.color}"><small>${esc(C.role || '')}</small><b>${esc(C.name)}</b><span>${esc(C.th)}</span></div></div>
       <div class="lb2Cards">
         <div class="card hot" data-v="case" style="--t:#ffb03a"><small>กล่องสุ่มคลาส</small><b>ปลดล็อกคลาสใหม่</b><span>${fmt(L.cost)} Zeny · มีแล้ว ${own}/${D.CLASS_IDS.length}</span></div>
         <div class="card" data-v="roster"><small>คลาสของฉัน</small><b>${own} คลาส</b><div class="mini">${L.chars.slice(0, 5).map((c) => `<img src="${art(c.cls)}" data-pick="${c.id}" class="${c.id === s.id ? 'on' : ''}" title="${esc(D.CLASSES[c.cls].name)} Lv${c.lv}">`).join('')}</div></div>
@@ -67,26 +68,24 @@
   function roster() {
     const own = new Map(L.chars.map((c) => [c.cls, c]));
     return `<div class="lbPage"><h2>คลาสของฉัน <small>${own.size} / ${D.CLASS_IDS.length}</small></h2><p class="hint">แต่ละคลาสเป็นตัวละครแยก เลเวลและกระเป๋าแยกกัน · เงิน Zeny ใช้ร่วมกันทุกคลาส — คลาสที่ได้ใหม่ต้องฟาร์มตั้งแต่เลเวล 1</p>
-      ${D.CASE_TIERS.map((t) => `<h4 style="color:${t.color}">${t.n} · ${t.th}</h4><div class="lbGrid">${t.cls.map((c) => { const o = own.get(c); return `<div class="cc ${o ? 'own' : 'lock'}" ${o ? `data-pick="${o.id}"` : ''} style="--t:${t.color}"><img src="${art(c)}"><b>${esc(D.CLASSES[c].name)}</b><small>${o ? 'Lv ' + o.lv : '🔒 ยังไม่มี'}</small></div>`; }).join('')}</div>`).join('')}</div>`;
+      <div class="lbGrid">${D.CLASS_IDS.map((c) => { const o = own.get(c); return `<div class="cc ${o ? 'own' : 'lock'}" ${o ? `data-pick="${o.id}"` : ''} style="--t:#d8b46a"><img src="${art(c)}"><b>${esc(D.CLASSES[c].name)}</b><small>${o ? 'Lv ' + o.lv : '🔒 ยังไม่มี'}</small></div>`; }).join('')}</div></div>`;
   }
-
+  // a case slot: a class you can still win, or a salt slot (a class you already own)
+  const slot = (c, own) => own.has(c) ? `<div class="card salt"><b class="sl">🧂</b><span>เกลือ</span><small>${esc(D.CLASSES[c].name)}</small></div>` : `<div class="card"><img src="${art(c)}"><span>${esc(D.CLASSES[c].name)}</span></div>`;
   function casePage() {
-    const s = sel(), own = new Set(L.chars.map((c) => c.cls)), total = D.CLASS_IDS.length;
-    const odds = D.CASE_TIERS.map((t) => { const left = t.cls.filter((c) => !own.has(c)); return { t, left }; });
-    const W = odds.reduce((a, o) => a + (o.left.length ? o.t.w * o.left.length / o.t.cls.length : 0), 0) || 1;
-    return `<div class="lbPage case"><h2>Unlock Class Case</h2><p class="caseSub">ปลดล็อกคลาสใหม่ · <b>${fmt(L.cost)} Zeny</b> ต่อครั้ง (จ่ายจากเงินของบัญชี ใช้ร่วมกันทุกคลาส) · ได้คลาสที่ยังไม่มีเสมอ</p>
+    const s = sel(), own = new Set(L.chars.map((c) => c.cls)), total = D.CLASS_IDS.length, left = total - own.size;
+    return `<div class="lbPage case"><h2>Unlock Class Case</h2><p class="caseSub">${fmt(L.cost)} Zeny ต่อครั้ง · 30 ช่อง โอกาสออกเท่ากันทุกช่อง (1/30) · ช่องคลาสที่มีแล้วเป็น <b>เกลือ 🧂</b> = ได้เงินคืน ${fmt(D.CLASS_SALT_REFUND)}</p>
       <div class="reelWrap"><div class="reel" id="reel">${reelCards(null)}</div><i class="mark"></i></div>
-      <div class="caseBar"><div class="odds">${odds.map((o) => `<span style="--t:${o.t.color}"><i></i>${o.t.n} <b>${o.left.length ? (o.t.w * o.left.length / o.t.cls.length / W * 100).toFixed(1) + '%' : '—'}</b><small>${o.left.length}/${o.t.cls.length}</small></span>`).join('')}</div>
+      <div class="caseBar"><div class="odds"><span>คลาสใหม่เหลือ <b>${left}</b> / ${total} ช่อง · โอกาสได้คลาสใหม่ <b>${(left / total * 100).toFixed(1)}%</b> · โอกาสเกลือ <b>${(own.size / total * 100).toFixed(1)}%</b></span></div>
         <div class="pay">${s ? `เงินในบัญชี (ใช้ร่วมทุกคลาส) · มี <b class="${s.zeny >= L.cost ? 'ok' : 'bad'}">${fmt(s.zeny)}</b> Zeny` : ''}</div>
-        <button class="lbPlay open" data-act="roll" ${own.size >= total ? 'disabled' : ''}>${own.size >= total ? 'มีครบทุกคลาสแล้ว' : 'เปิดกล่อง · ' + fmt(L.cost)}</button>${L.gm >= 2 ? '<button class="btn tiny" data-act="rollFree">GM: เปิดฟรี</button>' : ''}</div></div>`;
+        <button class="lbPlay open" data-act="roll" ${left <= 0 ? 'disabled' : ''}>${left <= 0 ? 'เกลือครบทั้ง 30 ช่องแล้ว' : 'เปิดกล่อง · ' + fmt(L.cost)}</button>${L.gm >= 2 ? '<button class="btn tiny" data-act="rollFree">GM: เปิดฟรี</button>' : ''}
+        <div class="caseGrid">${D.CLASS_IDS.map((c) => slot(c, own)).join('')}</div></div></div>`;
   }
-  // reel of class cards; for the spin the winning class sits at index 52
+  // reel of the 30 slots in random order; for the spin the winning slot sits at index 52
   function reelCards(win) {
-    const own = new Set(L.chars.map((c) => c.cls));
-    const pool = D.CASE_TIERS.flatMap((t) => t.cls.filter((c) => !own.has(c) || !win).map((c) => [c, t.w / t.cls.length]));
-    const pick = () => { let r = Math.random() * pool.reduce((a, x) => a + x[1], 0); for (const [c, w] of pool) if ((r -= w) < 0) return c; return pool[0][0]; };
-    const list = Array.from({ length: win ? 60 : 9 }, (_, i) => (win && i === 52 ? win : pool.length ? pick() : 'blademaster'));
-    return list.map((c) => `<div class="card" style="--t:${tierOf(c).color}"><img src="${art(c)}"><span>${esc(D.CLASSES[c].name)}</span></div>`).join('');
+    const own = new Set(L.chars.map((c) => c.cls)), ids = D.CLASS_IDS;
+    const list = Array.from({ length: win ? 60 : 9 }, (_, i) => (win && i === 52 ? win : ids[Math.floor(Math.random() * ids.length)]));
+    return list.map((c) => slot(c, own)).join('');
   }
 
   function starter() {
@@ -130,7 +129,8 @@
       clearInterval(ticker); card.classList.add('win'); spinning = false; // reveal buttons are clickable
       const T = tierOf(m.cls), C = D.CLASSES[m.cls];
       const r = $('#lbReveal'); r.hidden = false;
-      r.innerHTML = `<div class="rv" style="--t:${T.color}"><small>ได้รับคลาสใหม่!</small><img src="${art(m.cls)}"><b>${esc(C.name)}</b><span>${esc(C.th)} · ${esc(C.role || '')}</span><em>${T.n} · ${T.th}</em>
+      if (m.salt) { r.innerHTML = `<div class="rv salt"><small>ออกช่องที่มีแล้ว</small><b class="sl">🧂</b><b>เกลือ!</b><span>${esc(C.name)} — คุณมีคลาสนี้อยู่แล้ว</span><p>ได้เงินคืน <b>${fmt(m.refund)}</b> Zeny</p><div><button class="lbPlay" data-act="closeReveal">ตกลง</button></div></div>`; if (window.SFX && SFX.err) SFX.err(); return; }
+      r.innerHTML = `<div class="rv" style="--t:${T.color}"><small>ได้รับคลาสใหม่!</small><img src="${art(m.cls)}"><b>${esc(C.name)}</b><span>${esc(C.th)} · ${esc(C.role || '')}</span>
         <p>เริ่มต้นที่เลเวล 1 — เลเวลและกระเป๋าแยกจากคลาสอื่น · ใช้เงิน Zeny ร่วมกับทุกคลาส</p><div><button class="lbPlay" data-act="playNew" data-id="${m.id}">ใช้คลาสนี้</button><button class="btn" data-act="closeReveal">เปิดอีกครั้ง</button></div></div>`;
       if (window.SFX && SFX.level) SFX.level();
     }, 6500);

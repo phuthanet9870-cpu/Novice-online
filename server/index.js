@@ -90,14 +90,13 @@ function lobbyOf(acc) {
   return { t: 'lobby', nick: acc.nick || '', sel: acc.sel, gm: acc.gm || 0, cost: D.CLASS_ROLL_COST, starters: D.STARTER_CLASSES,
     chars: chars.map((c) => ({ id: c.id, cls: shownClass(c.cls), lv: c.lv, zeny: c.zeny || 0, map: c.map, name: c.name })) };
 }
+// the class case has 30 slots, one per class, all with the same chance (1/30). A class you already own is a
+// "salt" slot: landing on it gives no class and refunds half the price. Every class won turns its slot to salt.
 function rollClass(acc, rnd) {
   const owned = new Set(acc.chars.map((id) => db.data.chars[id]).filter(Boolean).map((c) => shownClass(c.cls)));
-  const pool = [];
-  for (const t of D.CASE_TIERS) { const left = t.cls.filter((c) => !owned.has(c)); for (const c of left) pool.push([c, t.w / t.cls.length]); }
-  if (!pool.length) return null;
-  let r = rnd() * pool.reduce((a, x) => a + x[1], 0);
-  for (const [c, w] of pool) { if ((r -= w) < 0) return c; }
-  return pool[pool.length - 1][0];
+  if (D.CLASS_IDS.every((c) => owned.has(c))) return null;
+  const cls = D.CLASS_IDS[Math.floor(rnd() * D.CLASS_IDS.length)];
+  return { cls, salt: owned.has(cls) };
 }
 
 function handle(sess, m) {
@@ -136,15 +135,20 @@ function handle(sess, m) {
       const free = acc.gm >= 2 && m.free;
       if (!free && (cur.zeny || 0) < D.CLASS_ROLL_COST) return sess.send({ t: 'err', m: `ต้องมี ${D.CLASS_ROLL_COST.toLocaleString()} Zeny ในบัญชี (มี ${(cur.zeny || 0).toLocaleString()})` });
       const got = rollClass(acc, Math.random);
-      if (!got) return sess.send({ t: 'err', m: 'คุณมีครบทุกคลาสแล้ว!' });
+      if (!got) return sess.send({ t: 'err', m: 'คุณมีครบทุกคลาสแล้ว — กล่องเป็นเกลือทั้ง 30 ช่อง' });
       if (!free) cur.zeny -= D.CLASS_ROLL_COST;
-      // the new class starts fresh: its own character at level 1 (same nickname), farmed separately
-      const ch = I.newChar(acc, acc.nick || cur.name, got);
-      delete ch.zeny; // a new class uses the account wallet (no extra starting money)
+      if (got.salt) {
+        // salt: no class, half the price back
+        if (!free) cur.zeny += D.CLASS_SALT_REFUND; db.save();
+        sess.send({ t: 'roll', cls: got.cls, salt: 1, refund: D.CLASS_SALT_REFUND });
+        return sess.send(lobbyOf(acc));
+      }
+      // a new class starts fresh: its own character at level 1 (same nickname), farmed separately
+      const ch = I.newChar(acc, acc.nick || cur.name, got.cls);
+      delete ch.zeny; // shares the account wallet
       db.data.chars[ch.id] = ch; acc.chars.push(ch.id); I.bindWallet(acc); db.save();
-      const tier = D.classTier(got);
-      if (tier >= 3) S.broadcast({ t: 'notice', k: 'loot', m: `🎰 ${acc.nick || cur.name} เปิดกล่องคลาสได้ [${D.CASE_TIERS[tier].n}] ${D.CLASSES[got].name}!` });
-      sess.send({ t: 'roll', cls: got, tier, id: ch.id });
+      S.broadcast({ t: 'notice', k: 'loot', m: `🎰 ${acc.nick || cur.name} เปิดกล่องคลาสได้ ${D.CLASSES[got.cls].name}!` });
+      sess.send({ t: 'roll', cls: got.cls, id: ch.id });
       return sess.send(lobbyOf(acc));
     }
     if (m.t === 'createChar') {

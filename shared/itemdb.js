@@ -405,6 +405,7 @@
   // ------------------------------------------------------------------ class roster: 3 starters + the class case
   D.STARTER_CLASSES = ['blademaster', 'ranger', 'pyromancer']; // นักดาบ · นักธนู · นักเวท
   D.CLASS_ROLL_COST = 5000000;
+  D.CLASS_SALT_REFUND = 2500000; // landing on a class you already own
   // case grades (low → high) and their total weight; every class in a grade shares that grade's weight
   D.CASE_TIERS = [
     { id: 'common', n: 'Common', th: 'ธรรมดา', color: '#4b69ff', w: 60, cls: ['blademaster', 'ranger', 'pyromancer', 'guardian', 'berserker', 'cryomancer', 'cleric', 'marksman', 'monk', 'druid', 'engineer', 'stormcaller'] },
