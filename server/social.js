@@ -264,8 +264,18 @@ S.enterDungeon = function (p, type, floor) {
   const best = (p.char.dungeonBest || {})[type] || 0;
   const allowed = floor === 1 || floor <= best + 1 && (floor % 10 === 1 || floor === best + 1);
   if (!allowed && !p.gm) return err(p, `เริ่มได้ที่ชั้น 1 หรือชั้น checkpoint (11, 21, ...) ที่ไม่เกินชั้นที่ผ่านแล้ว +1 (ผ่านสูงสุด ${best})`);
-  if (p.party) { for (const q of C.partyNear(p, 12)) if (q !== p && q.inst === p.inst) W.enterMap(q, W.dungeonInstanceId(p, type, floor)); }
-  W.enterMap(p, W.dungeonInstanceId(p, type, floor));
+  const id = W.dungeonInstanceId(p, type, floor);
+  if (p.party) { for (const q of C.partyNear(p, 12)) if (q !== p && q.inst === p.inst) W.warp(q, id); }
+  if (p.inst) W.warp(p, id); else W.enterMap(p, id);
+};
+// back up one floor (always allowed): arrive beside the previous floor's down-stairs, so the way back is the way you came
+S.stairsUp = function (p) {
+  const inst = p.inst; if (!inst || inst.def.kind !== 'dungeon' || inst.def.floor <= 1) return;
+  const id = W.dungeonInstanceId(p, inst.def.dungeon, inst.def.floor - 1);
+  const dst = W.getInstance(id); if (!dst) return;
+  if (!dst.spawned) W.populate(dst);
+  const st = dst.map.stairs, at = W.freeSpot(dst.map, st.x, st.y + 2, 1.5);
+  W.warp(p, id, at.x, at.y);
 };
 S.useStairs = function (p) {
   const inst = p.inst;
@@ -273,7 +283,7 @@ S.useStairs = function (p) {
   const st = [...inst.entities.values()].find((e) => e.kind === 'n' && e.role === 'stairs');
   if (!st || W.dist(st, p) > 3) return err(p, 'เดินไปที่บันไดก่อน');
   if (!inst.stairsOpen) return err(p, inst.def.boss ? 'ต้องกำจัดบอสประจำชั้นก่อน' : `กำจัดมอนสเตอร์ให้ได้ 70% ก่อน (${inst.kills}/${Math.ceil(inst.mobTotal * 0.7)})`);
-  if (inst.def.floor >= D.DUNGEON_FLOORS) return W.enterMap(p, p.char.lastTown || 'aurelia');
+  if (inst.def.floor >= D.DUNGEON_FLOORS) return W.warp(p, p.char.lastTown || 'aurelia');
   S.enterDungeon(p, inst.def.dungeon, inst.def.floor + 1);
 };
 

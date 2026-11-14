@@ -477,10 +477,11 @@
       return;
     }
     const bob = Math.sin(t * 2 + e.id) * 1;
-    if (e.role === 'stairs' || e.role === 'portal') {
-      const open = e.role === 'portal' || /→|Exit/.test(e.n);
-      for (let i = 0; i < 3; i++) { g.strokeStyle = open ? `rgba(180,140,255,${0.8 - i * 0.2})` : 'rgba(120,120,140,0.5)'; g.lineWidth = 3; g.beginPath(); g.ellipse(x, y - 4, 16 - i * 4 + Math.sin(t * 3 + i) * 2, 7 - i * 1.5, 0, t * (i + 1), t * (i + 1) + 5); g.stroke(); }
-      if (open) { const gr = g.createRadialGradient(x, y - 18, 1, x, y - 18, 24); gr.addColorStop(0, 'rgba(200,170,255,0.6)'); gr.addColorStop(1, 'rgba(200,170,255,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y - 18, 24, 0, 7); g.fill(); }
+    if (e.role === 'stairs' || e.role === 'portal' || e.role === 'stairsUp') {
+      // warp gates (purple), dungeon stairs down (gold when open, grey while sealed), stairs up (cyan)
+      const open = e.role !== 'stairs' || /→|Exit/.test(e.n);
+      const col = e.role === 'portal' ? '#8a6aff' : e.role === 'stairsUp' ? '#4fd0ff' : open ? '#ffc04a' : '#8a8aa0';
+      if (window.PIX) { g.save(); g.translate(x, y); g.scale(1.4, 1.4); PIX.gate(g, col, t, e.id, open); g.restore(); }
       return;
     }
     g.save(); g.translate(x, y);

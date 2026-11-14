@@ -131,6 +131,70 @@
     g.restore();
   };
 
+  // ---- warp beam (own design): 'out' = a column of light rains down onto the player, they dissolve into it and it
+  //      lifts away in sparkles; 'in' = the column drops in, a figure-shaped flash, rings and sparks, then it thins out
+  PIX.warps = [];
+  PIX.warp = function (wx, wy, kind, col, id) { PIX.warps.push({ wx, wy, kind, id, col: col || '#5fd8ff', t0: (window.G && G.t) || 0 }); if (PIX.warps.length > 20) PIX.warps.shift(); };
+  const WARP_D = 1.1;
+  PIX.drawWarps = function (g, ox, oy, scale, zoom) {
+    const T = (window.G && G.t) || 0, z = zoom || 1;
+    g.save(); g.imageSmoothingEnabled = false;
+    for (let i = PIX.warps.length - 1; i >= 0; i--) {
+      const w = PIX.warps[i], t = T - w.t0; if (t > WARP_D) { PIX.warps.splice(i, 1); continue; }
+      const x = ox + w.wx * scale, y = oy + w.wy * scale, k = t / WARP_D, P = Math.max(2, Math.round(2 * z));
+      const px = (a, b, ww, hh, c, al) => { g.globalAlpha = al; g.fillStyle = c; g.fillRect(Math.round(a / P) * P, Math.round(b / P) * P, ww, hh); };
+      const H = 150 * z, W2 = 9 * z;
+      // column grows down from above (0–0.18), holds (–0.6), then breaks up from the bottom (–1)
+      const top = y - H, grow = Math.min(1, k / 0.18), bot = top + (H + 4 * z) * grow, lift = k > 0.6 ? (k - 0.6) / 0.4 : 0;
+      const y0 = top + (bot - top) * lift * 1.05;
+      if (bot > y0) {
+        const gr = g.createLinearGradient(0, y0, 0, bot); gr.addColorStop(0, hexA(w.col, 0)); gr.addColorStop(0.2, hexA(w.col, 0.35)); gr.addColorStop(1, hexA(w.col, 0.55));
+        g.globalAlpha = 1; g.fillStyle = gr; g.fillRect(x - W2 * 2.2, y0, W2 * 4.4, bot - y0);
+        for (let yy = y0; yy < bot; yy += P) { // streaky pixel body: edge lines, falling dashes, white core
+          px(x - W2, yy, P, P, w.col, 0.9); px(x + W2 - P, yy, P, P, w.col, 0.9);
+          const s = Math.sin(yy * 0.37 + t * 40) + Math.sin(yy * 0.11 - t * 23);
+          if (s > 0.6) px(x - W2 * 0.6 + ((yy * 7) % (W2 * 1.2)), yy, P, P * 3, '#ffffff', 0.85);
+          else if (s > -0.2) px(x - W2 * 0.5 + ((yy * 13) % (W2 * 1.0)), yy, P, P * 2, '#bff4ff', 0.6);
+        }
+      }
+      // ground ring + splash where the column lands
+      if (k > 0.14 && k < 0.75) { const q = (k - 0.14) / 0.61; g.globalAlpha = 1 - q; g.strokeStyle = '#ffffff'; g.lineWidth = P; g.beginPath(); g.ellipse(Math.round(x), Math.round(y), (12 + q * 26) * z, (4 + q * 8) * z, 0, 0, 7); g.stroke(); g.strokeStyle = w.col; g.beginPath(); g.ellipse(Math.round(x), Math.round(y), (6 + q * 14) * z, (2 + q * 5) * z, 0, 0, 7); g.stroke(); }
+      // the figure flash: a white body silhouette inside the beam (dissolving out / forming in)
+      const fq = w.kind === 'out' ? (k < 0.5 ? Math.min(1, (k - 0.12) / 0.2) : 1 - (k - 0.5) / 0.15) : (k > 0.35 && k < 0.7 ? Math.sin((k - 0.35) / 0.35 * Math.PI) : 0);
+      if (fq > 0) { for (let yy = -30 * z; yy < 0; yy += P) { const hw = (yy > -22 * z ? 6 : 4.5) * z; for (let xx = -hw; xx < hw; xx += P) if (((xx + yy) / P + Math.floor(t * 30)) % 3) px(x + xx, y + yy, P, P, '#ffffff', fq * 0.9); } }
+      // sparkles rising after the beam lifts
+      if (k > 0.45) for (let s = 0; s < 10; s++) { const q = Math.min(1, (k - 0.45 - s * 0.012) / 0.5); if (q <= 0) continue; const sx = x + Math.sin(s * 2.7) * 12 * z, sy = y - 6 * z - q * (40 + s * 9) * z; const tw = ((t * 12 + s) | 0) % 3;
+        if (tw) { px(sx, sy, P, P, s % 3 ? '#ffffff' : w.col, 1 - q); if (s % 4 === 0) { px(sx - P, sy, P, P, w.col, (1 - q) * 0.7); px(sx + P, sy, P, P, w.col, (1 - q) * 0.7); px(sx, sy - P, P, P, w.col, (1 - q) * 0.7); px(sx, sy + P, P, P, w.col, (1 - q) * 0.7); } } }
+    }
+    g.restore(); g.globalAlpha = 1;
+  };
+  // is this entity mid-warp-out (hidden after it dissolves into the beam)?
+  PIX.warpHidden = function (e) { const T = (window.G && G.t) || 0; for (const w of PIX.warps) if (w.kind === 'out' && w.id === e.id && T - w.t0 > 0.32) return true; return false; };
+
+  // ---- warp gate (own design): a glowing pad with three stacked rings drifting up a translucent cylinder,
+  //      sparkles rising inside; colour per gate kind
+  PIX.gate = function (g, col, t, id, active) {
+    const P = 2, R = 18, H = 54;
+    const px = (a, b, w, h, c, al) => { g.globalAlpha = al; g.fillStyle = c; g.fillRect(Math.round(a / P) * P, Math.round(b / P) * P, w, h); };
+    const ring = (yy, rx, ry, c, al, dashed) => { for (let i = 0; i < 44; i++) { if (dashed && i % 3 === 2) continue; const a = i / 44 * Math.PI * 2; px(Math.cos(a) * rx, yy + Math.sin(a) * ry, P, P, Math.sin(a) > 0.2 ? c : mixW(c), al); } };
+    g.save(); g.imageSmoothingEnabled = false;
+    const k = active ? 1 : 0.35;
+    // cylinder haze
+    const gr = g.createLinearGradient(0, 0, 0, -H); gr.addColorStop(0, hexA(col, 0.38 * k)); gr.addColorStop(1, hexA(col, 0)); g.globalAlpha = 1; g.fillStyle = gr; g.fillRect(-R, -H, R * 2, H);
+    px(-R, -H, 1, H, '#ffffff', 0.12 * k); px(R - 1, -H, 1, H, '#ffffff', 0.12 * k);
+    // base pad: bright ellipse with a white core
+    for (let i = 0; i < 3; i++) { g.globalAlpha = (0.5 - i * 0.12) * k; g.fillStyle = i ? col : '#ffffff'; g.beginPath(); g.ellipse(0, 0, R * (1 - i * 0.25), 6 * (1 - i * 0.25), 0, 0, 7); g.fill(); }
+    ring(0, R, 6, col, 0.95 * k);
+    // three rings rising and fading, looping
+    for (let r = 0; r < 3; r++) { const q = ((t * 0.45 + r / 3 + id * 0.17) % 1), yy = -4 - q * (H - 6); ring(yy, R * (1 - q * 0.08), 6, col, (q < 0.15 ? q / 0.15 : 1 - (q - 0.15) / 0.85) * k, r === 2); }
+    // sparkles drifting up inside
+    for (let s = 0; s < 8; s++) { const q = ((t * 0.6 + s / 8 + id * 0.11) % 1), xx = Math.sin(s * 2.1 + id) * R * 0.7, yy = -2 - q * H * 0.85; const al = (1 - q) * k;
+      if (s % 3 === 0) { px(xx, yy, P, P, '#ffffff', al); px(xx - P, yy, P, P, col, al * 0.8); px(xx + P, yy, P, P, col, al * 0.8); px(xx, yy - P, P, P, col, al * 0.8); px(xx, yy + P, P, P, col, al * 0.8); }
+      else px(xx, yy, P, P * 2, s % 2 ? '#ffffff' : col, al); }
+    g.restore(); g.globalAlpha = 1;
+  };
+  const mixW = (h) => { const v = parseInt(h.slice(1, 7), 16), r = (v >> 16) & 255, gg = (v >> 8) & 255, b = v & 255; return `rgb(${(r + 255 * 1.4) / 2.4 | 0},${(gg + 255 * 1.4) / 2.4 | 0},${(b + 255 * 1.4) / 2.4 | 0})`; };
+
   // ---- loot beam (called inside the item's local transform, 1 unit = 1 css px at zoom 1)
   const hexA = (h, a) => { const v = parseInt(h.slice(1, 7), 16); return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${a})`; };
   PIX.beam = function (g, col, t, id, power) {

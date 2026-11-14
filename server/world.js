@@ -158,6 +158,7 @@ W.populate = function (inst) {
   const def = inst.def, map = inst.map, r = inst.r;
   if (def.kind === 'town') {
     for (const n of map.npcs) inst.add({ id: W.nextEnt++, kind: 'n', name: n.name, th: n.th, role: n.role, color: n.color, x: n.x, y: n.y, tags: new Map(), hp: 1, maxHp: 1 });
+    addGates(inst);
     return;
   }
   if (def.kind === 'farm') {
@@ -179,7 +180,7 @@ W.populate = function (inst) {
     }
     S.initFieldBoss(inst);
     // a return portal near spawn
-    inst.add({ id: W.nextEnt++, kind: 'n', name: 'Waygate → ' + def.town, role: 'portal', dest: def.town, color: '#7fd0ff', x: map.spawn.x + 0.5, y: map.spawn.y - 3, tags: new Map(), hp: 1, maxHp: 1 });
+    addGates(inst);
     return;
   }
   if (def.kind === 'dungeon') {
@@ -219,6 +220,7 @@ W.populate = function (inst) {
     }
     inst.mobTotal = n;
     inst.add({ id: W.nextEnt++, kind: 'n', name: 'Stairs (sealed)', role: 'stairs', color: '#a080ff', x: map.stairs.x, y: map.stairs.y, tags: new Map(), hp: 1, maxHp: 1 });
+    if (def.floor > 1) { const s = W.freeSpot(map, map.spawn.x, map.spawn.y - 2.5); inst.add({ id: W.nextEnt++, kind: 'n', name: `Stairs ↑ Floor ${def.floor - 1}`, role: 'stairsUp', color: '#7fd0ff', x: s.x, y: s.y, tags: new Map(), hp: 1, maxHp: 1 }); }
     require('./chests').populate(inst, map);
     return;
   }
@@ -436,7 +438,7 @@ W.tick = function () {
     }
     const players = [...inst.players];
     for (const e of [...inst.entities.values()]) {
-      if (e.kind === 'p') { C.updatePlayer(e, dt, t, secTick); if (e.auto && e.auto.on && !e.dead) A.update(e, dt, t); }
+      if (e.kind === 'p') { C.updatePlayer(e, dt, t, secTick); W.gateCheck(e); if (e.auto && e.auto.on && !e.dead) A.update(e, dt, t); }
       else if (e.kind === 'm') {
         if (secTick) C.secondTick(e, t);
         // only think when a player is reasonably near
@@ -540,6 +542,70 @@ W.enterMap = function (p, instId, x, y) {
     const best = p.char.dungeonBest || (p.char.dungeonBest = {});
     best[def.dungeon] = Math.max(best[def.dungeon] || 0, def.floor - 1);
   }
+};
+
+// ---- warping: the player dissolves in a light beam where they stand, then appears in a beam at the destination
+W.warp = function (p, instId, x, y) {
+  if (!p.inst || p.warping) return;
+  p.warping = true; p.path = null; p.atkTarget = null;
+  p.inst.emit({ k: 'warpout', t: p.id, x: p.x, y: p.y });
+  p.inst.after(0.6, () => {
+    p.warping = false;
+    if (!W.players.get(p.char.id)) return;
+    W.enterMap(p, instId, x, y);
+    p.gateCd = now() + 1.5; p.gateLock = true; // must step off the arrival gate before it can fire again
+    p.inst.emit({ k: 'warpin', t: p.id, x: p.x, y: p.y });
+  });
+};
+// a walkable spot near (x, y), searched in growing rings
+W.freeSpot = function (map, x, y, min = 0) {
+  for (let r = min; r < 12; r += 0.5) for (let a = 0; a < 16; a++) { const tx = x + Math.cos(a / 16 * Math.PI * 2) * r, ty = y + Math.sin(a / 16 * Math.PI * 2) * r; if (M.walkable(map, tx, ty)) return { x: Math.floor(tx) + 0.5, y: Math.floor(ty) + 0.5 }; }
+  return { x: map.spawn.x, y: map.spawn.y };
+};
+// every town and field is linked by warp gates: town ↔ each of its fields, field ↔ previous / next field, town ↔ next town
+W.gateLinks = function (def) {
+  const out = [];
+  if (def.kind === 'town') {
+    for (const f of D.FARM_MAPS.filter((x) => x.town === def.id)) out.push([f.id, f.name]);
+    const ti = D.TOWNS.findIndex((t) => t.id === def.id);
+    if (ti >= 0) { const nx = D.TOWNS[(ti + 1) % D.TOWNS.length], pv = D.TOWNS[(ti - 1 + D.TOWNS.length) % D.TOWNS.length]; out.push([nx.id, nx.name]); if (pv.id !== nx.id) out.push([pv.id, pv.name]); }
+  } else if (def.kind === 'farm') {
+    out.push([def.town, (D.TOWNS.find((t) => t.id === def.town) || {}).name || def.town]);
+    const i = D.FARM_MAPS.findIndex((x) => x.id === def.id);
+    if (i > 0) out.push([D.FARM_MAPS[i - 1].id, D.FARM_MAPS[i - 1].name]);
+    if (i >= 0 && i < D.FARM_MAPS.length - 1) out.push([D.FARM_MAPS[i + 1].id, D.FARM_MAPS[i + 1].name]);
+  }
+  return out;
+};
+function addGates(inst) {
+  const map = inst.map, links = W.gateLinks(inst.def); if (!links.length) return;
+  const n = links.length, R = inst.def.kind === 'town' ? Math.min(map.w, map.h) * 0.36 : Math.min(map.w, map.h) * 0.2;
+  links.forEach(([dest, name], i) => {
+    const a = (i / n) * Math.PI * 2 - Math.PI / 2 + 0.3;
+    const s = W.freeSpot(map, map.spawn.x + Math.cos(a) * R, map.spawn.y + Math.sin(a) * R);
+    inst.add({ id: W.nextEnt++, kind: 'n', name: 'Warp → ' + name, role: 'portal', dest, color: '#9a7aff', x: s.x, y: s.y, tags: new Map(), hp: 1, maxHp: 1, gate: 1 });
+  });
+}
+// where to stand after arriving through a gate: next to the gate in the destination that leads back
+W.gateArrival = function (instId, fromId) {
+  const inst = W.getInstance(instId); if (!inst) return null;
+  if (!inst.spawned) W.populate(inst);
+  const g = [...inst.entities.values()].find((e) => e.role === 'portal' && e.dest === fromId);
+  return g ? W.freeSpot(inst.map, g.x, g.y + 2, 1.5) : null;
+};
+// walking onto a gate / stairs uses it
+W.gateCheck = function (p) {
+  if (p.dead || p.warping || !p.inst) return;
+  const t = now(); let near = null;
+  p.inst.inRadius(p.x, p.y, 1.1, (e) => { if (!near && e.kind === 'n' && (e.role === 'portal' || e.role === 'stairs' || e.role === 'stairsUp')) near = e; });
+  if (!near) { p.gateLock = false; return; }
+  if (p.gateLock || t < (p.gateCd || 0)) return;
+  p.gateCd = t + 2;
+  if (near.role === 'portal') {
+    const dest = near.dest === 'town' ? (p.char.lastTown || 'aurelia') : near.dest, at = W.gateArrival(dest, p.inst.mapId);
+    W.warp(p, dest, at && at.x, at && at.y);
+  } else if (near.role === 'stairs') { if (!p.inst.stairsOpen) { p.gateLock = true; } S.useStairs(p); }
+  else S.stairsUp(p);
 };
 
 W.dungeonInstanceId = function (p, type, floor) {

@@ -555,6 +555,7 @@
     else if (r === 'training') G.send({ t: 'training' });
     else if (r === 'stairs') G.send({ t: 'stairs' });
     else if (r === 'chest') G.send({ t: 'chest', id: n.id, a: 'open' });
+    else if (r === 'stairsUp') G.send({ t: 'stairsUp' });
     else if (r === 'portal') G.send({ t: 'portal', id: n.id });
     else if (r === 'storage') UI.show('storage'); else if (r === 'market') UI.show('market'); else if (r === 'mail') UI.show('mail'); else if (r === 'quest') UI.show('quests'); else if (r === 'craft') UI.show('craft'); else if (r === 'stable') UI.show('pets', { tab: 'shop' });
   };

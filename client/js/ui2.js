@@ -36,10 +36,11 @@
         <div class="segRow"><span>เอฟเฟกต์ผู้เล่นอื่น</span><button class="seg ${s.othersFx !== false ? 'on' : ''}" data-act="ofx" data-k="1">เปิด — เห็นทั้งหมด</button><button class="seg ${s.othersFx === false ? 'on' : ''}" data-act="ofx" data-k="0">ปิด — เห็นแค่ของตัวเอง</button></div>
         <label>ซูมกล้อง <input type="range" min="0.55" max="1.8" step="0.05" value="${G.zoom}" data-s="zoom"><b>${G.zoom.toFixed(2)}×</b></label>
         <p class="hint">ปุ่มลัดใหม่: <kbd>T</kbd> ขี่พาหนะ · <kbd>E</kbd> อีโมต · <kbd>L</kbd> ภารกิจ · <kbd>Y</kbd> ความสำเร็จ · <kbd>F</kbd> เพื่อน · <kbd>,</kbd> สัตว์เลี้ยง · <kbd>.</kbd> ตั้งค่า</p>
-        <button class="btn danger" data-act="logout">ออกไปหน้าเลือกตัวละคร</button></div>`;
+        <div class="setBtns"><button class="btn gold" data-act="lobby">⟲ กลับไปล็อบบี้</button><button class="btn danger" data-act="logout">ออกจากระบบ</button></div></div>`;
     },
     act(a, d) {
-      if (a === 'logout') location.reload();
+      if (a === 'logout') { try { sessionStorage.removeItem('no_sess'); } catch (er) {} location.reload(); }
+      if (a === 'lobby') { for (const n of [...UI.open]) UI.close(n); G.send({ t: 'toLobby' }); return; }
       if (a === 'fxq') { G.settings.fxq = d.k; G.applyGfx(); }
       if (a === 'maxp') G.settings.maxPlayers = +d.k;
       if (a === 'ofx') { G.settings.othersFx = d.k === '1'; if (!G.settings.othersFx && window.VFX && VFX.clearOthers) VFX.clearOthers(G.me); }

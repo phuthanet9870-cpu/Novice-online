@@ -210,7 +210,7 @@ function handle(sess, m) {
   // ---------------- in game
   const p = sess.p;
   switch (m.t) {
-    case 'mv': if (typeof m.x === 'number' && typeof m.y === 'number') C.clientMove(p, m.x, m.y); break;
+    case 'mv': if (p.warping) break; if (typeof m.x === 'number' && typeof m.y === 'number') C.clientMove(p, m.x, m.y); break;
     // manual play: one click = one basic attack (queued until in range / off cooldown); AUTO keeps attacking on its own
     case 'atk': { P.dismount(p); const e = p.inst.entities.get(m.id); p.atkTarget = e && C.isEnemy(p, e) ? e.id : null; p.atkOnce = !!p.atkTarget; break; }
     case 'stop': p.atkTarget = null; p.atkOnce = false; break;
@@ -254,21 +254,23 @@ function handle(sess, m) {
       const town = D.TOWNS.find((x) => x.id === dest), farm = D.FARM_MAPS.find((x) => x.id === dest);
       if (p.char.jailUntil > Date.now()) return sess.send({ t: 'err', m: 'คุณอยู่ในคุก' });
       if (p.inst.def.kind === 'castle' && S.gvgActive() && !p.dead) return sess.send({ t: 'err', m: 'ออกจากปราสาทระหว่างวอร์ไม่ได้ (ใช้ Return Scroll)' });
-      if (dest === 'pvp_arena' || dest === 'wb_arena') { W.enterMap(p, dest); break; }
+      if (dest === 'pvp_arena' || dest === 'wb_arena') { W.warp(p, dest); break; }
       if (D.CASTLES.find((c) => c.id === dest)) { S.enterCastle(p, dest); break; }
       if (!town && !farm) return;
       const cost = farm ? farm.min * 15 : 0;
       if (p.inst.def.kind !== 'town' && !p.gm && farm) return sess.send({ t: 'err', m: 'วาร์ปไปแผนที่ฟาร์มได้จากเมือง (Gatekeeper) เท่านั้น' });
       if (p.char.zeny < cost) return sess.send({ t: 'err', m: `ค่าวาร์ป ${cost} Zeny` });
       p.char.zeny -= cost; C.sendChar(p, ['zeny']);
-      W.enterMap(p, dest); break;
+      W.warp(p, dest); break;
     }
     case 'town': if (p.dead) C.respawn(p); else if (!I.use(p, null, 'tele_scroll')) {} break;
     case 'respawn': C.respawn(p); break;
     case 'dungeon': S.enterDungeon(p, m.type, m.floor); break;
     case 'chest': CH.handle(p, m); break;
     case 'stairs': S.useStairs(p); break;
-    case 'portal': { const e = p.inst.entities.get(m.id); if (e && e.role === 'portal' && W.dist(e, p) < 4) W.enterMap(p, e.dest === 'town' ? (p.char.lastTown || 'aurelia') : e.dest); break; }
+    case 'portal': { const e = p.inst.entities.get(m.id); if (e && e.role === 'portal' && W.dist(e, p) < 4) { const dest = e.dest === 'town' ? (p.char.lastTown || 'aurelia') : e.dest, at = W.gateArrival(dest, p.inst.mapId); W.warp(p, dest, at && at.x, at && at.y); } break; }
+    case 'stairsUp': S.stairsUp(p); break;
+    case 'toLobby': { persist(p); W.removePlayer(p); sess.p = null; sess.send(lobbyOf(acc)); break; }
     case 'training': W.enterMap(p, 'training'); break;
     case 'pickup': I.pickup(p, m.id | 0); break;
     case 'passive': P.passive(p, m); break;

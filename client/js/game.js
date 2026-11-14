@@ -62,6 +62,7 @@
     ART.resetChunks();
     G.ents.clear(); G.parts = []; G.anims = []; G.texts = []; G.tele = []; if (window.VFX && VFX.ok) VFX.clear();
     G.self.x = m.x; G.self.y = m.y; G.cam.x = m.x; G.cam.y = m.y; G.path = null; G.pending = null; G.target = 0;
+    G.warping = false; if (window.PIX) { PIX.warps.length = 0; PIX.warp(m.x, m.y, 'in', '#5fd8ff', -1); } // arrive in a beam of light
     G.char = m.char; G.st = m.char.st;
     G.weather = m.info.weather || (D.BIOMES[G.map.def.biome] && G.map.def.biome === 'snow' ? 'snow' : G.map.def.biome === 'volcano' ? 'ash' : '');
     if (window.SFX) { SFX.setBiome(G.map.def.kind === 'town' ? 'town' : G.map.def.biome); SFX.startMusic(); }
@@ -205,7 +206,6 @@
       G.chase = null; G.npcGoal = null; G.send({ t: 'stop' });
       G.stopAuto();
       G.walkTo(wx, wy);
-      G.anims.push({ k: 'click', x: wx, y: wy, t0: G.t, d: 0.5 });
     });
     cv.addEventListener('wheel', (ev) => { G.zoom = Math.max(0.55, Math.min(1.8, G.zoom * (ev.deltaY > 0 ? 0.9 : 1.1))); ev.preventDefault(); }, { passive: false });
     // touch: tap = click
@@ -251,6 +251,7 @@
       if (G.keys.a || G.keys.arrowleft) vx -= 1; if (G.keys.d || G.keys.arrowright) vx += 1;
     }
     let speed = G.st.move * (se && G.hasTag(se, 'slow') ? 0.55 : 1);
+    if (G.warping) { vx = 0; vy = 0; G.path = null; }
     if (vx || vy) { G.path = null; G.chase = null; G.npcGoal = null; const l = Math.hypot(vx, vy); vx /= l; vy /= l; }
     else {
       // chase target into attack range
@@ -394,6 +395,8 @@
       case 'die': if (window.SFX && ent && Math.hypot(f.x - G.self.x, f.y - G.self.y) < 14) SFX.die(); if (ent && window.VFX && VFX.ok) VFX.one('death', f.x, f.y, { r: (ent.sz || 1) * 0.9 }); if (ent) { ent.dieAt = t; burst(f.x, f.y - 0.5, ent.col || '#fff', 16, 4, 0.7, 3); } if (f.t === G.target) G.target = 0; break;
       case 'tag': { if (!ent) break; const d = D.TAGS[f.tag]; G.texts.push({ x: f.x, y: f.y - 1.6, txt: d.n.toUpperCase(), col: d.color, size: 12, t0: t, d: 0.9, vy: -0.6 }); break; }
       case 'react': if (window.SFX) SFX.react(); if (window.VFX && VFX.ok) { const rc = D.REACTIONS[f.r] ? D.REACTIONS[f.r].color : '#ffffff'; VFX.one('react', f.x, f.y, { pal: VFX.ramp(VFX.hue(rc)) }); G.shake = Math.max(G.shake, 5); break; } burst(f.x, f.y - 0.6, D.REACTIONS[f.r] ? D.REACTIONS[f.r].color : '#fff', 30, 7, 0.7, 4); G.shake = Math.max(G.shake, 5); G.anims.push({ k: 'ring', x: f.x, y: f.y, r: 2.2, col: D.REACTIONS[f.r] ? D.REACTIONS[f.r].color : '#fff', t0: t, d: 0.5 }); break;
+      case 'warpout': if (window.PIX) PIX.warp(f.x, f.y, 'out', '#5fd8ff', f.t); if (window.SFX && SFX.level && f.t === G.me) SFX.level(); if (f.t === G.me) G.warping = true; break;
+      case 'warpin': if (window.PIX && f.t !== G.me) PIX.warp(f.x, f.y, 'in', '#5fd8ff', f.t); break;
       case 'txt': G.texts.push({ x: f.x, y: f.y - 2, txt: f.m, col: f.c || '#fff', size: f.big ? 20 : 13, t0: t, d: 1.3, vy: -0.7, stroke: 1 }); break;
       case 'tele': G.tele.push({ x: f.x, y: f.y, r: f.r, ri: f.ri, tx: f.tx, ty: f.ty, w: f.w, fo: f.f, t0: t, d: f.d }); break;
       case 'boom': if (window.VFX && VFX.ok) { VFX.one('boom', f.x, f.y, { el: f.el, r: f.r || 2 }); G.shake = Math.max(G.shake, 3); break; } G.anims.push({ k: 'ring', x: f.x, y: f.y, r: f.r || 2, col: ELC(f.el), t0: t, d: 0.45 }); burst(f.x, f.y, ELC(f.el), 20, (f.r || 2) * 3, 0.5, 4); G.shake = Math.max(G.shake, 3); break;
@@ -466,14 +469,6 @@
       for (const [sx2, sy2] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { const x0 = cx + sx2 * h, y0 = cy + sy2 * h; g.moveTo(x0, y0 - sy2 * L); g.lineTo(x0, y0); g.lineTo(x0 - sx2 * L, y0); } g.stroke(); };
     if (G.mouse && !G.autoOn() && !(UI.typing && UI.typing())) { const [mx, my] = G.toWorld(G.mouse.x, G.mouse.y); const hx = Math.floor(mx) + 0.5, hy = Math.floor(my) + 0.5; if (M.walkable(G.map, hx, hy)) { g.fillStyle = 'rgba(80,220,170,0.10)'; g.fillRect(hx - 0.5, hy - 0.5, 1, 1); tileBracket(hx, hy, 'rgba(90,230,180,0.75)', 0.92); } }
     if (G.path && G.path.length && G.moveGoal) {
-      const P2 = [[G.self.x, G.self.y], ...G.path];
-      for (let i = 1; i < P2.length - 1; i++) {
-        if (i % 2) continue; const [ax, ay] = P2[i], [bx, by] = P2[i + 1]; const an = Math.atan2(by - ay, bx - ax);
-        g.save(); g.translate(ax, ay); g.rotate(an); g.globalAlpha = 0.9;
-        g.fillStyle = '#2a1a08'; g.beginPath(); g.moveTo(0.28, 0); g.lineTo(-0.16, -0.26); g.lineTo(-0.02, 0); g.lineTo(-0.16, 0.26); g.closePath(); g.fill();
-        g.fillStyle = '#ffd04a'; g.beginPath(); g.moveTo(0.22, 0); g.lineTo(-0.12, -0.2); g.lineTo(-0.0, 0); g.lineTo(-0.12, 0.2); g.closePath(); g.fill();
-        g.restore();
-      }
       const [gx, gy] = G.moveGoal, pulse = 0.85 + Math.sin(G.t * 6) * 0.08;
       g.fillStyle = 'rgba(255,208,74,0.16)'; g.fillRect(gx - 0.5, gy - 0.5, 1, 1);
       tileBracket(gx, gy, '#3de0a0', pulse);
@@ -529,7 +524,7 @@
       g.fillStyle = tx.col; g.fillText(tx.txt, x, y);
     }
     g.globalAlpha = 1;
-    if (window.PIX) PIX.draw(g, ox, oy, scale, z); // pixel damage / crit numbers
+    if (window.PIX) { PIX.drawWarps(g, ox, oy, scale, z); PIX.draw(g, ox, oy, scale, z); } // warp beams, pixel damage / crit numbers
     g.restore();
     // dungeon light
     if (G.map.def.kind === 'dungeon' || G.map.def.biome === 'abyss') {
@@ -580,6 +575,7 @@
     g.restore();
   }
   function drawEntity(g, e, x, y, z) {
+    if (window.PIX && (e.k === 'p') && PIX.warpHidden(e)) return;
     if (e.k === 'i') return drawGroundItem(g, e, x, y, z);
     const t = G.t;
     g.save(); g.translate(x, y); g.scale(z, z);
