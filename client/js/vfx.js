@@ -346,6 +346,7 @@
   // ------------------------------------------------------------------ light, decals, debris, impact feel
   let hitStop = 0, dim = 0;
   VFX.hitStop = (s) => { hitStop = Math.max(hitStop, s); };
+  VFX.frozen = () => hitStop > 0;
   VFX.dim = (v) => { dim = Math.max(dim, v); };
   const LIGHT_K = { proj: 0.5, blast: 0.9, pillar: 0.9, bolt: 1, chainbolt: 0.8, zap: 0.6, burst: 0.6, nova: 0.35, beam: 0.8, cone: 0.5, rain: 0.4, field: 0.4, aura: 0.3, heal: 0.4, meteor: 0.9, prismflash: 0.6, wings: 0.5, sigil: 0.3, impact: 0.4, portal: 0.4, spikes: 0.25, shatter: 0.4 };
   const DECAL_OF = { fire: 'scorch', lightning: 'burn', earth: 'crack', ice: 'frost', holy: 'glyph', dark: 'void', poison: 'acid', water: 'wet', blood: 'crack', neutral: 'crack', wind: null };
@@ -983,7 +984,8 @@
       g.fillStyle = gr; g.fillRect(x - R, y - 0.4 - R, R * 2, R * 2);
     }
     g.globalCompositeOperation = 'source-over';
-    if (view && (live.length || debris.length)) {
+    const v5n = root.VFX5 ? VFX5.live.length : 0;
+    if (view && (live.length || debris.length || v5n)) {
       const px = view.scale / PPT;
       const w = Math.ceil(view.W / px) + 2, h = Math.ceil(view.H / px) + 2;
       ensureLayer(w, h);
@@ -996,10 +998,12 @@
         e.t = tq; try { f(lg, e, clamp(tq / e.dur)); } catch (err) { e.dur = 0; } e.t = tr;
       }
       // pixel particles share the layer so they get the same crisp look
+      // class-material skill effects (vfx5.js) share the pixel layer: same palette snap, outline, pixel light and bloom
+      if (v5n) { try { VFX5.drawPixel(lg); } catch (err) { console.warn('vfx5', err); } }
       const ps = 2 / 24;
       for (const p of debris) { const t = p.t, a = t.fade || t.glow ? Math.max(0, 1 - p.age / p.life) : p.age > p.life - 0.25 ? (p.life - p.age) / 0.25 : 1, sz = ps * t.s; if (p.z > 0.05 && !t.glow) { lg.globalAlpha = 0.25 * a; lg.fillStyle = '#000'; lg.fillRect(p.x - sz / 2, p.y - sz / 4, sz, sz / 2); } lg.globalAlpha = clamp(a); lg.fillStyle = p.c; if (t.streak) lg.fillRect(p.x - sz / 2, p.y - p.z - sz, sz, sz * 3); else lg.fillRect(p.x - sz / 2, p.y - p.z - sz / 2, sz, sz); }
       lg.globalAlpha = 1;
-      setPalettes(live.filter((e) => e.t >= 0).map((e) => e.pal).concat(debris.length ? [debris.slice(0, 40).map((p) => p.c)] : []));
+      setPalettes(live.filter((e) => e.t >= 0).map((e) => e.pal).concat(debris.length ? [debris.slice(0, 40).map((p) => p.c)] : [], v5n ? VFX5.palettes() : []));
       crisp();
       // bloom: a soft quarter-size copy added on top makes the bright pixels glow
       if (!bloom) { bloom = document.createElement('canvas'); bgc = bloom.getContext('2d'); }

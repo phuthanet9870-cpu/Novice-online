@@ -363,6 +363,7 @@
       case 'sv': if (window.VFX5) VFX5.on(f); break;
       case 'svc': { const c = G.ents.get(f.s); if (c) c.attackAt = t; if (window.VFX5) VFX5.on({ f: 'cast', s: f.s, sk: f.sk, x: f.x, y: f.y }); if (window.SFX && f.s === G.me) SFX.swing(); if (f.u && window.VFX && VFX.ok && VFX.dim) VFX.dim(0.35); break; }
       case 'cast': {
+        if (window.VFX5 && SK[f.sk] && SK[f.sk].kind === 'buff') { const cb = G.ents.get(f.s); if (cb) cb.attackAt = t; VFX5.on({ f: 'buffup', s: f.s, sk: f.sk, x: f.x, y: f.y }); if (window.SFX && f.s === G.me && SFX.buff) SFX.buff(); break; }
         const col = ELC(f.el);
         const caster = G.ents.get(f.s); if (caster) caster.attackAt = t;
         const big = f.u;

@@ -286,7 +286,7 @@
 (function () {
   const skCache = new Map();
   ART.skillIconOld = ART.skillIcon;
-  ART.skillIcon = (sk) => { if (!sk) return ''; let u = skCache.get(sk.id); if (!u) { u = ART.pixSkillIcon(sk); skCache.set(sk.id, u); } return u; };
+  ART.skillIcon = (sk) => { if (!sk) return ''; if (window.VFX5 && VFX5.skillIcon && (sk.prog || sk.kind === 'buff')) return VFX5.skillIcon(sk); let u = skCache.get(sk.id); if (!u) { u = ART.pixSkillIcon(sk); skCache.set(sk.id, u); } return u; };
   const baseItem = ART.itemIcon;
   ART.itemIcon = (it) => { const d = it && it.id && NO_DATA.ITEMS[it.id]; if (d && d.ic) { const u = ART.pixItemIcon(d, it.id); if (u) return u; } return baseItem(it); };
 })();

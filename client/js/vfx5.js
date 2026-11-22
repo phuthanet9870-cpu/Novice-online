@@ -13,13 +13,15 @@
   const V5 = root.VFX5 = { live: [], ok: true };
 
   // ------------------------------------------------------------------ drawing helpers
+  // pixel mode (default): drawn into the game's low-res effect layer, so lines must be at least one effect pixel wide
+  const MW = () => (V5.pixel ? 0.1 : 0.005);
   const A = (g, a) => { g.globalAlpha = clamp(a); };
   const circ = (g, x, y, r, c, a) => { A(g, a); g.fillStyle = c; g.beginPath(); g.arc(x, y, Math.max(0.005, r), 0, TAU); g.fill(); };
   const ell = (g, x, y, rx, ry, c, a) => { A(g, a); g.fillStyle = c; g.beginPath(); g.ellipse(x, y, Math.max(0.005, rx), Math.max(0.005, ry), 0, 0, TAU); g.fill(); };
-  const ringE = (g, x, y, r, w, c, a, sy = FL) => { A(g, a); g.strokeStyle = c; g.lineWidth = w; g.beginPath(); g.ellipse(x, y, Math.max(0.01, r), Math.max(0.01, r * sy), 0, 0, TAU); g.stroke(); };
-  const ln = (g, x0, y0, x1, y1, w, c, a) => { A(g, a); g.strokeStyle = c; g.lineWidth = w; g.lineCap = 'round'; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); };
-  const poly = (g, pts, c, a, stroke) => { A(g, a); g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); if (stroke) { g.strokeStyle = c; g.lineWidth = stroke; g.stroke(); } else { g.fillStyle = c; g.fill(); } };
-  const glowOn = (g, c, b) => { const q = root.G && G.fx ? G.fx().glow : 0.7; if (q) { g.shadowColor = c; g.shadowBlur = b * (0.5 + q); } };
+  const ringE = (g, x, y, r, w, c, a, sy = FL) => { A(g, a); g.strokeStyle = c; g.lineWidth = Math.max(w, MW()); g.beginPath(); g.ellipse(x, y, Math.max(0.01, r), Math.max(0.01, r * sy), 0, 0, TAU); g.stroke(); };
+  const ln = (g, x0, y0, x1, y1, w, c, a) => { A(g, a); g.strokeStyle = c; g.lineWidth = Math.max(w, MW()); g.lineCap = 'round'; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); };
+  const poly = (g, pts, c, a, stroke) => { A(g, a); g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); if (stroke) { g.strokeStyle = c; g.lineWidth = Math.max(stroke, MW()); g.stroke(); } else { g.fillStyle = c; g.fill(); } };
+  const glowOn = (g, c, b) => { if (V5.pixel) return; const q = root.G && G.fx ? G.fx().glow : 0.7; if (q) { g.shadowColor = c; g.shadowBlur = b * (0.5 + q); } };
   const glowOff = (g) => { g.shadowBlur = 0; };
 
   // ------------------------------------------------------------------ emblem glyphs, drawn at the origin with size s (tiles)
@@ -102,7 +104,7 @@
   };
   function sparkle(g, s, c, a) { poly(g, [[0, -s], [s * 0.25, -s * 0.25], [s, 0], [s * 0.25, s * 0.25], [0, s], [-s * 0.25, s * 0.25], [-s, 0], [-s * 0.25, -s * 0.25]], c, a); }
   const RUNES = 'ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟ';
-  function runesAlong(g, m, x0, y0, x1, y1, a, t, sd) { const L = Math.hypot(x1 - x0, y1 - y0); A(g, a); g.fillStyle = m.c[7]; g.font = '12px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; for (let i = 0.7; i < L; i += 1.3) { const k = i / L; g.save(); g.translate(x0 + (x1 - x0) * k, y0 + (y1 - y0) * k - 0.25); g.scale(1 / 36, 1 / 36); g.fillText(RUNES[(sd + i * 3 | 0) % RUNES.length], 0, 0); g.restore(); } }
+  function runesAlong(g, m, x0, y0, x1, y1, a, t, sd) { if (V5.pixel) { const L = Math.hypot(x1 - x0, y1 - y0); for (let i = 0.7; i < L; i += 1.3) { const k = i / L; g.save(); g.translate(x0 + (x1 - x0) * k, y0 + (y1 - y0) * k - 0.25); g.rotate(i); poly(g, [[0, -0.16], [0.12, 0], [0, 0.16], [-0.12, 0]], m.c[7], a, 0.08); g.restore(); } return; } const L = Math.hypot(x1 - x0, y1 - y0); A(g, a); g.fillStyle = m.c[7]; g.font = '12px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; for (let i = 0.7; i < L; i += 1.3) { const k = i / L; g.save(); g.translate(x0 + (x1 - x0) * k, y0 + (y1 - y0) * k - 0.25); g.scale(1 / 36, 1 / 36); g.fillText(RUNES[(sd + i * 3 | 0) % RUNES.length], 0, 0); g.restore(); } }
   V5.LINE = LINE;
 
   // ------------------------------------------------------------------ area styles: how a ground region (x,y,r) is filled
@@ -188,7 +190,7 @@
   const impact = (g, m, x, y, r, k, T, sd) => { if (k <= 0 || k >= 1) return; const q = ease(k); ringE(g, x, y, r * q, 0.08 * (1 - k) + 0.02, m.c[7], 1 - k); m.AR(g, m, x, y, r * (0.4 + 0.6 * q), (1 - k) * 0.9, T, sd); };
   const ent = (id) => (root.G && G.ents ? G.ents.get(id) : null);
   const FP = {
-    cast(g, e, k, m, T) { const c = ent(e.s) || e; ringE(g, c.x, c.y, 0.5 + k * 0.7, 0.05, m.c[6], 1 - k); head(g, m, c.x, c.y - 1.5 - k * 0.4, 0, 0.25, T, 1 - k); },
+    cast(g, e, k, m, T) { const c = ent(e.s) || e; const q = ease(Math.min(1, k * 1.4)); for (let i = 0; i < 7; i++) { const an = i / 7 * TAU + (e.seed % 7), r = 1.4 * (1 - q) + 0.15; circ(g, c.x + Math.cos(an) * r, c.y - 0.7 + Math.sin(an) * r * 0.6, 0.09, m.c[6 + (i % 2)], 1); } if (k > 0.6) { const f = (k - 0.6) / 0.4; head(g, m, c.x, c.y - 0.75, T * 6, 0.22 + f * 0.12, T, 1 - f); ringE(g, c.x, c.y - 0.7, 0.3 + f * 0.9, 0.1, m.c[7], 1 - f, 0.6); } },
     self(g, e, k, m, T) { const c = ent(e.s) || e; m.AR(g, m, c.x, c.y, 1.4, (1 - k) * 0.8, T, e.seed); head(g, m, c.x, c.y - 1 - k * 1.2, 0, 0.35, T, 1 - k * 0.7); },
     bolt(g, e, k, m, T) { const q = Math.min(1, k * (e.dur ? (e.dur + 0.35) / e.dur : 1.4)); const x = e.x + (e.tx - e.x) * q, y = e.y + (e.ty - e.y) * q - lift; if (q < 1) { m.L(g, m, e.x + (e.tx - e.x) * Math.max(0, q - 0.35), e.y + (e.ty - e.y) * Math.max(0, q - 0.35) - lift, x, y, 0.35, 0.8, T, e.seed); head(g, m, x, y, Math.atan2(e.ty - e.y, e.tx - e.x), 0.34, T); } else impact(g, m, e.tx, e.ty, 1.2, (k - 0.7) / 0.3, T, e.seed); },
     pierce(g, e, k, m, T) { const q = Math.min(1, k * 1.25); const x = e.x + (e.tx - e.x) * q, y = e.y + (e.ty - e.y) * q - lift; m.L(g, m, e.x, e.y - lift, x, y, e.w || 1, 1 - k * 0.8, T, e.seed); if (q < 1) head(g, m, x, y, Math.atan2(e.ty - e.y, e.tx - e.x), 0.45, T); },
@@ -238,13 +240,14 @@
     pop(g, e, k, m, T) { impact(g, m, e.x, e.y, 1.3, k, T, e.seed); },
     corpse(g, e, k, m, T) { impact(g, m, e.x, e.y, 2, k, T, e.seed); head(g, m, e.x, e.y - 0.5 - k, T * 6, 0.5 * (1 - k), T); },
     rewind(g, e, k, m, T) { const c = ent(e.s) || e; for (let i = 0; i < 3; i++) ringE(g, c.x, c.y, 1.6 * (1 - ((k + i / 3) % 1)), 0.06, m.c[7], 1 - k); head(g, m, c.x, c.y - 1.4, -T * 8, 0.4, T, 1 - k); },
+    buffup(g, e, k, m, T) { const c = ent(e.s) || e; const a = k > 0.75 ? (1 - k) / 0.25 : 1; m.AR(g, m, c.x, c.y, 1.3, a * 0.7, T, e.seed); for (let i = 0; i < 3; i++) { const q = (k * 1.5 + i / 3) % 1; ringE(g, c.x, c.y - q * 1.6, 0.9 - q * 0.4, 0.1, m.c[6 + (i % 2)], a * (1 - q)); } head(g, m, c.x, c.y - 1.9 - ease(k) * 0.6, Math.sin(T * 6) * 0.3, 0.3, T, a); },
     proc(g, e, k, m, T) { const c = ent(e.s) || e; head(g, m, c.x + 0.6, c.y - 1.8 - k * 0.6, 0, 0.22, T, 1 - k); },
     txt() {}
   };
   V5.FORMS = FP;
 
   // ------------------------------------------------------------------ live list
-  const DUR = { cast: 0.35, self: 0.8, fan: 0.6, cone: 0.45, slash: 0.4, thrust: 0.35, nova: 0.55, ring: 0.6, cross: 0.55, star: 0.6, burst: 0.55, chainline: 0.45, bounce: 0.9, blink: 0.45, swap: 0.5, shards: 0.6, pulse: 0.5, summon: 0.9, dash: 0.4, pop: 0.45, corpse: 0.6, rewind: 0.7, proc: 0.6 };
+  const DUR = { buffup: 1.1, cast: 0.35, self: 0.8, fan: 0.6, cone: 0.45, slash: 0.4, thrust: 0.35, nova: 0.55, ring: 0.6, cross: 0.55, star: 0.6, burst: 0.55, chainline: 0.45, bounce: 0.9, blink: 0.45, swap: 0.5, shards: 0.6, pulse: 0.5, summon: 0.9, dash: 0.4, pop: 0.45, corpse: 0.6, rewind: 0.7, proc: 0.6 };
   V5.on = function (f) {
     if (!f || !FP[f.f]) return;
     const caster = ent(f.s), cls = caster && caster.c ? caster.c : (f.sk && root.NO_SKILLS && NO_SKILLS.SKILLS[f.sk] ? NO_SKILLS.SKILLS[f.sk].cls : 'blademaster');
@@ -253,8 +256,47 @@
     const e = Object.assign({}, f, { m: matOf(cls), age: 0, seed: hashS((f.sk || '') + f.f + (f.i || 0)) });
     e.dur = f.d ? f.d + (['bolt', 'arc', 'split', 'homing', 'meteor', 'drop', 'rain'].includes(f.f) ? 0.4 : f.f === 'pierce' ? 0.25 : 0) : DUR[f.f] || 0.6;
     V5.live.push(e);
+    impacts(e, cls);
+  };
+  // material sparks / smoke / debris thrown out where a shape lands
+  const SPRAY = { blademaster: ['spark', '#e8f0ff'], guardian: ['mote', '#ffd86a'], berserker: ['drop', '#d02a30'], assassin: ['drop', '#6ad04a'], ranger: ['dust', '#6ac05a'], pyromancer: ['ember', '#7ae6ff'], cleric: ['mote', '#ffe98a'], monk: ['mote', '#a8e0ff'], warlock: ['shade', '#7aff9a'], marksman: ['spark', '#d8b06a'], chronomancer: ['spark', '#7ff0ff'], deity: ['mote', '#fff08a'], demon: ['ember', '#ff4a1a'], darkknight: ['shade', '#a05aff'], lightbringer: ['mote', '#4ab0ff'], paladin: ['mote', '#ffb83a'], cryomancer: ['ice', '#d8f8ff'], stormcaller: ['spark', '#c8f0ff'], necromancer: ['dust', '#d8d8b8'], druid: ['dust', '#ff8ac8'], shadowdancer: ['shade', '#c8c0e8'], engineer: ['spark', '#ffb05a'], spellblade: ['drop', '#7ac8ff'], beastmaster: ['dust', '#c08a4a'], starhunter: ['mote', '#fff2b0'], seraph: ['mote', '#ffffff'], reaper: ['shade', '#7ae8d8'], jester: ['spark', '#ff4a7a'], loki: ['mote', '#c8ffe8'], shadowmancer: ['shade', '#ff2a4a'] };
+  const HEAVY = { meteor: 1, leap: 1, burst: 1, nova: 1, pillar: 1, echo: 1, shards: 1, corpse: 1 };
+  function impacts(e, cls) {
+    if (!root.VFX || !VFX.ok || !VFX.spray) return;
+    const sp = SPRAY[cls] || SPRAY.blademaster, pts = [];
+    const at = (d, x, y, n) => pts.push([d, x, y, n]);
+    switch (e.f) {
+      case 'bolt': case 'split': case 'arc': at(e.dur - 0.4, e.tx, e.ty, 8); break;
+      case 'pierce': at(e.dur * 0.6, e.tx, e.ty, 5); break;
+      case 'meteor': at(e.dur * 0.75, e.x, e.y, 22); break;
+      case 'leap': at(e.dur * 0.8, e.tx, e.ty, 16); break;
+      case 'fan': (e.rays || []).forEach(([x, y]) => at(0.3, x, y, 3)); break;
+      case 'homing': case 'bounce': case 'chainline': (e.tg || []).forEach(([x, y], i) => at(0.15 + i * 0.1, x, y, 5)); break;
+      case 'rain': case 'drop': (e.pts || []).forEach(([x, y], i) => at(0.25 + i * (e.dur - 0.4) / Math.max(1, (e.pts || []).length), x, y, 4)); break;
+      case 'burst': case 'nova': case 'ring': case 'cross': case 'star': case 'shards': case 'pop': case 'corpse': case 'echo': case 'pillar': at(0, e.x, e.y, Math.min(24, 6 + (e.r || 2) * 3)); break;
+      case 'slash': case 'thrust': case 'cone': case 'sweep': case 'spin': { const c = ent(e.s) || e; at(0.08, c.x + Math.cos(e.a || 0) * 1.4, c.y + Math.sin(e.a || 0) * 0.8, 6); break; }
+      case 'dash': case 'blink': case 'swap': at(0.05, e.tx, e.ty, 8); break;
+    }
+    for (const [d, x, y, n] of pts) setTimeout(() => { VFX.spray(sp[0], x, y - 0.3, n, sp[1]); if (HEAVY[e.f]) { VFX.spray('dust', x, y, 4); if (VFX.hitStop) VFX.hitStop(0.045); if (root.G && !(G.settings && G.settings.shake === false)) G.shake = Math.max(G.shake || 0, e.f === 'meteor' ? 7 : 3); } }, Math.max(0, d) * 1000);
+  }
+  V5.palettes = () => { const seen = new Set(), out = []; for (const e of V5.live) if (!seen.has(e.m)) { seen.add(e.m); out.push(e.m.c); } return out; };
+  // pixel pass: called by vfx.js inside its effect layer (world transform already set); poses step at 12 fps,
+  // projectiles and travelling shapes at 24 fps like hand-drawn sprite effects
+  const FAST = { bolt: 1, pierce: 1, fan: 1, arc: 1, boomer: 1, homing: 1, split: 1, wave: 1, dash: 1, hook: 1, rain: 1, meteor: 1, drop: 1, cast: 1 };
+  V5.drawPixel = function (g) {
+    V5.pixel = true;
+    const T = Math.floor(performance.now() / 1000 * 12) / 12;
+    g.save(); g.lineJoin = 'round';
+    for (const e of V5.live) {
+      const fps = FAST[e.f] ? 24 : 12, age = Math.floor(e.age * fps) / fps, k = age / e.dur; if (k >= 1) continue;
+      try { FP[e.f](g, e, Math.max(0, k), e.m, T); } catch (err) { e.age = e.dur; }
+    }
+    g.restore(); g.globalAlpha = 1; g.shadowBlur = 0; g.setLineDash([]);
   };
   V5.draw = function (g, dt) {
+    const pixel = root.VFX && VFX.ok && VFX.drawGround;
+    if (pixel) { if (!(VFX.frozen && VFX.frozen())) for (let i = V5.live.length - 1; i >= 0; i--) { const e = V5.live[i]; e.age += dt; if (e.age >= e.dur) V5.live.splice(i, 1); } return; }
+    V5.pixel = false;
     const L = V5.live; if (!L.length) return;
     const T = performance.now() / 1000;
     g.save(); g.lineJoin = 'round';
@@ -287,4 +329,86 @@
     VFX.describe = (id) => { const sk = SK()[id]; return sk && sk.prog ? sk.prog.map((st) => FORM_TH[st.f] || st.f).join(' → ') + ' · วัสดุ: ' + (MAT_TH[sk.cls] || '') : d0(id); };
     VFX.swatch = (id) => { const sk = SK()[id]; return sk && (sk.prog || sk.kind === 'buff') ? matOf(sk.cls).c : s0(id); };
   }
+  // ------------------------------------------------------------------ pixel icons: shape pictogram + class emblem + class palette
+  // 32×32 drawn with vectors, then snapped to the class palette with a 1-px outline and scaled ×2 nearest-neighbour
+  const PICT = {
+    bolt(g, c) { ln(g, 7, 25, 22, 10, 3, c[6], 1); poly(g, [[25, 7], [17, 9], [23, 15]], c[7], 1); },
+    pierce(g, c) { ln(g, 4, 24, 27, 8, 2.5, c[6], 1); for (const [x, y] of [[10, 20], [16, 16], [22, 12]]) circ(g, x, y, 2.6, c[3], 1); poly(g, [[29, 6], [22, 7], [26, 12]], c[7], 1); },
+    fan(g, c) { for (const a of [-0.55, 0, 0.55]) { const an = -0.8 + a; ln(g, 8, 24, 8 + Math.cos(an) * 18, 24 + Math.sin(an) * 18, 2, c[6], 1); } },
+    arc(g, c) { A(g, 1); g.strokeStyle = c[5]; g.lineWidth = 2; g.setLineDash([2, 2]); g.beginPath(); g.moveTo(5, 26); g.quadraticCurveTo(16, 0, 26, 24); g.stroke(); g.setLineDash([]); circ(g, 26, 24, 4, c[7], 1); },
+    boomer(g, c) { A(g, 1); g.strokeStyle = c[6]; g.lineWidth = 4; g.beginPath(); g.arc(16, 18, 10, Math.PI * 1.1, Math.PI * 1.9); g.stroke(); poly(g, [[5, 14], [9, 20], [3, 21]], c[7], 1); },
+    spiral(g, c) { A(g, 1); g.strokeStyle = c[6]; g.lineWidth = 2.5; g.beginPath(); for (let i = 0; i <= 40; i++) { const a = i / 40 * 12, r = i / 40 * 12; g.lineTo(16 + Math.cos(a) * r, 16 + Math.sin(a) * r); } g.stroke(); },
+    homing(g, c) { for (const [x, y] of [[24, 6], [27, 18], [20, 27]]) { A(g, 1); g.strokeStyle = c[5]; g.lineWidth = 2; g.beginPath(); g.moveTo(5, 16); g.quadraticCurveTo(12, y - 10, x, y); g.stroke(); circ(g, x, y, 2.5, c[7], 1); } },
+    split(g, c) { ln(g, 4, 16, 16, 16, 3, c[6], 1); for (const y of [6, 16, 26]) ln(g, 16, 16, 28, y, 2, c[5], 1); circ(g, 16, 16, 3, c[7], 1); },
+    bounce(g, c) { const P = [[4, 24], [12, 8], [20, 22], [28, 6]]; A(g, 1); g.strokeStyle = c[6]; g.lineWidth = 2; g.beginPath(); P.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); P.forEach(([x, y]) => circ(g, x, y, 2.4, c[7], 1)); },
+    chainline(g, c) { for (const [x, y] of [[27, 6], [28, 17], [24, 27], [6, 6]]) { ln(g, 12, 18, x, y, 1.6, c[5], 1); circ(g, x, y, 2.4, c[7], 1); } circ(g, 12, 18, 3.4, c[6], 1); },
+    beam(g, c) { poly(g, [[3, 13], [29, 11], [29, 21], [3, 19]], c[4], 1); ln(g, 3, 16, 29, 16, 2, c[7], 1); },
+    sweep(g, c) { A(g, 1); g.strokeStyle = c[6]; g.lineWidth = 3; g.beginPath(); g.arc(16, 22, 12, Math.PI, Math.PI * 2); g.stroke(); poly(g, [[28, 22], [24, 16], [31, 17]], c[7], 1); circ(g, 16, 22, 3, c[5], 1); },
+    cone(g, c) { poly(g, [[5, 16], [28, 5], [28, 27]], c[4], 1); poly(g, [[5, 16], [28, 5], [28, 27]], c[7], 1, 1.5); },
+    slash(g, c) { A(g, 1); g.fillStyle = c[7]; g.beginPath(); g.arc(14, 18, 13, -1.2, 0.9); g.arc(11, 18, 10, 0.9, -1.2, true); g.fill(); },
+    thrust(g, c) { ln(g, 4, 28, 22, 10, 3, c[3], 1); poly(g, [[28, 4], [19, 9], [23, 13]], c[7], 1); },
+    spin(g, c) { for (let i = 0; i < 3; i++) { const a = i * TAU / 3; A(g, 1); g.strokeStyle = c[6]; g.lineWidth = 3; g.beginPath(); g.arc(16, 16, 11, a, a + 1.4); g.stroke(); } circ(g, 16, 16, 3, c[7], 1); },
+    nova(g, c) { for (const r of [5, 9.5, 13.5]) { A(g, 1); g.strokeStyle = r > 10 ? c[7] : c[5]; g.lineWidth = 2; g.beginPath(); g.arc(16, 16, r, 0, TAU); g.stroke(); } },
+    ring(g, c) { A(g, 1); g.strokeStyle = c[7]; g.lineWidth = 4; g.beginPath(); g.arc(16, 16, 11, 0, TAU); g.stroke(); circ(g, 16, 16, 3, c[2], 1); },
+    cross(g, c) { ln(g, 6, 6, 26, 26, 4, c[6], 1); ln(g, 26, 6, 6, 26, 4, c[6], 1); circ(g, 16, 16, 3, c[7], 1); },
+    star(g, c) { for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; ln(g, 16, 16, 16 + Math.cos(a) * 13, 16 + Math.sin(a) * 13, i % 2 ? 1.5 : 3, c[i % 2 ? 5 : 7], 1); } },
+    burst(g, c) { const p = []; for (let i = 0; i < 16; i++) { const a = i / 16 * TAU, r = i % 2 ? 7 : 14; p.push([16 + Math.cos(a) * r, 16 + Math.sin(a) * r]); } poly(g, p, c[6], 1); circ(g, 16, 16, 5, c[7], 1); },
+    rain(g, c) { for (const [x, y] of [[8, 6], [16, 10], [24, 5], [11, 18], [21, 20]]) { ln(g, x - 2, y - 5, x, y, 2, c[5], 1); circ(g, x, y, 2, c[7], 1); } ln(g, 3, 28, 29, 28, 2, c[3], 1); },
+    meteor(g, c) { ln(g, 4, 4, 18, 18, 5, c[4], 0.8); circ(g, 21, 21, 7, c[6], 1); circ(g, 23, 19, 2.5, c[7], 1); },
+    pillar(g, c) { poly(g, [[11, 2], [21, 2], [23, 28], [9, 28]], c[5], 1); ln(g, 16, 2, 16, 28, 2, c[7], 1); },
+    field(g, c) { A(g, 1); g.strokeStyle = c[6]; g.lineWidth = 2; g.setLineDash([3, 2]); g.beginPath(); g.ellipse(16, 18, 13, 8, 0, 0, TAU); g.stroke(); g.setLineDash([]); ell(g, 16, 18, 9, 5, c[3], 0.8); },
+    wall(g, c) { for (let r = 0; r < 3; r++) for (let i = 0; i < 4; i++) poly(g, [[3 + i * 7 + (r % 2) * 3, 8 + r * 7], [9 + i * 7 + (r % 2) * 3, 8 + r * 7], [9 + i * 7 + (r % 2) * 3, 13 + r * 7], [3 + i * 7 + (r % 2) * 3, 13 + r * 7]], c[5 + (i + r) % 2], 1); },
+    dash(g, c) { for (const y of [10, 16, 22]) ln(g, 3, y, 16 + (y === 16 ? 6 : 0), y, 2, c[4], 1); poly(g, [[18, 8], [29, 16], [18, 24]], c[7], 1); },
+    leap(g, c) { A(g, 1); g.strokeStyle = c[5]; g.lineWidth = 2; g.setLineDash([2, 2]); g.beginPath(); g.moveTo(4, 26); g.quadraticCurveTo(12, 0, 22, 22); g.stroke(); g.setLineDash([]); for (let i = 0; i < 6; i++) { const a = Math.PI + i / 5 * Math.PI; ln(g, 22, 26, 22 + Math.cos(a) * 7, 26 + Math.sin(a) * 6, 1.5, c[7], 1); } },
+    blink(g, c) { circ(g, 7, 22, 4, c[3], 1); circ(g, 25, 10, 4, c[7], 1); A(g, 1); g.strokeStyle = c[6]; g.lineWidth = 1.5; g.setLineDash([2, 2]); g.beginPath(); g.moveTo(9, 20); g.lineTo(23, 12); g.stroke(); g.setLineDash([]); },
+    hook(g, c) { ln(g, 4, 6, 20, 14, 2, c[5], 1); A(g, 1); g.strokeStyle = c[7]; g.lineWidth = 3; g.beginPath(); g.arc(22, 20, 6, -1.5, 2.6); g.stroke(); },
+    tether(g, c) { for (let i = 0; i < 4; i++) { A(g, 1); g.strokeStyle = c[5 + i % 2]; g.lineWidth = 2; g.beginPath(); g.ellipse(7 + i * 6, 23 - i * 5, 4, 2.5, -0.7, 0, TAU); g.stroke(); } },
+    orbit(g, c) { A(g, 1); g.strokeStyle = c[4]; g.lineWidth = 1.5; g.beginPath(); g.ellipse(16, 16, 12, 7, -0.3, 0, TAU); g.stroke(); circ(g, 16, 16, 4, c[6], 1); for (const a of [0.4, 2.5, 4.4]) circ(g, 16 + Math.cos(a) * 12, 16 + Math.sin(a) * 7, 2.6, c[7], 1); },
+    mine(g, c) { for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; ln(g, 16, 18, 16 + Math.cos(a) * 11, 18 + Math.sin(a) * 9, 2, c[5], 1); } circ(g, 16, 18, 6, c[3], 1); circ(g, 16, 18, 2.5, c[7], 1); },
+    totem(g, c) { poly(g, [[12, 6], [20, 6], [21, 28], [11, 28]], c[3], 1); for (const y of [10, 17, 24]) ln(g, 12, y, 20, y, 2, c[7], 1); circ(g, 16, 5, 3.5, c[6], 1); },
+    summon(g, c) { ell(g, 16, 26, 12, 4, c[4], 1); circ(g, 16, 10, 4.5, c[7], 1); poly(g, [[10, 26], [22, 26], [19, 15], [13, 15]], c[6], 1); },
+    mark(g, c) { A(g, 1); g.strokeStyle = c[7]; g.lineWidth = 2; g.beginPath(); g.arc(16, 16, 10, 0, TAU); g.stroke(); for (const [a, b, x, y] of [[16, 2, 16, 9], [16, 23, 16, 30], [2, 16, 9, 16], [23, 16, 30, 16]]) ln(g, a, b, x, y, 2, c[6], 1); circ(g, 16, 16, 2.5, c[7], 1); },
+    vortex(g, c) { for (let j = 0; j < 3; j++) { A(g, 1); g.strokeStyle = c[5 + j % 3]; g.lineWidth = 2; g.beginPath(); for (let i = 0; i <= 20; i++) { const a = j * 2.1 + i / 20 * 5, r = 13 * (1 - i / 20); g.lineTo(16 + Math.cos(a) * r, 16 + Math.sin(a) * r); } g.stroke(); } },
+    wave(g, c) { for (let j = 0; j < 3; j++) { A(g, 1); g.strokeStyle = c[5 + j]; g.lineWidth = 2.5; g.beginPath(); g.arc(4 + j * 7, 16, 11, -1, 1); g.stroke(); } },
+    shards(g, c) { circ(g, 16, 16, 4, c[7], 1); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + 0.3; poly(g, [[16 + Math.cos(a) * 7, 16 + Math.sin(a) * 7], [16 + Math.cos(a + 0.2) * 13, 16 + Math.sin(a + 0.2) * 13], [16 + Math.cos(a - 0.1) * 14, 16 + Math.sin(a - 0.1) * 14]], c[6], 1); } },
+    echo(g, c) { for (let i = 0; i < 3; i++) { A(g, 1); g.strokeStyle = c[7 - i]; g.lineWidth = 2; g.beginPath(); g.arc(16, 16, 4 + i * 4.5, -0.9, 0.9); g.stroke(); g.beginPath(); g.arc(16, 16, 4 + i * 4.5, Math.PI - 0.9, Math.PI + 0.9); g.stroke(); } circ(g, 16, 16, 2.5, c[7], 1); },
+    swap(g, c) { ln(g, 5, 11, 25, 11, 2, c[6], 1); poly(g, [[27, 11], [21, 7], [21, 15]], c[7], 1); ln(g, 27, 21, 7, 21, 2, c[5], 1); poly(g, [[5, 21], [11, 17], [11, 25]], c[7], 1); },
+    aura(g, c) { for (let i = 0; i < 3; i++) { A(g, 1); g.strokeStyle = c[5 + i]; g.lineWidth = 1.5; g.beginPath(); g.ellipse(16, 22 - i * 5, 12 - i * 2, 4, 0, 0, TAU); g.stroke(); } circ(g, 16, 10, 3.5, c[7], 1); },
+    drop(g, c) { for (let i = 0; i < 4; i++) { const x = 6 + i * 7, y = 26 - i * 5; ln(g, x, y - 8, x, y, 2, c[5], 1); circ(g, x, y, 2.6, c[7], 1); } },
+    self(g, c) { circ(g, 16, 16, 9, c[4], 0.6); }
+  };
+  function crispIcon(cv, pal) {
+    const q = cv.getContext('2d'), im = q.getImageData(0, 0, 32, 32), d = im.data, P = pal.map((h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]);
+    for (let i = 0; i < d.length; i += 4) { if (d[i + 3] < 70) { d[i + 3] = 0; continue; } let b = 0, bd = 1e9; for (let j = 0; j < P.length; j++) { const e = (P[j][0] - d[i]) ** 2 + (P[j][1] - d[i + 1]) ** 2 + (P[j][2] - d[i + 2]) ** 2; if (e < bd) { bd = e; b = j; } } d[i] = P[b][0]; d[i + 1] = P[b][1]; d[i + 2] = P[b][2]; d[i + 3] = 255; }
+    const src = new Uint8ClampedArray(d);
+    for (let y = 1; y < 31; y++) for (let x = 1; x < 31; x++) { const i = (y * 32 + x) * 4; if (src[i + 3]) continue; if (src[i - 1] || src[i + 7] || src[i - 125] || src[i + 131]) { d[i] = 8; d[i + 1] = 6; d[i + 2] = 14; d[i + 3] = 255; } }
+    q.putImageData(im, 0, 0);
+  }
+  const iconCache = new Map();
+  // spec: { id, cls, kind: attack|ult|buff|passive, form, mods }
+  V5.icon = function (spec) {
+    if (typeof document === 'undefined') return '';
+    const key = spec.id; if (iconCache.has(key)) return iconCache.get(key);
+    const m = matOf(spec.cls), c = m.c, h = hashS(spec.id);
+    const fg = document.createElement('canvas'); fg.width = fg.height = 32; const g = fg.getContext('2d'); g.lineCap = 'round'; g.lineJoin = 'round';
+    V5.pixel = false;
+    if (spec.kind === 'buff') { g.save(); g.translate(16, 17); m.glyph(g, 9, c, h % 7); g.restore(); poly(g, [[22, 13], [27, 6], [32, 13]], c[7], 1); ln(g, 27, 12, 27, 20, 2.5, c[7], 1); }
+    else if (spec.kind === 'passive') { poly(g, [[16, 2], [30, 16], [16, 30], [2, 16]], c[2], 1); g.save(); g.translate(16, 16); m.glyph(g, 7.5, c, h % 7); g.restore(); }
+    else {
+      (PICT[spec.form] || PICT.self)(g, c);
+      g.save(); g.translate(spec.form === 'self' ? 16 : 24, spec.form === 'self' ? 16 : 24); m.glyph(g, spec.form === 'self' ? 10 : 6, c, h % 7); g.restore();
+    }
+    crispIcon(fg, c);
+    // frame: class gradient backdrop, gold rim for ultimates, green for buffs, diamond for passives
+    const out = document.createElement('canvas'); out.width = out.height = 64; const o = out.getContext('2d'); o.imageSmoothingEnabled = false;
+    const gr = o.createLinearGradient(0, 0, 0, 64); gr.addColorStop(0, c[2]); gr.addColorStop(1, c[0]); o.fillStyle = gr; o.fillRect(0, 0, 64, 64);
+    o.globalAlpha = 0.25; o.fillStyle = c[4]; for (let i = 0; i < 6; i++) { const a = (h >> i) % 7, x = (h >> (i * 3)) % 60, y = (h >> (i * 2 + 1)) % 60; o.fillRect(x, y, 2 + a % 3 * 2, 2 + a % 3 * 2); } o.globalAlpha = 1;
+    o.drawImage(fg, 0, 0, 64, 64);
+    const rim = spec.kind === 'ult' ? '#ffcf4a' : spec.kind === 'buff' ? '#6aff8a' : spec.kind === 'passive' ? '#c8a0ff' : c[5];
+    o.strokeStyle = '#05040a'; o.lineWidth = 4; o.strokeRect(2, 2, 60, 60); o.strokeStyle = rim; o.lineWidth = 2; o.strokeRect(3, 3, 58, 58);
+    if (spec.kind === 'ult') { o.fillStyle = '#ffcf4a'; for (const [x, y] of [[4, 4], [56, 4], [4, 56], [56, 56]]) o.fillRect(x, y, 4, 4); }
+    const url = out.toDataURL(); iconCache.set(key, url); return url;
+  };
+  V5.skillIcon = (sk) => V5.icon({ id: sk.id, cls: sk.cls, kind: sk.kind, form: sk.prog ? sk.prog[0].f : 'self', mods: sk.mods });
+  V5.passiveIcon = (q, cls) => V5.icon({ id: q.id, cls, kind: 'passive' });
 })(typeof self !== 'undefined' ? self : this);
